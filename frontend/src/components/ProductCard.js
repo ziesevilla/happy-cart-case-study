@@ -1,8 +1,10 @@
 import React from 'react';
 import { Card, Button } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { useCart } from '../context/CartContext'; // Ensure we have the cart hook
 
 const ProductCard = ({ product }) => {
+    const { addToCart } = useCart(); // Get the add function
+
     return (
         <Card className="h-100 shadow-sm hover-shadow border-0">
             {/* Image Placeholder with category badge */}
@@ -13,9 +15,11 @@ const ProductCard = ({ product }) => {
                 >
                     <span className="display-4">{product.emoji}</span>
                 </div>
-                <span className="position-absolute top-0 start-0 badge bg-primary m-2">
-                    {product.category}
-                </span>
+                {product.category && (
+                    <span className="position-absolute top-0 start-0 badge bg-primary m-2">
+                        {product.category}
+                    </span>
+                )}
             </div>
 
             <Card.Body className="d-flex flex-column">
@@ -26,7 +30,13 @@ const ProductCard = ({ product }) => {
                 
                 <div className="mt-auto d-flex justify-content-between align-items-center">
                     <h5 className="text-primary mb-0">${product.price.toFixed(2)}</h5>
-                    <Button variant="outline-primary" size="sm">Add to Cart</Button>
+                    <Button 
+                        variant="outline-primary" 
+                        size="sm"
+                        onClick={() => addToCart(product)} // Connect the click handler
+                    >
+                        Add to Cart
+                    </Button>
                 </div>
             </Card.Body>
         </Card>
