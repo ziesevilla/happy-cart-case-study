@@ -1,9 +1,26 @@
 import React from 'react';
 import { Card, Button } from 'react-bootstrap';
-import { useCart } from '../context/CartContext'; // Ensure we have the cart hook
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext'; // Import Auth hook
+import { useNavigate } from 'react-router-dom';   // Import Navigation hook
 
 const ProductCard = ({ product }) => {
-    const { addToCart } = useCart(); // Get the add function
+    // Ensure hooks are called safely
+    const { addToCart } = useCart();
+    const { user } = useAuth(); // Check who is logged in
+    const navigate = useNavigate();
+
+    const handleAddToCart = () => {
+        // Check if user is logged in
+        if (!user) {
+            alert("You must be logged in to add items to the cart!");
+            navigate('/login'); // Redirects to the login route
+            return;
+        }
+        
+        // If logged in, proceed to add item
+        addToCart(product);
+    };
 
     return (
         <Card className="h-100 shadow-sm hover-shadow border-0">
@@ -33,7 +50,7 @@ const ProductCard = ({ product }) => {
                     <Button 
                         variant="outline-primary" 
                         size="sm"
-                        onClick={() => addToCart(product)} // Connect the click handler
+                        onClick={handleAddToCart} // Use the new handler
                     >
                         Add to Cart
                     </Button>

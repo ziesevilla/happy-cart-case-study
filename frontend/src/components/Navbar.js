@@ -27,15 +27,17 @@ const Navigation = () => {
                     </Nav>
                     
                     <Nav className="ms-auto align-items-center">
-                        {/* Cart Link (Always Visible) */}
-                        <Nav.Link as={Link} to="/cart" className="position-relative me-3">
-                            <i className="bi bi-cart"></i> Cart
-                            {count > 0 && (
-                                <Badge bg="danger" pill className="position-absolute top-0 start-100 translate-middle" style={{ fontSize: '0.6rem' }}>
-                                    {count}
-                                </Badge>
-                            )}
-                        </Nav.Link>
+                        {/* Cart Link - Only visible if user is logged in */}
+                        {user && (
+                            <Nav.Link as={Link} to="/cart" className="position-relative me-3">
+                                <i className="bi bi-cart"></i> Cart
+                                {count > 0 && (
+                                    <Badge bg="danger" pill className="position-absolute top-0 start-100 translate-middle" style={{ fontSize: '0.6rem' }}>
+                                        {count}
+                                    </Badge>
+                                )}
+                            </Nav.Link>
+                        )}
 
                         {/* Auth Links */}
                         {user ? (
