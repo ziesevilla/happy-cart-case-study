@@ -1,0 +1,243 @@
+/* Wrapper */
+.account-page {
+    background-color: var(--bg-soft);
+    min-height: 100vh;
+}
+
+/* --- PROFILE SIDEBAR --- */
+.profile-card {
+    background: white;
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    overflow: hidden;
+}
+
+.profile-header {
+    background: var(--primary-gradient);
+    height: 100px;
+}
+
+/* Avatar Container & Upload Overlay */
+.profile-avatar-container {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin: -40px auto 1rem;
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    background: white;
+}
+
+.profile-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-solid);
+    overflow: hidden;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-upload-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.2s;
+    cursor: pointer;
+}
+
+.profile-avatar-container:hover .profile-upload-overlay {
+    opacity: 1;
+}
+
+/* --- TABS STYLING --- */
+.tab-active {
+    background-color: var(--text-dark) !important; 
+    color: #ffffff !important; 
+    border: none !important;
+    opacity: 1 !important;
+    box-shadow: 0 4px 10px rgba(45, 55, 72, 0.3);
+}
+
+.tab-active:hover {
+    background-color: var(--text-dark) !important;
+    color: #ffffff !important;
+    transform: none !important;
+    box-shadow: 0 4px 10px rgba(45, 55, 72, 0.3) !important;
+}
+
+.tab-inactive {
+    background-color: transparent !important;
+    color: var(--text-muted) !important;
+    border: none !important;
+}
+
+.tab-inactive:hover {
+    background-color: rgba(0,0,0,0.03) !important;
+    color: var(--primary-solid) !important;
+}
+
+/* --- ORDER HISTORY ITEMS --- */
+.order-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #f1f5f9;
+    transition: all 0.2s ease;
+}
+
+.order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    border-color: transparent;
+}
+
+/* --- ORDER TIMELINE --- */
+.timeline {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    margin: 2rem 1rem;
+}
+
+/* The Line */
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: #e2e8f0;
+    z-index: 0;
+}
+
+.timeline-step {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80px;
+}
+
+.timeline-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #e2e8f0; /* Inactive Gray */
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+    border: 3px solid white; /* Gap from line */
+}
+
+.timeline-step.active .timeline-icon {
+    background: var(--primary-solid); /* Current Step Pink */
+    color: white;
+    box-shadow: 0 0 0 3px rgba(255, 107, 139, 0.2);
+}
+
+.timeline-step.completed .timeline-icon {
+    background: #10b981; /* Completed Green */
+    color: white;
+}
+
+.timeline-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.timeline-step.active .timeline-label {
+    color: var(--primary-solid);
+}
+
+/* --- MODAL ITEM STYLING --- */
+.order-detail-item {
+    background-color: #f8f9fa !important; 
+    color: var(--text-dark) !important; 
+    border: 1px solid #e9ecef;
+}
+
+.status-badge {
+    padding: 0.4em 0.8em;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.status-delivered { background-color: #dcfce7; color: #166534; }
+.status-shipped { background-color: #e0f2fe; color: #075985; }
+.status-processing { background-color: #fef9c3; color: #854d0e; }
+
+/* --- ADMIN DASHBOARD --- */
+.stat-card {
+    border: none;
+    border-radius: 16px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card.bg-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
+.stat-card.bg-success { background: linear-gradient(135deg, #2af598 0%, #009efd 100%) !important; }
+.stat-card.bg-info { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important; }
+
+.admin-table thead th {
+    background-color: #f8fafc;
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 2px solid #e2e8f0;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 1rem;
+}
+
+.admin-table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+/* --- EMPTY STATE --- */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    background: white;
+    border-radius: 20px;
+    border: 2px dashed #e2e8f0;
+    color: var(--text-muted);
+}
+
+/* --- TOAST POSITION --- */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+}

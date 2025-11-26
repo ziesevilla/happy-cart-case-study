@@ -124,13 +124,15 @@ h1, h2, h3, h4, h5, .navbar-brand, .btn {
   color: var(--primary-solid) !important;
 }
 
-/* Badge Styling */
+/* Badge Styling - FIXED FOR READABILITY */
 .badge {
-  background: var(--primary-solid) !important;
+  /* Use a solid color that contrasts with white text */
+  background: var(--text-dark) !important; 
   border-radius: 10px;
   font-weight: 600;
   padding: 0.5em 0.8em !important;
   letter-spacing: 1px;
+  color: white !important;
 }
 
 /* --- 6. FORMS (Rounded Inputs) --- */
@@ -160,4 +162,23 @@ footer {
 
 .container {
   animation: fadeInUp 0.8s ease-out;
+}
+
+/* --- FIXED ICON BACKGROUND COLORS FOR READABILITY --- */
+.bg-light.p-2.rounded-circle.me-3,
+.bg-light.p-3.rounded-3 {
+    background-color: var(--text-dark) !important; /* Use a dark background */
+}
+
+.bg-light.p-2.rounded-circle.me-3 .text-primary,
+.bg-light.p-3.rounded-3 .text-muted {
+    color: white !important; /* Make the icons white */
+}
+
+/* Fix for the "Order #ORD-002" card which has a pink background */
+.order-card .bg-light {
+    background-color: var(--text-dark) !important;
+}
+.order-card .bg-light .text-muted {
+    color: white !important;
 }
