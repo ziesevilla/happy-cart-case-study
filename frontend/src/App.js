@@ -13,6 +13,7 @@ import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
+import Confirmation from './pages/Confirmation';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Account from './pages/Account';
@@ -39,6 +40,7 @@ const Layout = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/confirmation" element={<Confirmation />} /> 
         </Routes>
       </main>
 

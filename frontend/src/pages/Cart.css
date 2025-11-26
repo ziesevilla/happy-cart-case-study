@@ -1,0 +1,175 @@
+/* Wrapper */
+.cart-page {
+    background-color: var(--bg-soft);
+    min-height: 100vh;
+}
+
+/* --- FREE SHIPPING BAR --- */
+.free-shipping-container {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.01);
+}
+
+.shipping-progress-bg {
+    height: 8px;
+    background-color: #f1f5f9;
+    border-radius: 10px;
+    margin-top: 0.8rem;
+    overflow: hidden;
+}
+
+.shipping-progress-fill {
+    height: 100%;
+    background: var(--primary-gradient);
+    border-radius: 10px;
+    transition: width 0.5s ease-out;
+}
+
+/* --- CART TABLE --- */
+.cart-table {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.01);
+    overflow: hidden;
+}
+
+.cart-table thead th {
+    background-color: #f8fafc;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    border-bottom: none;
+    padding: 1.5rem;
+}
+
+.cart-table tbody td {
+    vertical-align: middle;
+    padding: 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.cart-item-img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+/* Quantity Control */
+.qty-group {
+    display: flex;
+    align-items: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 50px;
+    width: fit-content;
+    padding: 2px;
+}
+
+.qty-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: none;
+    background: white;
+    color: var(--text-dark);
+    transition: all 0.2s;
+}
+
+.qty-btn:hover {
+    background: #f1f5f9;
+}
+
+.qty-input {
+    width: 40px;
+    text-align: center;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+}
+
+/* --- ORDER SUMMARY CARD --- */
+.summary-card {
+    background: white;
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 100px; /* Sticky on scroll */
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    color: var(--text-muted);
+}
+
+.summary-total {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px dashed #e2e8f0;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-dark);
+}
+
+/* Empty State */
+.cart-empty {
+    text-align: center;
+    padding: 5rem 1rem;
+}
+
+/* --- RESPONSIVE CART (Mobile Card View) --- */
+@media (max-width: 992px) {
+    /* Hide Table Headers */
+    .cart-table thead {
+        display: none;
+    }
+
+    /* Make Rows behave like Cards */
+    .cart-table tbody tr {
+        display: flex;
+        flex-direction: column;
+        border-bottom: 8px solid #f8fafc; /* Spacer between items */
+        padding: 1.5rem;
+    }
+
+    .cart-table tbody td {
+        padding: 0.5rem 0;
+        border: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
+
+    /* Adjust Image Cell layout */
+    .cart-table tbody td:first-child {
+        margin-bottom: 1rem;
+    }
+
+    /* Add labels for clarity on mobile if needed, or keep clean */
+    .cart-table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        display: block;
+    }
+    
+    /* Hide empty label cells if they disrupt flow */
+    .cart-table tbody td[data-label=""] {
+        justify-content: flex-end;
+    }
+}

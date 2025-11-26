@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, Package, Settings, Plus, Trash2, Edit2, User, MapPin, Home, Briefcase, X, Camera, Search, Check, CheckCircle, Clock, Truck, ShoppingBag } from 'lucide-react';
 import './Account.css';
 
-// --- MOCK ORDER DATA WITH DETAILS ---
+// ... (Keep MOCK_ORDERS as is) ...
 const MOCK_ORDERS = [
     { 
         id: 'ORD-001', 
@@ -42,7 +42,8 @@ const MOCK_ORDERS = [
 ];
 
 const Account = () => {
-    const { user, login, logout } = useAuth();
+    // Get address data/funcs from Context
+    const { user, login, logout, addresses, addAddress, deleteAddress } = useAuth();
     const navigate = useNavigate();
 
     // --- NOTIFICATION STATE ---
@@ -54,15 +55,12 @@ const Account = () => {
 
     // --- CUSTOMER STATE ---
     const [activeTab, setActiveTab] = useState('orders'); 
-    const [addresses, setAddresses] = useState([
-        { id: 1, label: 'Home', recipient: 'John Doe', street: '123 Acacia Avenue, Green Village', city: 'Makati City', zip: '1200', default: true },
-        { id: 2, label: 'Office', recipient: 'John Doe', street: '45th Floor, Tech Tower, BGC', city: 'Taguig City', zip: '1634', default: false }
-    ]);
     const [profileImage, setProfileImage] = useState(null);
     
     // Modal States
     const [showAddressModal, setShowAddressModal] = useState(false);
-    const [newAddress, setNewAddress] = useState({ label: 'Home', recipient: '', street: '', city: '', zip: '' });
+    // Updated to support first/last name
+    const [newAddress, setNewAddress] = useState({ label: 'Home', firstName: '', lastName: '', street: '', city: '', zip: '', phone: '' });
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', dob: '', gender: '' });
     const [showOrderModal, setShowOrderModal] = useState(false);
@@ -112,18 +110,17 @@ const Account = () => {
     };
 
     // --- CUSTOMER ACTIONS ---
-    const handleAddAddress = (e) => {
+    const handleAddAddressSubmit = (e) => {
         e.preventDefault();
-        const address = { id: Date.now(), ...newAddress, default: addresses.length === 0 };
-        setAddresses([...addresses, address]);
+        addAddress(newAddress); // Use context function
         setShowAddressModal(false);
-        setNewAddress({ label: 'Home', recipient: '', street: '', city: '', zip: '' });
+        setNewAddress({ label: 'Home', firstName: '', lastName: '', street: '', city: '', zip: '', phone: '' });
         showNotification("New address added!");
     };
 
-    const handleDeleteAddress = (id) => {
+    const handleDeleteAddressClick = (id) => {
         if (window.confirm("Delete this address?")) {
-            setAddresses(addresses.filter(addr => addr.id !== id));
+            deleteAddress(id); // Use context function
             showNotification("Address deleted.", "secondary");
         }
     };
@@ -178,6 +175,7 @@ const Account = () => {
     //    ADMIN VIEW
     // -----------------------
     if (user.role === 'admin') {
+        // ... (Keep existing Admin view code exactly as is) ...
         const filteredInventory = products.filter(p => 
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
             p.id.toString().includes(searchTerm)
@@ -271,7 +269,7 @@ const Account = () => {
                         </Table>
                     </Card>
                     
-                    {/* Add Product Modal (Same as before) */}
+                    {/* Add Product Modal */}
                     <Modal show={showAddModal} onHide={() => setShowAddModal(false)} centered>
                         <Modal.Header closeButton className="border-0">
                             <Modal.Title className="fw-bold">Add New Product</Modal.Title>
@@ -297,8 +295,6 @@ const Account = () => {
                         </Modal.Body>
                     </Modal>
                 </Container>
-                
-                {/* Toast Container */}
                 <ToastContainer className="toast-container">
                     <Toast onClose={() => setToast({...toast, show: false})} show={toast.show} delay={3000} autohide bg={toast.variant}>
                         <Toast.Body className="text-white fw-bold">{toast.message}</Toast.Body>
@@ -320,7 +316,6 @@ const Account = () => {
                         <Card className="profile-card text-center mb-4">
                             <div className="profile-header"></div>
                             
-                            {/* Profile Upload Simulation */}
                             <div className="profile-avatar-container">
                                 <div className="profile-avatar">
                                     {profileImage ? (
@@ -441,11 +436,16 @@ const Account = () => {
                                                             </div>
                                                             {addr.default && <span className="badge bg-primary-subtle text-primary rounded-pill">Default</span>}
                                                         </div>
-                                                        <h6 className="fw-bold mb-1">{addr.recipient}</h6>
-                                                        <p className="text-muted small mb-3">{addr.street}<br/>{addr.city}, {addr.zip}</p>
+                                                        {/* Updated Address Display */}
+                                                        <h6 className="fw-bold mb-1">{addr.firstName} {addr.lastName}</h6>
+                                                        <p className="text-muted small mb-3">
+                                                            {addr.street}<br/>
+                                                            {addr.city}, {addr.zip}<br/>
+                                                            {addr.phone}
+                                                        </p>
                                                         <div className="d-flex gap-2">
                                                             <Button variant="outline-secondary" size="sm" className="rounded-pill px-3">Edit</Button>
-                                                            <Button variant="outline-danger" size="sm" className="rounded-pill px-3" onClick={() => handleDeleteAddress(addr.id)}>Delete</Button>
+                                                            <Button variant="outline-danger" size="sm" className="rounded-pill px-3" onClick={() => handleDeleteAddressClick(addr.id)}>Delete</Button>
                                                         </div>
                                                     </Card.Body>
                                                 </Card>
@@ -464,7 +464,8 @@ const Account = () => {
                     </Col>
                 </Row>
 
-                {/* --- MODALS (Profile & Address same as before) --- */}
+                {/* --- MODALS (Profile & Address) --- */}
+                {/* Profile Modal (Same as before) */}
                 <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered>
                     <Modal.Header closeButton className="border-0 pb-0">
                         <Modal.Title className="fw-bold">Edit Profile</Modal.Title>
@@ -536,14 +537,15 @@ const Account = () => {
                     </Modal.Body>
                 </Modal>
 
+                {/* UPDATED ADDRESS MODAL */}
                 <Modal show={showAddressModal} onHide={() => setShowAddressModal(false)} centered>
                     <Modal.Header closeButton className="border-0">
                         <Modal.Title className="fw-bold">Add New Address</Modal.Title>
                     </Modal.Header>
                     <Modal.Body>
-                        <Form onSubmit={handleAddAddress}>
+                        <Form onSubmit={handleAddAddressSubmit}>
                             <Row className="g-3">
-                                <Col md={6}>
+                                <Col md={12}>
                                     <Form.Group className="mb-3">
                                         <Form.Label>Label</Form.Label>
                                         <Form.Select 
@@ -559,12 +561,24 @@ const Account = () => {
                                 </Col>
                                 <Col md={6}>
                                     <Form.Group className="mb-3">
-                                        <Form.Label>Recipient Name</Form.Label>
+                                        <Form.Label>First Name</Form.Label>
                                         <Form.Control 
                                             required 
-                                            placeholder="John Doe"
-                                            value={newAddress.recipient} 
-                                            onChange={(e) => setNewAddress({...newAddress, recipient: e.target.value})} 
+                                            placeholder="John"
+                                            value={newAddress.firstName} 
+                                            onChange={(e) => setNewAddress({...newAddress, firstName: e.target.value})} 
+                                            className="rounded-pill" 
+                                        />
+                                    </Form.Group>
+                                </Col>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Last Name</Form.Label>
+                                        <Form.Control 
+                                            required 
+                                            placeholder="Doe"
+                                            value={newAddress.lastName} 
+                                            onChange={(e) => setNewAddress({...newAddress, lastName: e.target.value})} 
                                             className="rounded-pill" 
                                         />
                                     </Form.Group>
@@ -593,13 +607,25 @@ const Account = () => {
                                     </Form.Group>
                                 </Col>
                                 <Col md={6}>
-                                    <Form.Group className="mb-4">
+                                    <Form.Group className="mb-3">
                                         <Form.Label>Zip Code</Form.Label>
                                         <Form.Control 
                                             required 
                                             value={newAddress.zip} 
                                             onChange={(e) => setNewAddress({...newAddress, zip: e.target.value})} 
                                             className="rounded-pill" 
+                                        />
+                                    </Form.Group>
+                                </Col>
+                                <Col md={12}>
+                                    <Form.Group className="mb-4">
+                                        <Form.Label>Phone Number</Form.Label>
+                                        <Form.Control 
+                                            required 
+                                            value={newAddress.phone} 
+                                            onChange={(e) => setNewAddress({...newAddress, phone: e.target.value})} 
+                                            className="rounded-pill" 
+                                            placeholder="0912 345 6789"
                                         />
                                     </Form.Group>
                                 </Col>
@@ -611,7 +637,7 @@ const Account = () => {
                     </Modal.Body>
                 </Modal>
 
-                {/* --- ORDER DETAILS MODAL WITH TIMELINE --- */}
+                {/* --- MODAL: ORDER DETAILS --- */}
                 <Modal show={showOrderModal} onHide={() => setShowOrderModal(false)} centered size="lg">
                     <Modal.Header className="border-0 pb-0">
                         <div className="d-flex align-items-center justify-content-between w-100 pe-3">
@@ -622,9 +648,9 @@ const Account = () => {
                         </div>
                     </Modal.Header>
                     <Modal.Body className="pt-2">
+                        {/* (Content same as before) */}
                         {selectedOrder && (
                             <>
-                                {/* VISUAL TIMELINE */}
                                 <div className="timeline">
                                     {['Placed', 'Processing', 'Shipped', 'Delivered'].map((step, i) => {
                                         const currentStep = getStatusStep(selectedOrder.status);
