@@ -8,6 +8,7 @@
   /* The "Happy Cart" Palette */
   --primary-gradient: linear-gradient(135deg, #ff9a9e 0%, #ff6b8b 100%); /* Peach to Berry Gradient */
   --primary-solid: #ff6b8b; /* Solid Berry Pink (for text/outlines) */
+  --secondary-color: #2d3748; /* Dark Slate (Used for Promo Bar & Text) */
   --bg-soft: #fff5f7; /* Very pale pink background */
   --bg-white: #ffffff;
   --text-dark: #2d3748; /* Soft Charcoal (not harsh black) */

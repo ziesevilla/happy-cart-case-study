@@ -24,7 +24,8 @@ function App() {
         <Router>
           <div className="App">
             <Navbar />
-            <main className="container py-4">
+            {/* REMOVED 'container' class here so Home can be full-width */}
+            <main>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/products" element={<Products />} />
