@@ -1,19 +1,24 @@
 /* src/App.css */
 
-/* --- 1. FONTS & BASICS --- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+/* --- 1. FONTS & VARIABLES --- */
+/* Poppins for Headings (Editorial feel), Inter for Body (Readability) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Poppins:wght@600;700;800&display=swap');
 
 :root {
-  --primary-color: #2563eb; /* Royal Blue */
-  --secondary-color: #1e293b; /* Slate Dark */
-  --accent-color: #f59e0b; /* Amber */
-  --bg-light: #f8fafc;
+  /* The "Happy Cart" Palette */
+  --primary-gradient: linear-gradient(135deg, #ff9a9e 0%, #ff6b8b 100%); /* Peach to Berry Gradient */
+  --primary-solid: #ff6b8b; /* Solid Berry Pink (for text/outlines) */
+  --bg-soft: #fff5f7; /* Very pale pink background */
+  --bg-white: #ffffff;
+  --text-dark: #2d3748; /* Soft Charcoal (not harsh black) */
+  --text-muted: #718096;
+  --shadow-soft: 0 10px 30px rgba(255, 107, 139, 0.15); /* Pink tinted shadow */
 }
 
 body {
   font-family: 'Inter', sans-serif;
-  background-color: var(--bg-light);
-  color: #334155;
+  background-color: var(--bg-soft);
+  color: var(--text-dark);
 }
 
 .App {
@@ -26,80 +31,132 @@ main {
   flex: 1;
 }
 
-/* --- 2. COMPONENTS --- */
+/* --- 2. TYPOGRAPHY --- */
+h1, h2, h3, h4, h5, .navbar-brand, .btn {
+  font-family: 'Poppins', sans-serif;
+  text-transform: uppercase; /* Editorial Magazine Look */
+  letter-spacing: 0.5px;
+  color: var(--text-dark);
+}
 
-/* Navbar Overrides */
+.text-primary {
+  color: var(--primary-solid) !important;
+}
+
+/* --- 3. NAVBAR (Gradient Theme) --- */
 .navbar {
-  background-color: var(--secondary-color) !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  background: var(--primary-gradient) !important;
+  box-shadow: 0 4px 15px rgba(255, 107, 139, 0.3);
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }
 
 .navbar-brand {
-  font-weight: 700;
-  letter-spacing: -0.5px;
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: white !important;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* Product Cards */
+.nav-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: opacity 0.3s;
+}
+
+.nav-link:hover {
+  opacity: 0.8;
+}
+
+/* --- 4. BUTTONS (Pill Shaped) --- */
+.btn {
+  border-radius: 50px !important; /* Fully rounded/Pill shape */
+  font-weight: 600;
+  padding: 0.6rem 1.5rem;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+/* Primary Button (Gradient) */
+.btn-primary, .btn-success {
+  background: var(--primary-gradient) !important;
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 107, 139, 0.4);
+}
+
+.btn-primary:hover, .btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 139, 0.6);
+}
+
+/* Outline Button (Solid Pink Text) */
+.btn-outline-primary {
+  background: transparent;
+  border: 2px solid var(--primary-solid) !important;
+  color: var(--primary-solid) !important;
+}
+
+.btn-outline-primary:hover {
+  background: var(--primary-solid) !important;
+  color: white !important;
+}
+
+/* --- 5. CARDS (Soft & Friendly) --- */
 .card {
   border: none !important;
-  border-radius: 12px !important;
-  transition: all 0.3s ease;
+  border-radius: 20px !important; /* Soft corners */
   background: white;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+  transition: all 0.3s ease;
   overflow: hidden;
 }
 
 .card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: var(--shadow-soft) !important;
 }
 
-/* Smooth Image Backgrounds in Cards */
+/* Update the image placeholder background in cards */
 .card .bg-secondary {
-  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%) !important;
-  color: #475569 !important;
+  background: linear-gradient(135deg, #fff0f5 0%, #ffd1dc 100%) !important; /* Pastel Pink bg */
+  color: var(--primary-solid) !important;
 }
 
-/* Badges */
+/* Badge Styling */
 .badge {
+  background: var(--primary-solid) !important;
+  border-radius: 10px;
   font-weight: 600;
-  letter-spacing: 0.5px;
   padding: 0.5em 0.8em !important;
+  letter-spacing: 1px;
 }
 
-/* --- 3. BUTTONS --- */
-.btn {
-  border-radius: 8px !important;
-  font-weight: 600;
-  padding: 0.5rem 1.25rem;
-  transition: all 0.2s;
+/* --- 6. FORMS (Rounded Inputs) --- */
+.form-control, .form-select {
+  border-radius: 50px !important; /* Pill shaped inputs */
+  border: 1px solid #e2e8f0;
+  padding: 0.6rem 1.2rem;
+  background-color: white;
 }
 
-.btn-primary {
-  background-color: var(--primary-color) !important;
-  border-color: var(--primary-color) !important;
+.form-control:focus {
+  border-color: var(--primary-solid);
+  box-shadow: 0 0 0 0.2rem rgba(255, 107, 139, 0.25);
 }
 
-.btn-primary:hover {
-  background-color: #1d4ed8 !important; /* Darker Blue */
-  transform: scale(1.02);
-}
-
-.btn-outline-primary {
-  color: var(--primary-color) !important;
-  border-color: var(--primary-color) !important;
-}
-
-.btn-outline-primary:hover {
-  background-color: var(--primary-color) !important;
+/* --- 7. FOOTER --- */
+footer {
+  background: var(--text-dark) !important; /* Dark footer for contrast */
   color: white !important;
 }
 
-/* --- 4. ANIMATIONS --- */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+/* Animation */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .container {
-  animation: fadeIn 0.6s ease-out;
+  animation: fadeInUp 0.8s ease-out;
 }
