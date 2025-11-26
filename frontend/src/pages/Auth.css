@@ -1,0 +1,267 @@
+/* =========================================
+   1. MAIN LAYOUT WRAPPERS
+   ========================================= */
+
+/* Full viewport container, no scrollbars */
+.auth-page {
+    height: 100vh; 
+    width: 100vw;
+    background-color: #fff;
+    overflow: hidden; 
+}
+
+/* Left Side: Editorial Image */
+.auth-image-side {
+    background-size: cover;
+    background-position: center;
+    height: 100%; 
+    width: 100%;
+    position: relative;
+    min-height: 300px; /* Fallback for mobile */
+}
+
+/* Overlay to ensure text on image is readable */
+.auth-image-side::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(50, 20, 30, 0.3); 
+}
+
+/* --- Text Overlay Box --- */
+.auth-image-text-overlay {
+    position: absolute;
+    bottom: 0;
+    start: 0;
+    margin: 3rem;
+    padding: 2rem;
+    background: rgba(255, 107, 139, 0.85); 
+    backdrop-filter: blur(5px);
+    border-radius: 20px;
+    color: white;
+    z-index: 2;
+    max-width: 80%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+/* Right Side: Form Container */
+.auth-form-side {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Reduced padding to fit more content on screen */
+    padding: 1.5rem; 
+    background: white;
+    height: 100%; 
+    overflow-y: auto; /* Allow scroll if screen is tiny */
+    /* Hide Scrollbar Visuals */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* IE and Edge */
+}
+
+/* Hide Scrollbar for Chrome, Safari and Opera */
+.auth-form-side::-webkit-scrollbar {
+    display: none;
+}
+
+/* Max width wrapper for form content */
+.auth-container {
+    max-width: 450px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* =========================================
+   2. TYPOGRAPHY & BRANDING
+   ========================================= */
+
+.auth-brand {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800;
+    font-size: 1.5rem;
+    color: var(--primary-solid); /* Pink */
+    /* Reduced margin */
+    margin-bottom: 1rem; 
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: inline-block;
+    text-decoration: none;
+}
+
+.auth-title {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text-dark);
+    margin-bottom: 0.25rem; /* Tighter spacing */
+}
+
+.auth-subtitle {
+    color: var(--text-muted);
+    margin-bottom: 1.5rem; /* Reduced margin */
+}
+
+/* =========================================
+   3. FORM ELEMENTS & MICRO-INTERACTIONS
+   ========================================= */
+
+/* Input Focus Glow */
+.auth-input {
+    height: 50px;
+    padding-left: 1.5rem;
+    border: 1px solid #e2e8f0;
+    background-color: #f8fafc;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.auth-input:focus {
+    background-color: #fff;
+    border-color: var(--primary-solid);
+    /* Soft pink spread glow */
+    box-shadow: 0 0 0 4px rgba(255, 107, 139, 0.15);
+    transform: translateY(-1px);
+}
+
+/* Floating Label Override */
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+    color: var(--primary-solid);
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+.auth-btn {
+    height: 50px;
+    font-size: 1rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+
+.auth-btn:disabled {
+    background-color: #ffb3c6 !important;
+    border-color: #ffb3c6 !important;
+    cursor: not-allowed;
+}
+
+/* Link Hover Animation (Underline expansion) */
+.link-animated {
+    position: relative;
+    text-decoration: none;
+    color: var(--primary-solid);
+    font-weight: 600;
+}
+
+.link-animated::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -2px;
+    left: 0;
+    background-color: var(--primary-solid);
+    transition: width 0.3s ease-in-out;
+}
+
+.link-animated:hover::after {
+    width: 100%;
+}
+
+/* Divider Line */
+.auth-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1.5rem 0; /* Reduced margin */
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.auth-divider::before { margin-right: 1em; }
+.auth-divider::after { margin-left: 1em; }
+
+/* Social Buttons */
+.btn-social {
+    height: 45px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50px !important;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: var(--text-dark);
+    transition: all 0.2s;
+}
+
+.btn-social:hover {
+    background-color: #f8fafc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+/* =========================================
+   4. ANIMATIONS (Sequential Slide-In)
+   ========================================= */
+
+@keyframes slideUpFade {
+    from { 
+        opacity: 0; 
+        transform: translateY(20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+/* Apply animation to all direct children of auth-container */
+.auth-container > * {
+    opacity: 0; /* Hidden initially */
+    animation: slideUpFade 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Stagger delays for the container's children */
+.auth-container > *:nth-child(1) { animation-delay: 0.1s; } /* Brand */
+.auth-container > *:nth-child(2) { animation-delay: 0.2s; } /* Header (Title/Subtitle) */
+.auth-container > *:nth-child(3) { animation-delay: 0.3s; } /* Error Alert */
+.auth-container > *:nth-child(4) { animation-delay: 0.4s; } /* Form */
+.auth-container > *:nth-child(5) { animation-delay: 0.5s; } /* Divider */
+.auth-container > *:nth-child(6) { animation-delay: 0.6s; } /* Footer Link */
+
+/* Apply animation to specific elements INSIDE the form */
+form .mb-3, form .mb-4, form .btn {
+    opacity: 0; /* Hidden initially */
+    animation: slideUpFade 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Stagger delays inside the form */
+form > *:nth-child(1) { animation-delay: 0.4s; } /* Input 1 */
+form > *:nth-child(2) { animation-delay: 0.5s; } /* Input 2 */
+form > *:nth-child(3) { animation-delay: 0.6s; } /* Input 3 / Button */
+form > *:nth-child(4) { animation-delay: 0.7s; } /* Button */
+
+/* =========================================
+   5. RESPONSIVE BREAKPOINTS
+   ========================================= */
+
+@media (min-width: 768px) {
+    .auth-image-side {
+        height: 100vh;
+        /* Relative is fine because parent (Row) handles height */
+        position: relative; 
+    }
+    
+    .auth-form-side {
+        height: 100vh;
+        padding: 2rem 4rem; /* Less vertical padding, more horizontal */
+    }
+}
