@@ -1,75 +1,142 @@
 import React, { useState } from 'react';
-import { Container, Row, Col, Form, InputGroup } from 'react-bootstrap';
+import { Container, Row, Col, Form } from 'react-bootstrap';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
+import { ALL_PRODUCTS } from '../data/products'; // Import shared data
+import './Products.css';
 
-// Enhanced Mock Data
-const ALL_PRODUCTS = [
-    { id: 1, name: 'Wireless Headphones', price: 99.99, category: 'Audio', description: 'Immersive sound with noise cancelling.', emoji: '🎧' },
-    { id: 2, name: 'Smart Watch Series 5', price: 299.99, category: 'Wearables', description: 'Track your fitness and sleep.', emoji: '⌚' },
-    { id: 3, name: 'Mechanical Keyboard', price: 120.00, category: 'Peripherals', description: 'RGB backlit with blue switches.', emoji: '⌨️' },
-    { id: 4, name: 'Gaming Mouse', price: 59.99, category: 'Peripherals', description: 'High precision 16000 DPI sensor.', emoji: '🖱️' },
-    { id: 5, name: '4K Monitor', price: 349.50, category: 'Displays', description: '27-inch IPS panel for crisp visuals.', emoji: '🖥️' },
-    { id: 6, name: 'Laptop Stand', price: 29.99, category: 'Accessories', description: 'Ergonomic aluminum design.', emoji: '📐' },
-    { id: 7, name: 'USB-C Hub', price: 45.00, category: 'Accessories', description: 'Expand your connectivity.', emoji: '🔌' },
-    { id: 8, name: 'Bluetooth Speaker', price: 79.99, category: 'Audio', description: 'Portable sound with deep bass.', emoji: '🔈' },
-];
+const CATEGORIES = ['All', 'Dresses', 'Tops', 'Bottoms', 'Outerwear', 'Shoes', 'Accessories'];
 
 const Products = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
+    const [sortBy, setSortBy] = useState('featured');
+    const [priceRange, setPriceRange] = useState(5000);
 
     // Filter Logic
     const filteredProducts = ALL_PRODUCTS.filter(product => {
         const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
-        return matchesSearch && matchesCategory;
+        const matchesPrice = product.price <= priceRange;
+        return matchesSearch && matchesCategory && matchesPrice;
+    }).sort((a, b) => {
+        if (sortBy === 'price-low') return a.price - b.price;
+        if (sortBy === 'price-high') return b.price - a.price;
+        return 0; // featured order
     });
 
-    const categories = ['All', 'Audio', 'Wearables', 'Peripherals', 'Displays', 'Accessories'];
-
     return (
-        <Container>
-            {/* Header & Filters */}
-            <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-5 mt-3">
-                <h2 className="mb-3 mb-md-0">Our Collection</h2>
-                
-                <div className="d-flex gap-2">
-                    {/* Category Dropdown */}
-                    <Form.Select 
-                        style={{ width: '150px' }} 
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                    >
-                        {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    </Form.Select>
-
-                    {/* Search Bar */}
-                    <InputGroup style={{ width: '250px' }}>
-                        <Form.Control 
-                            placeholder="Search products..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </InputGroup>
+        <div className="products-page animate-fade-in">
+            {/* HERO BANNER */}
+            <div 
+                className="products-hero" 
+                style={{ 
+                    backgroundImage: 'url(https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop)' 
+                }}
+            >
+                <div className="products-hero-content">
+                    <h1 className="display-3 fw-bold mb-2">THE COLLECTION</h1>
+                    <p className="lead mb-0 text-white-50">Curated essentials for the modern wardrobe.</p>
                 </div>
             </div>
 
-            {/* Product Grid */}
-            {filteredProducts.length === 0 ? (
-                <div className="text-center py-5">
-                    <h4>No products found matching your criteria.</h4>
-                    <button className="btn btn-link" onClick={() => {setSearchTerm(''); setSelectedCategory('All')}}>Reset Filters</button>
-                </div>
-            ) : (
-                <Row xs={1} md={2} lg={4} className="g-4">
-                    {filteredProducts.map((product) => (
-                        <Col key={product.id}>
-                            <ProductCard product={product} />
-                        </Col>
-                    ))}
+            <Container className="pb-5">
+                <Row>
+                    {/* STICKY SIDEBAR FILTERS */}
+                    <Col md={3} className="mb-4">
+                        <div className="filter-sidebar">
+                            <div className="d-flex align-items-center mb-4 text-primary">
+                                <SlidersHorizontal size={20} className="me-2" />
+                                <h5 className="mb-0 fw-bold">FILTER BY</h5>
+                            </div>
+                            
+                            <div className="filter-group mb-4">
+                                <h5>CATEGORY</h5>
+                                <div className="d-flex flex-column gap-2">
+                                    {CATEGORIES.map(cat => (
+                                        <span 
+                                            key={cat} 
+                                            className={`filter-option ${selectedCategory === cat ? 'active' : ''}`}
+                                            onClick={() => setSelectedCategory(cat)}
+                                        >
+                                            {cat}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="filter-group">
+                                <h5>PRICE RANGE</h5>
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <span className="text-muted small">Max Price:</span>
+                                    <span className="fw-bold text-primary">₱{priceRange.toLocaleString()}</span>
+                                </div>
+                                <Form.Range 
+                                    className="mt-2" 
+                                    min={0}
+                                    max={5000}
+                                    step={100}
+                                    value={priceRange}
+                                    onChange={(e) => setPriceRange(Number(e.target.value))}
+                                />
+                                <div className="d-flex justify-content-between small text-muted mt-2">
+                                    <span>₱0</span>
+                                    <span>₱5,000+</span>
+                                </div>
+                            </div>
+                        </div>
+                    </Col>
+
+                    {/* PRODUCT GRID */}
+                    <Col md={9}>
+                        {/* STICKY Search & Sort Bar */}
+                        <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 sticky-search-bar mb-4">
+                            <div className="search-wrapper w-100" style={{ maxWidth: '400px' }}>
+                                <Search className="search-icon" size={18} />
+                                <Form.Control 
+                                    type="text"
+                                    placeholder="Search for items..." 
+                                    className="search-input rounded-pill"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            
+                            <Form.Select 
+                                className="sort-select w-auto" 
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                            >
+                                <option value="featured">Featured</option>
+                                <option value="price-low">Price: Low to High</option>
+                                <option value="price-high">Price: High to Low</option>
+                            </Form.Select>
+                        </div>
+
+                        {/* Grid Content */}
+                        {filteredProducts.length === 0 ? (
+                            <div className="text-center py-5">
+                                <h4 className="text-muted">No items found matching your search.</h4>
+                                <button 
+                                    className="btn btn-link text-primary mt-2" 
+                                    onClick={() => {setSearchTerm(''); setSelectedCategory('All'); setPriceRange(5000);}}
+                                >
+                                    Clear all filters
+                                </button>
+                            </div>
+                        ) : (
+                            <Row xs={1} md={2} lg={3} className="g-4">
+                                {filteredProducts.map((product) => (
+                                    <Col key={product.id}>
+                                        <ProductCard product={product} />
+                                    </Col>
+                                ))}
+                            </Row>
+                        )}
+                    </Col>
                 </Row>
-            )}
-        </Container>
+            </Container>
+        </div>
     );
 };
 

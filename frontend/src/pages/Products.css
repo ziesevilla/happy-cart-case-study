@@ -1,0 +1,146 @@
+/* Page Wrapper */
+.products-page {
+    background-color: var(--bg-white);
+    min-height: 100vh;
+}
+
+/* --- NEW HERO BANNER --- */
+.products-hero {
+    height: 45vh;
+    background-size: cover;
+    background-position: center 30%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin-bottom: 3rem;
+}
+
+.products-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3); 
+}
+
+.products-hero-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    animation: fadeIn 0.8s ease-out;
+}
+
+/* --- STICKY SIDEBAR --- */
+.filter-sidebar {
+    background: #fff;
+    border-right: 1px solid #f0f0f0;
+    padding-right: 2rem;
+    /* Sticky positioning logic */
+    position: sticky;
+    top: 90px; /* Stick below the main Navbar */
+    height: calc(100vh - 110px); /* Height fits within viewport */
+    overflow-y: auto; /* Internal scroll if content is too long */
+}
+
+/* Custom Scrollbar for Sidebar */
+.filter-sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+.filter-sidebar::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+}
+
+.filter-group h5 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+    color: var(--text-dark);
+}
+
+.filter-option {
+    display: block;
+    padding: 0.5rem 0;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+}
+
+.filter-option:hover, .filter-option.active {
+    color: var(--primary-solid);
+    font-weight: 600;
+    padding-left: 5px;
+}
+
+/* --- STICKY SEARCH BAR --- */
+.sticky-search-bar {
+    position: sticky;
+    top: 80px; /* Stick below the main Navbar */
+    z-index: 10;
+    background-color: rgba(255, 255, 255, 0.95); /* Opaque bg so items scroll behind */
+    backdrop-filter: blur(8px);
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.search-wrapper {
+    position: relative;
+}
+
+.search-input {
+    border: 1px solid #e2e8f0;
+    background-color: #f8fafc;
+    padding-left: 3rem;
+    height: 50px;
+    font-size: 0.95rem;
+}
+
+.search-input:focus {
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(255, 107, 139, 0.1);
+    border-color: var(--primary-solid);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+}
+
+.sort-select {
+    height: 50px;
+    border-radius: 50px;
+    border: 1px solid #e2e8f0;
+    padding: 0 2rem;
+    cursor: pointer;
+    background-color: #fff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .filter-sidebar {
+        border-right: none;
+        border-bottom: 1px solid #f0f0f0;
+        padding-right: 0;
+        margin-bottom: 2rem;
+        position: static; /* Disable sticky on mobile */
+        height: auto;
+    }
+    
+    .products-hero {
+        height: 35vh;
+    }
+
+    .sticky-search-bar {
+        top: 60px; /* Adjust for mobile navbar height */
+    }
+}

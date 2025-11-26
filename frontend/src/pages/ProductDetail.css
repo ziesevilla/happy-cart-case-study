@@ -1,0 +1,19 @@
+/* Default (Mobile): Square aspect ratio or shorter height */
+.product-detail-img {
+    height: 400px; /* Good for mobile scrolling */
+    width: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+/* Desktop (md and up): Taller, editorial look */
+@media (min-width: 768px) {
+    .product-detail-img {
+        height: 700px; /* Tall editorial look */
+    }
+}
+
+/* Hover effect for the image container */
+.product-image-container:hover .product-detail-img {
+    transform: scale(1.02);
+}
