@@ -3,67 +3,55 @@ import { Container, Row, Col, Form } from 'react-bootstrap';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom'; 
 import ProductCard from '../components/ProductCard';
-import { ALL_PRODUCTS } from '../data/products';
+import { useProducts } from '../context/ProductContext'; // NEW IMPORT
 import './Products.css';
 
 const Products = () => {
-    // --- URL PARAMS ---
+    // --- USE CONTEXT INSTEAD OF STATIC DATA ---
+    const { products: ALL_PRODUCTS } = useProducts(); 
+    
     const location = useLocation();
     const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
     const collectionFilter = queryParams.get('collection') || 'All'; 
 
-    // --- STATE ---
+    // ... (Rest of the file logic remains identical) ...
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [sortBy, setSortBy] = useState('featured');
     const [priceRange, setPriceRange] = useState(5000);
 
-    // Reset sub-category when switching main collections
     useEffect(() => {
         setSelectedCategory('All');
     }, [collectionFilter]);
 
-    // --- HELPER: DEFINE COLLECTIONS ---
-    // This maps the broad "Collection" from the URL to specific product categories
     const getCategoriesInCollection = (collection) => {
         switch(collection) {
             case 'Clothing': return ['Dresses', 'Tops', 'Bottoms', 'Outerwear'];
             case 'Shoes': return ['Shoes'];
             case 'Accessories': return ['Accessories'];
-            default: return []; // 'New' or 'All' includes everything
+            default: return [];
         }
     };
 
     const targetCategories = getCategoriesInCollection(collectionFilter);
 
-    // --- DYNAMIC SIDEBAR LIST ---
-    // 1. Get unique categories based on the current collection
-    // 2. Filter out 'All' to sort the rest alphabetically
-    // 3. Prepend 'All' manually at the end to ensure it stays on top
     const uniqueCategories = [...new Set(
         collectionFilter === 'All' || collectionFilter === 'New' 
-            ? ALL_PRODUCTS.map(p => p.category) // Show all available categories if viewing "New" or "All"
-            : targetCategories // Show only relevant categories for Clothing/Shoes/etc
+            ? ALL_PRODUCTS.map(p => p.category) 
+            : targetCategories 
     )].filter(cat => cat !== 'All').sort();
 
     const sidebarCategories = ['All', ...uniqueCategories];
 
-    // --- FILTER LOGIC ---
     const filteredProducts = ALL_PRODUCTS.filter(product => {
-        // 1. Filter by Collection (Broad Type)
         let matchesCollection = true;
         if (collectionFilter !== 'All' && collectionFilter !== 'New') {
             matchesCollection = targetCategories.includes(product.category);
         }
 
-        // 2. Filter by Search Term
         const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        // 3. Filter by Sidebar Category (Specific Type)
         const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
-        
-        // 4. Filter by Price
         const matchesPrice = product.price <= priceRange;
 
         return matchesCollection && matchesSearch && matchesCategory && matchesPrice;
@@ -73,7 +61,6 @@ const Products = () => {
         return 0; 
     });
 
-    // Clear filters
     const clearFilters = () => {
         setSearchTerm('');
         setSelectedCategory('All');
@@ -81,7 +68,6 @@ const Products = () => {
         navigate('/products'); 
     };
 
-    // Helper for Banner Image
     const getBannerImage = () => {
         switch(collectionFilter) {
             case 'Clothing': return 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?q=80&w=2070&auto=format&fit=crop';
@@ -93,7 +79,6 @@ const Products = () => {
 
     return (
         <div className="products-page animate-fade-in">
-            {/* HERO BANNER */}
             <div 
                 className="products-hero" 
                 style={{ backgroundImage: `url(${getBannerImage()})` }}
@@ -108,7 +93,6 @@ const Products = () => {
 
             <Container className="pb-5">
                 <Row>
-                    {/* STICKY SIDEBAR FILTERS */}
                     <Col md={3} className="mb-4">
                         <div className="filter-sidebar">
                             <div className="d-flex align-items-center justify-content-between mb-4">
@@ -160,9 +144,7 @@ const Products = () => {
                         </div>
                     </Col>
 
-                    {/* PRODUCT GRID */}
                     <Col md={9}>
-                        {/* STICKY Search & Sort Bar */}
                         <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 sticky-search-bar mb-4">
                             <div className="search-wrapper w-100" style={{ maxWidth: '400px' }}>
                                 <Search className="search-icon" size={18} />
@@ -186,7 +168,6 @@ const Products = () => {
                             </Form.Select>
                         </div>
 
-                        {/* Grid Content */}
                         {filteredProducts.length === 0 ? (
                             <div className="text-center py-5">
                                 <h4 className="text-muted">No items found.</h4>
