@@ -5,6 +5,7 @@ import './App.css';
 
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { ReviewProvider } from './context/ReviewContext';
 
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -63,10 +64,12 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <Router>
-          <ScrollToTop /> {/* Place it here, inside Router but outside Routes */}
-          <Layout />
-        </Router>
+        <ReviewProvider>
+            <Router>
+              <ScrollToTop />
+              <Layout />
+            </Router>
+        </ReviewProvider>
       </CartProvider>
     </AuthProvider>
   );
