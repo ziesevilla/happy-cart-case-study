@@ -6,6 +6,11 @@ import './App.css';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ReviewProvider } from './context/ReviewContext';
+import { ProductProvider } from './context/ProductContext';
+import { OrderProvider } from './context/OrderContext';
+import { UserProvider } from './context/UserContext'; 
+import { TransactionProvider } from './context/TransactionContext'; 
+import { AddressProvider } from './context/AddressContext';
 
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -63,14 +68,24 @@ const Layout = () => {
 function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <ReviewProvider>
-            <Router>
-              <ScrollToTop />
-              <Layout />
-            </Router>
-        </ReviewProvider>
-      </CartProvider>
+      <ProductProvider>
+          <UserProvider>
+            <OrderProvider> 
+                <TransactionProvider> 
+                    <AddressProvider>
+                        <CartProvider>
+                            <ReviewProvider>
+                                <Router>
+                                    <ScrollToTop />
+                                    <Layout />
+                                </Router>
+                            </ReviewProvider>
+                        </CartProvider>
+                    </AddressProvider>
+                </TransactionProvider>
+            </OrderProvider>
+        </UserProvider>
+      </ProductProvider>
     </AuthProvider>
   );
 }
