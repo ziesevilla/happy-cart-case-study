@@ -194,34 +194,6 @@ const Home = () => {
                 </Container>
             </div>
 
-            {/* SECTION 6: JOIN THE CLUB (Normal Flow) */}
-            <div className="w-100 m-0 bg-white py-5">
-                <div className="text-start pb-5" style={{ paddingLeft: '10%' }}>
-                     <h1 className="fw-bold">JOIN THE CLUB</h1>
-                     <p className="text-muted lead">Get 10% off your first order & exclusive access.</p>
-                </div>
-                <div className="d-flex align-items-center justify-content-center pb-5">
-                    <Container style={{ maxWidth: '600px' }}>
-                        <div className="text-center bg-white p-5 rounded-4 shadow-sm">
-                            <Mail size={48} className="text-primary mb-4" />
-                            <h2 className="fw-bold mb-3">Stay in Style</h2>
-                            <p className="text-muted mb-4">
-                                Be the first to know about new drops, flash sales, and style inspiration.
-                            </p>
-                            <Form>
-                                <Form.Group className="mb-3" controlId="formBasicEmail">
-                                    <Form.Control type="email" placeholder="Enter your email" size="lg" className="text-center rounded-pill" />
-                                </Form.Group>
-                                <Button variant="primary" type="submit" size="lg" className="w-100 rounded-pill">
-                                    SUBSCRIBE
-                                </Button>
-                            </Form>
-                            <small className="text-muted mt-3 d-block">We respect your privacy. Unsubscribe at any time.</small>
-                        </div>
-                    </Container>
-                </div>
-            </div>
-
         </div>
     );
 };

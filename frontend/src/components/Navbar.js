@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Navbar, Nav, Container, Badge } from 'react-bootstrap';
+import { Container, Badge } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { ShoppingBag, User, LogOut, ShoppingCart } from 'lucide-react';
+import './FootNav.css'; // Make sure this CSS file exists as we created before
 
 const Navigation = () => {
     const { user, logout } = useAuth();
@@ -12,50 +14,71 @@ const Navigation = () => {
 
     const handleLogout = () => {
         logout();
-        navigate('/login');
+        navigate('/');
     };
 
     return (
-        <Navbar bg="dark" variant="dark" expand="lg" collapseOnSelect sticky="top">
-            <Container>
-                <Navbar.Brand as={Link} to="/">TechStore</Navbar.Brand>
-                <Navbar.Toggle aria-controls="basic-navbar-nav" />
-                <Navbar.Collapse id="basic-navbar-nav">
-                    <Nav className="me-auto">
-                        <Nav.Link as={Link} to="/">Home</Nav.Link>
-                        <Nav.Link as={Link} to="/products">Products</Nav.Link>
-                    </Nav>
-                    
-                    <Nav className="ms-auto align-items-center">
-                        {/* Cart Link - Only visible if user is logged in */}
-                        {user && (
-                            <Nav.Link as={Link} to="/cart" className="position-relative me-3">
-                                <i className="bi bi-cart"></i> Cart
+        <nav className="custom-navbar d-flex align-items-center">
+            <Container fluid className="px-4 d-flex justify-content-between align-items-center">
+                
+                {/* LEFT: LOGO */}
+                <Link to="/" className="navbar-logo-text">
+                    <ShoppingBag className="me-2" size={28} strokeWidth={2.5} />
+                    HAPPY CART
+                </Link>
+
+                {/* CENTER: CATEGORIES */}
+                <div className="nav-center-links d-none d-md-flex">
+                    <Link to="/products" className="nav-category-link">Men's Clothing</Link>
+                    <Link to="/products" className="nav-category-link">Women's Clothing</Link>
+                    <Link to="/products" className="nav-category-link">Kid's Clothing</Link>
+                </div>
+
+                {/* RIGHT: ACTIONS */}
+                <div className="nav-actions">
+                    {user ? (
+                        /* REGISTERED USER VIEW */
+                        <>
+                            {/* Cart Icon */}
+                            <Link to="/cart" className="nav-icon-btn position-relative me-2">
+                                <ShoppingCart size={24} />
                                 {count > 0 && (
-                                    <Badge bg="danger" pill className="position-absolute top-0 start-100 translate-middle" style={{ fontSize: '0.6rem' }}>
+                                    <Badge 
+                                        bg="danger" 
+                                        pill 
+                                        className="position-absolute top-0 start-100 translate-middle border border-light rounded-circle"
+                                        style={{ fontSize: '0.6rem', padding: '0.35em 0.5em' }}
+                                    >
                                         {count}
                                     </Badge>
                                 )}
-                            </Nav.Link>
-                        )}
+                            </Link>
 
-                        {/* Auth Links */}
-                        {user ? (
-                            <>
-                                <Nav.Link as={Link} to="/account" className="text-light fw-bold">
-                                    {user.name} ({user.role})
-                                </Nav.Link>
-                                <Nav.Link onClick={handleLogout} className="text-danger btn btn-link text-decoration-none">
-                                    Logout
-                                </Nav.Link>
-                            </>
-                        ) : (
-                            <Nav.Link as={Link} to="/login">Login</Nav.Link>
-                        )}
-                    </Nav>
-                </Navbar.Collapse>
+                            {/* Profile Link */}
+                            <Link to="/account" className="nav-icon-btn ms-2">
+                                <User size={24} />
+                            </Link>
+                            
+                            {/* Logout */}
+                            <button onClick={handleLogout} className="nav-icon-btn ms-3 text-muted" title="Logout">
+                                <LogOut size={20} />
+                            </button>
+                        </>
+                    ) : (
+                        /* VISITOR VIEW */
+                        <>
+                            <Link to="/login">
+                                <button className="btn-nav-auth btn-login">Login</button>
+                            </Link>
+                            <Link to="/register">
+                                <button className="btn-nav-auth btn-signup">Sign Up</button>
+                            </Link>
+                        </>
+                    )}
+                </div>
+
             </Container>
-        </Navbar>
+        </nav>
     );
 };
 

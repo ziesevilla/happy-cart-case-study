@@ -8,26 +8,28 @@ import { CartProvider } from './context/CartContext';
 
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop'; 
+
+// Pages
 import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
-import Confirmation from './pages/Confirmation';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Account from './pages/Account';
+import Confirmation from './pages/Confirmation';
 
-// Helper component to handle conditional rendering based on route
+// Info Pages
+import { About, Shipping, Returns, Privacy, Terms, HelpCenter } from './pages/InfoPages';
+
 const Layout = () => {
   const location = useLocation();
-  
-  // Define paths where the Navbar and Footer should be hidden (Auth pages)
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
   return (
     <div className="App">
-      {/* Only show Navbar if NOT on an auth page */}
       {!isAuthPage && <Navbar />}
       
       <main>
@@ -40,11 +42,18 @@ const Layout = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/account" element={<Account />} />
-          <Route path="/confirmation" element={<Confirmation />} /> 
+          <Route path="/confirmation" element={<Confirmation />} />
+          
+          {/* Info Pages */}
+          <Route path="/about" element={<About />} />
+          <Route path="/shipping" element={<Shipping />} />
+          <Route path="/returns" element={<Returns />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/help" element={<HelpCenter />} />
         </Routes>
       </main>
 
-      {/* Only show Footer if NOT on an auth page */}
       {!isAuthPage && <Footer />}
     </div>
   );
@@ -55,6 +64,7 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <Router>
+          <ScrollToTop /> {/* Place it here, inside Router but outside Routes */}
           <Layout />
         </Router>
       </CartProvider>

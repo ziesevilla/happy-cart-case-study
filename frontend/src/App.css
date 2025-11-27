@@ -44,9 +44,9 @@ h1, h2, h3, h4, h5, .navbar-brand, .btn {
   color: var(--primary-solid) !important;
 }
 
-/* --- 3. NAVBAR (Gradient Theme) --- */
+/* --- 3. NAVBAR (Overridden by HeaderFooter.css now, but keeping as fallback) --- */
 .navbar {
-  background: var(--primary-gradient) !important;
+  /* Removed background override so HeaderFooter.css takes precedence if classes match */
   box-shadow: 0 4px 15px rgba(255, 107, 139, 0.3);
   padding-top: 1rem;
   padding-bottom: 1rem;
@@ -124,9 +124,8 @@ h1, h2, h3, h4, h5, .navbar-brand, .btn {
   color: var(--primary-solid) !important;
 }
 
-/* Badge Styling - FIXED FOR READABILITY */
+/* Badge Styling */
 .badge {
-  /* Use a solid color that contrasts with white text */
   background: var(--text-dark) !important; 
   border-radius: 10px;
   font-weight: 600;
@@ -149,10 +148,8 @@ h1, h2, h3, h4, h5, .navbar-brand, .btn {
 }
 
 /* --- 7. FOOTER --- */
-footer {
-  background: var(--text-dark) !important; /* Dark footer for contrast */
-  color: white !important;
-}
+/* REMOVED: The old footer style that forced bg-dark */
+/* Instead, we rely entirely on HeaderFooter.css via the .custom-footer class */
 
 /* Animation */
 @keyframes fadeInUp {
