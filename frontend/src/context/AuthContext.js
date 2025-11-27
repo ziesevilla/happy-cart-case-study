@@ -19,11 +19,11 @@ export const AuthProvider = ({ children }) => {
         } catch (error) { return []; }
     });
 
-    // --- GLOBAL ORDER STATE (NEW) ---
+    // --- GLOBAL ORDER STATE ---
     const [orders, setOrders] = useState(() => {
         try {
             const saved = localStorage.getItem('happyCart_orders');
-            // Default Mock Orders if empty
+            // FIXED: Updated IDs to match products.js (1 instead of 101, etc.)
             const MOCK_ORDERS = [
                 { 
                     id: 'ORD-001', 
@@ -32,8 +32,8 @@ export const AuthProvider = ({ children }) => {
                     total: 1299.00, 
                     status: 'Delivered',
                     details: [
-                        { id: 101, name: 'Floral Summer Dress', price: 899.00, qty: 1, image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=100' },
-                        { id: 102, name: 'Gold Layered Necklace', price: 400.00, qty: 1, image: 'https://images.unsplash.com/photo-1599643478518-17488fbbcd75?auto=format&fit=crop&w=100' }
+                        { id: 1, name: 'Floral Summer Dress', price: 899.00, qty: 1, image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=100' },
+                        { id: 7, name: 'Gold Layered Necklace', price: 400.00, qty: 1, image: 'https://images.unsplash.com/photo-1599643478518-17488fbbcd75?auto=format&fit=crop&w=100' }
                     ]
                 }
             ];
@@ -53,6 +53,7 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         setUser(null);
         localStorage.removeItem('user');
+        // Optional: Clear other data on logout
     };
 
     // --- ACTIONS ---
@@ -73,9 +74,8 @@ export const AuthProvider = ({ children }) => {
         setAddresses(addresses.map(addr => ({ ...addr, default: addr.id === id })));
     };
 
-    // --- ORDER ACTIONS (NEW) ---
+    // --- ORDER ACTIONS ---
     const addOrder = (order) => {
-        // Add new order to the TOP of the list
         setOrders(prev => [order, ...prev]);
     };
 
@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider value={{ 
             user, login, logout,
             addresses, addAddress, updateAddress, deleteAddress, setDefaultAddress,
-            orders, addOrder, updateOrder // Expose Order logic
+            orders, addOrder, updateOrder 
         }}>
             {children}
         </AuthContext.Provider>
