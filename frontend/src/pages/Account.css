@@ -241,3 +241,14 @@
     right: 20px;
     z-index: 9999;
 }
+
+.status-return {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.status-cancelled {
+    background-color: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+}
