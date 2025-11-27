@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, Button } from 'react-bootstrap';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Headphones, Watch, Mouse, Monitor, Package, Usb, Shirt, ShoppingBag } from 'lucide-react';
+import { Headphones, Watch, Mouse, Monitor, Package, Shirt, ShoppingBag, Check } from 'lucide-react';
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, onAddToCart }) => {
     const { addToCart } = useCart();
     const { user } = useAuth();
     const navigate = useNavigate();
+    const [isAdded, setIsAdded] = useState(false);
 
     // Helper to choose the right icon based on category (Fallback)
     const getProductIcon = (category) => {
@@ -36,6 +37,15 @@ const ProductCard = ({ product }) => {
             return;
         }
         addToCart(product);
+        
+        // Trigger Visual Feedback
+        setIsAdded(true);
+        if (onAddToCart) onAddToCart(product); // Notify parent if prop exists
+        
+        // Reset button after 1.5 seconds
+        setTimeout(() => {
+            setIsAdded(false);
+        }, 1500);
     };
 
     return (
@@ -69,10 +79,16 @@ const ProductCard = ({ product }) => {
                     </div>
                 )}
                 
+                {/* Fixed Category Label */}
                 {product.category && (
                     <span 
-                        className="position-absolute top-0 start-0 bg-white text-primary shadow-sm m-3 px-3 py-1 fw-bold rounded-pill small"
-                        style={{ letterSpacing: '0.5px' }}
+                        className="position-absolute top-0 start-0 m-3 px-3 py-1 fw-bold rounded-pill small shadow-sm"
+                        style={{ 
+                            backgroundColor: '#ffffff', 
+                            color: '#ff6b8b', 
+                            letterSpacing: '0.5px',
+                            zIndex: 2
+                        }}
                     >
                         {product.category}
                     </span>
@@ -93,11 +109,16 @@ const ProductCard = ({ product }) => {
                 
                 <div className="mt-auto">
                     <Button 
-                        variant="outline-primary" 
-                        className="w-100 rounded-pill fw-bold"
+                        variant={isAdded ? "success" : "outline-primary"} 
+                        className={`w-100 rounded-pill fw-bold transition-all ${isAdded ? 'text-white border-success' : ''}`}
                         onClick={handleAddToCart}
+                        disabled={isAdded}
                     >
-                        ADD TO BAG
+                        {isAdded ? (
+                            <><Check size={18} className="me-2"/> ADDED</>
+                        ) : (
+                            "ADD TO BAG"
+                        )}
                     </Button>
                 </div>
             </Card.Body>

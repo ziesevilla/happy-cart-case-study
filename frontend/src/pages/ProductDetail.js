@@ -1,12 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Button } from 'react-bootstrap';
-import { ArrowLeft, Star, ShoppingBag, CreditCard } from 'lucide-react';
+import { Container, Row, Col, Button, Toast, ToastContainer, Spinner } from 'react-bootstrap';
+import { ArrowLeft, Star, ShoppingBag, CreditCard, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { ALL_PRODUCTS } from '../data/products';
-import ProductCard from '../components/ProductCard'; // Import Card for related items
-import './ProductDetail.css'; // Import responsive styles
+import ProductCard from '../components/ProductCard';
+import './ProductDetail.css';
 
 const ProductDetail = () => {
     const { id } = useParams();
@@ -14,23 +14,27 @@ const ProductDetail = () => {
     const { addToCart } = useCart();
     const { user } = useAuth();
 
-    // Scroll to top when ID changes (e.g. clicking a related product)
+    // --- VISUAL FEEDBACK STATE ---
+    const [isAdded, setIsAdded] = useState(false);
+    const [isBuying, setIsBuying] = useState(false);
+    const [showToast, setShowToast] = useState(false);
+
+    // Scroll to top when ID changes
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [id]);
 
-    // Find the current product
     const product = ALL_PRODUCTS.find(p => p.id === parseInt(id));
 
-    // Find related products (Same category, excluding current item)
     const relatedProducts = ALL_PRODUCTS
         .filter(p => p.category === product?.category && p.id !== product?.id)
-        .slice(0, 3); // Limit to 3 items
+        .slice(0, 3);
 
     if (!product) {
         return <Container className="py-5 text-center"><h2>Product not found</h2></Container>;
     }
 
+    // --- HANDLERS ---
     const handleAddToCart = () => {
         if (!user) {
             alert("You must be logged in to add items to the cart!");
@@ -38,6 +42,13 @@ const ProductDetail = () => {
             return;
         }
         addToCart(product);
+        
+        // Visual Feedback: Button Change + Toast
+        setIsAdded(true);
+        setShowToast(true);
+        
+        // Reset button state after 2 seconds
+        setTimeout(() => setIsAdded(false), 2000);
     };
 
     const handleBuyNow = () => {
@@ -46,14 +57,29 @@ const ProductDetail = () => {
             navigate('/login');
             return;
         }
-        addToCart(product);
-        navigate('/checkout');
+        
+        // Visual Feedback: Loading Spinner
+        setIsBuying(true);
+        
+        // NOTE: We do NOT call addToCart(product) here anymore.
+        // Instead, we create a temporary cart item just for this checkout session.
+        const itemToCheckout = { ...product, quantity: 1 };
+
+        // Small delay to show the interaction before redirecting
+        setTimeout(() => {
+            setIsBuying(false);
+            // Navigate to checkout with ONLY this item in state
+            navigate('/checkout', { 
+                state: { 
+                    checkoutItems: [itemToCheckout] 
+                } 
+            });
+        }, 800);
     };
 
     return (
         <div className="product-detail-page animate-fade-in bg-white min-vh-100 py-5">
             <Container>
-                {/* Back Button */}
                 <Button 
                     variant="link" 
                     className="text-muted mb-4 text-decoration-none p-0 d-flex align-items-center"
@@ -62,7 +88,6 @@ const ProductDetail = () => {
                     <ArrowLeft size={18} className="me-2" /> Back to Collection
                 </Button>
 
-                {/* Main Product Section */}
                 <Row className="g-5 mb-5">
                     {/* Left: Image */}
                     <Col md={6}>
@@ -70,9 +95,8 @@ const ProductDetail = () => {
                             <img 
                                 src={product.image} 
                                 alt={product.name} 
-                                className="product-detail-img" /* Responsive class */
+                                className="product-detail-img" 
                             />
-                            {/* Category Label */}
                             <span 
                                 className="position-absolute top-0 start-0 m-4 px-4 py-2 fw-bold rounded-pill shadow-sm small"
                                 style={{ 
@@ -106,23 +130,34 @@ const ProductDetail = () => {
                             </p>
 
                             <div className="d-grid gap-3">
+                                {/* ADD TO BAG BUTTON (Turns Green on Success) */}
                                 <Button 
-                                    variant="primary" 
+                                    variant={isAdded ? "success" : "primary"}
                                     size="lg" 
-                                    className="rounded-pill py-3 fw-bold d-flex align-items-center justify-content-center"
+                                    className={`rounded-pill py-3 fw-bold d-flex align-items-center justify-content-center transition-all ${isAdded ? 'text-white border-success' : ''}`}
                                     onClick={handleAddToCart}
+                                    disabled={isAdded || isBuying}
                                 >
-                                    <ShoppingBag size={20} className="me-2" />
-                                    ADD TO BAG
+                                    {isAdded ? (
+                                        <><Check size={20} className="me-2" /> ADDED TO BAG</>
+                                    ) : (
+                                        <><ShoppingBag size={20} className="me-2" /> ADD TO BAG</>
+                                    )}
                                 </Button>
+
+                                {/* BUY NOW BUTTON (Shows Spinner) */}
                                 <Button 
                                     variant="outline-primary" 
                                     size="lg" 
                                     className="rounded-pill py-3 fw-bold d-flex align-items-center justify-content-center"
                                     onClick={handleBuyNow}
+                                    disabled={isBuying || isAdded}
                                 >
-                                    <CreditCard size={20} className="me-2" />
-                                    BUY NOW
+                                    {isBuying ? (
+                                        <><Spinner animation="border" size="sm" className="me-2"/> PROCESSING...</>
+                                    ) : (
+                                        <><CreditCard size={20} className="me-2" /> BUY NOW</>
+                                    )}
                                 </Button>
                             </div>
 
@@ -138,7 +173,7 @@ const ProductDetail = () => {
                     </Col>
                 </Row>
 
-                {/* Related Products Section */}
+                {/* Related Products */}
                 {relatedProducts.length > 0 && (
                     <div className="mt-5 pt-5 border-top">
                         <h3 className="fw-bold mb-4">YOU MIGHT ALSO LIKE</h3>
@@ -151,6 +186,23 @@ const ProductDetail = () => {
                         </Row>
                     </div>
                 )}
+
+                {/* TOAST NOTIFICATION */}
+                <ToastContainer position="bottom-end" className="p-3 position-fixed" style={{zIndex: 9999}}>
+                    <Toast onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide bg="dark">
+                        <Toast.Header closeButton={false} className="d-flex justify-content-between bg-dark text-white border-0">
+                            <strong className="me-auto d-flex align-items-center">
+                                <ShoppingBag size={16} className="me-2"/> Added to Bag
+                            </strong>
+                            <small className="text-white-50">just now</small>
+                            <button type="button" className="btn-close btn-close-white ms-2" onClick={() => setShowToast(false)}></button>
+                        </Toast.Header>
+                        <Toast.Body className="text-white">
+                            {product.name} is now in your cart.
+                        </Toast.Body>
+                    </Toast>
+                </ToastContainer>
+
             </Container>
         </div>
     );

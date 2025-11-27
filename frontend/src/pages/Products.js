@@ -1,42 +1,108 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form } from 'react-bootstrap';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom'; 
 import ProductCard from '../components/ProductCard';
-import { ALL_PRODUCTS } from '../data/products'; // Import shared data
+import { ALL_PRODUCTS } from '../data/products';
 import './Products.css';
 
-const CATEGORIES = ['All', 'Dresses', 'Tops', 'Bottoms', 'Outerwear', 'Shoes', 'Accessories'];
-
 const Products = () => {
+    // --- URL PARAMS ---
+    const location = useLocation();
+    const navigate = useNavigate();
+    const queryParams = new URLSearchParams(location.search);
+    const collectionFilter = queryParams.get('collection') || 'All'; 
+
+    // --- STATE ---
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [sortBy, setSortBy] = useState('featured');
     const [priceRange, setPriceRange] = useState(5000);
 
-    // Filter Logic
+    // Reset sub-category when switching main collections
+    useEffect(() => {
+        setSelectedCategory('All');
+    }, [collectionFilter]);
+
+    // --- HELPER: DEFINE COLLECTIONS ---
+    // This maps the broad "Collection" from the URL to specific product categories
+    const getCategoriesInCollection = (collection) => {
+        switch(collection) {
+            case 'Clothing': return ['Dresses', 'Tops', 'Bottoms', 'Outerwear'];
+            case 'Shoes': return ['Shoes'];
+            case 'Accessories': return ['Accessories'];
+            default: return []; // 'New' or 'All' includes everything
+        }
+    };
+
+    const targetCategories = getCategoriesInCollection(collectionFilter);
+
+    // --- DYNAMIC SIDEBAR LIST ---
+    // 1. Get unique categories based on the current collection
+    // 2. Filter out 'All' to sort the rest alphabetically
+    // 3. Prepend 'All' manually at the end to ensure it stays on top
+    const uniqueCategories = [...new Set(
+        collectionFilter === 'All' || collectionFilter === 'New' 
+            ? ALL_PRODUCTS.map(p => p.category) // Show all available categories if viewing "New" or "All"
+            : targetCategories // Show only relevant categories for Clothing/Shoes/etc
+    )].filter(cat => cat !== 'All').sort();
+
+    const sidebarCategories = ['All', ...uniqueCategories];
+
+    // --- FILTER LOGIC ---
     const filteredProducts = ALL_PRODUCTS.filter(product => {
+        // 1. Filter by Collection (Broad Type)
+        let matchesCollection = true;
+        if (collectionFilter !== 'All' && collectionFilter !== 'New') {
+            matchesCollection = targetCategories.includes(product.category);
+        }
+
+        // 2. Filter by Search Term
         const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        // 3. Filter by Sidebar Category (Specific Type)
         const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+        
+        // 4. Filter by Price
         const matchesPrice = product.price <= priceRange;
-        return matchesSearch && matchesCategory && matchesPrice;
+
+        return matchesCollection && matchesSearch && matchesCategory && matchesPrice;
     }).sort((a, b) => {
         if (sortBy === 'price-low') return a.price - b.price;
         if (sortBy === 'price-high') return b.price - a.price;
-        return 0; // featured order
+        return 0; 
     });
+
+    // Clear filters
+    const clearFilters = () => {
+        setSearchTerm('');
+        setSelectedCategory('All');
+        setPriceRange(5000);
+        navigate('/products'); 
+    };
+
+    // Helper for Banner Image
+    const getBannerImage = () => {
+        switch(collectionFilter) {
+            case 'Clothing': return 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?q=80&w=2070&auto=format&fit=crop';
+            case 'Shoes': return 'https://images.unsplash.com/photo-1556906781-9a412961c28c?q=80&w=2070&auto=format&fit=crop';
+            case 'Accessories': return 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=2070&auto=format&fit=crop';
+            default: return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop';
+        }
+    }
 
     return (
         <div className="products-page animate-fade-in">
             {/* HERO BANNER */}
             <div 
                 className="products-hero" 
-                style={{ 
-                    backgroundImage: 'url(https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop)' 
-                }}
+                style={{ backgroundImage: `url(${getBannerImage()})` }}
             >
                 <div className="products-hero-content">
-                    <h1 className="display-3 fw-bold mb-2">THE COLLECTION</h1>
-                    <p className="lead mb-0 text-white-50">Curated essentials for the modern wardrobe.</p>
+                    <h1 className="display-3 fw-bold mb-2">
+                        {collectionFilter === 'All' || collectionFilter === 'New' ? 'THE COLLECTION' : collectionFilter.toUpperCase()}
+                    </h1>
+                    <p className="lead mb-0 text-white-50">Style that knows no boundaries.</p>
                 </div>
             </div>
 
@@ -45,15 +111,22 @@ const Products = () => {
                     {/* STICKY SIDEBAR FILTERS */}
                     <Col md={3} className="mb-4">
                         <div className="filter-sidebar">
-                            <div className="d-flex align-items-center mb-4 text-primary">
-                                <SlidersHorizontal size={20} className="me-2" />
-                                <h5 className="mb-0 fw-bold">FILTER BY</h5>
+                            <div className="d-flex align-items-center justify-content-between mb-4">
+                                <div className="d-flex align-items-center text-primary">
+                                    <SlidersHorizontal size={20} className="me-2" />
+                                    <h5 className="mb-0 fw-bold">FILTERS</h5>
+                                </div>
+                                {collectionFilter !== 'All' && (
+                                    <span className="badge bg-primary-subtle text-primary d-flex align-items-center">
+                                        {collectionFilter} <X size={12} className="ms-1" style={{cursor:'pointer'}} onClick={() => navigate('/products')}/>
+                                    </span>
+                                )}
                             </div>
                             
                             <div className="filter-group mb-4">
                                 <h5>CATEGORY</h5>
                                 <div className="d-flex flex-column gap-2">
-                                    {CATEGORIES.map(cat => (
+                                    {sidebarCategories.map(cat => (
                                         <span 
                                             key={cat} 
                                             className={`filter-option ${selectedCategory === cat ? 'active' : ''}`}
@@ -116,10 +189,11 @@ const Products = () => {
                         {/* Grid Content */}
                         {filteredProducts.length === 0 ? (
                             <div className="text-center py-5">
-                                <h4 className="text-muted">No items found matching your search.</h4>
+                                <h4 className="text-muted">No items found.</h4>
+                                <p className="text-muted small">Try adjusting your filters or search criteria.</p>
                                 <button 
                                     className="btn btn-link text-primary mt-2" 
-                                    onClick={() => {setSearchTerm(''); setSelectedCategory('All'); setPriceRange(5000);}}
+                                    onClick={clearFilters}
                                 >
                                     Clear all filters
                                 </button>
