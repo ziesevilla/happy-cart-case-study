@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import ProfileSidebar from '../components/account/ProfileSidebar';
 import OrdersTab from '../components/account/OrdersTab';
 import AddressTab from '../components/account/AddressTab';
+import AdminDashboard from '../components/admin/AdminDashboard'; // NEW IMPORT
 import './Account.css';
 
 const Account = () => {
@@ -25,19 +26,7 @@ const Account = () => {
 
     // --- ADMIN VIEW ---
     if (user.role === 'admin') {
-        // For brevity, I'm keeping the Admin view simple here as requested.
-        // In a real refactor, I'd move this to components/account/AdminDashboard.js
-        return (
-             <div className="account-page py-5">
-                <Container>
-                    <div className="text-center">
-                        <h2>Admin Dashboard</h2>
-                        <p>For full admin features, see the AdminDashboard component (not split yet).</p>
-                        {/* You can copy the Admin logic from previous versions here if needed */}
-                    </div>
-                </Container>
-             </div>
-        );
+        return <AdminDashboard />;
     }
 
     // --- CUSTOMER VIEW ---
@@ -57,7 +46,7 @@ const Account = () => {
                                 className={`rounded-pill px-4 fw-bold ${activeTab === 'orders' ? 'tab-active' : 'tab-inactive'}`}
                                 onClick={() => setActiveTab('orders')}
                             >
-                                My Orders
+                                Order History
                             </Button>
                             <Button 
                                 className={`rounded-pill px-4 fw-bold ${activeTab === 'addresses' ? 'tab-active' : 'tab-inactive'}`}
