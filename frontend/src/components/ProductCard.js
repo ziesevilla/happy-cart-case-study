@@ -3,7 +3,7 @@ import { Card, Button } from 'react-bootstrap';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Headphones, Watch, Mouse, Monitor, Package, Shirt, ShoppingBag, Check } from 'lucide-react';
+import { Shirt, ShoppingBag, Check, Footprints, Glasses } from 'lucide-react';
 
 const ProductCard = ({ product, onAddToCart }) => {
     const { addToCart } = useCart();
@@ -11,26 +11,20 @@ const ProductCard = ({ product, onAddToCart }) => {
     const navigate = useNavigate();
     const [isAdded, setIsAdded] = useState(false);
 
-    // Helper to choose the right icon based on category (Fallback)
+    // Helper: Choose icon based on Fashion Category
     const getProductIcon = (category) => {
         const props = { size: 64, color: "#ff6b8b", strokeWidth: 1.5 }; 
         
         switch(category) {
-            case 'Audio': return <Headphones {...props} />;
-            case 'Wearables': return <Watch {...props} />;
-            case 'Peripherals': return <Mouse {...props} />;
-            case 'Displays': return <Monitor {...props} />;
-            case 'Accessories': return <ShoppingBag {...props} />;
-            case 'Dresses':
-            case 'Tops':
-            case 'Bottoms':
-            case 'Outerwear': return <Shirt {...props} />;
-            default: return <Package {...props} />;
+            case 'Clothing': return <Shirt {...props} />;
+            case 'Shoes': return <Footprints {...props} />;
+            case 'Accessories': return <Glasses {...props} />; // Or ShoppingBag
+            default: return <ShoppingBag {...props} />;
         }
     };
 
     const handleAddToCart = (e) => {
-        e.stopPropagation(); // Prevent triggering the card click
+        e.stopPropagation(); 
         if (!user) {
             alert("You must be logged in to add items to the cart!");
             navigate('/login');
@@ -38,11 +32,9 @@ const ProductCard = ({ product, onAddToCart }) => {
         }
         addToCart(product);
         
-        // Trigger Visual Feedback
         setIsAdded(true);
-        if (onAddToCart) onAddToCart(product); // Notify parent if prop exists
+        if (onAddToCart) onAddToCart(product); 
         
-        // Reset button after 1.5 seconds
         setTimeout(() => {
             setIsAdded(false);
         }, 1500);
@@ -52,11 +44,11 @@ const ProductCard = ({ product, onAddToCart }) => {
         <Card 
             className="h-100 shadow-sm hover-shadow border-0 overflow-hidden" 
             style={{ cursor: 'pointer' }}
-            onClick={() => navigate(`/products/${product.id}`)} // Make the whole card clickable
+            onClick={() => navigate(`/products/${product.id}`)} 
         >
             {/* Image Area */}
             <div className="position-relative">
-                {product.image ? (
+                {product.image && !product.image.includes('via.placeholder') ? (
                     <div 
                         style={{ 
                             height: '320px', 
@@ -68,6 +60,7 @@ const ProductCard = ({ product, onAddToCart }) => {
                         className="card-img-top"
                     />
                 ) : (
+                    // Fallback if image is a placeholder or missing
                     <div 
                         className="d-flex align-items-center justify-content-center" 
                         style={{ 
@@ -79,7 +72,6 @@ const ProductCard = ({ product, onAddToCart }) => {
                     </div>
                 )}
                 
-                {/* Fixed Category Label */}
                 {product.category && (
                     <span 
                         className="position-absolute top-0 start-0 m-3 px-3 py-1 fw-bold rounded-pill small shadow-sm"
@@ -97,7 +89,7 @@ const ProductCard = ({ product, onAddToCart }) => {
 
             <Card.Body className="d-flex flex-column p-4">
                 <div className="d-flex justify-content-between align-items-start mb-2">
-                    <Card.Title className="fw-bold text-dark text-truncate mb-0" style={{ maxWidth: '85%' }}>
+                    <Card.Title className="fw-bold text-dark text-truncate mb-0" style={{ maxWidth: '70%' }}>
                         {product.name}
                     </Card.Title>
                     <span className="text-primary fw-bold">₱{product.price.toLocaleString()}</span>
@@ -117,7 +109,7 @@ const ProductCard = ({ product, onAddToCart }) => {
                         {isAdded ? (
                             <><Check size={18} className="me-2"/> ADDED</>
                         ) : (
-                            "ADD TO BAG"
+                            "ADD TO CART"
                         )}
                     </Button>
                 </div>

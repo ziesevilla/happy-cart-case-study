@@ -5,19 +5,21 @@ import { ArrowLeft, Star, ShoppingBag, CreditCard, Check, Heart } from 'lucide-r
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useReviews } from '../context/ReviewContext';
-import { ALL_PRODUCTS } from '../data/products';
+import { useProducts } from '../context/ProductContext'; // 💡 NEW IMPORT
 import ProductCard from '../components/ProductCard';
 import './ProductDetail.css';
 
 const ProductDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    
+    // 💡 USE CONTEXT FOR DATA
+    const { products: ALL_PRODUCTS } = useProducts(); 
+    
     const { addToCart } = useCart();
     const { user } = useAuth();
-    // Import toggleLike
     const { getProductReviews, getAverageRating, toggleLike } = useReviews();
 
-    // --- VISUAL FEEDBACK STATE ---
     const [isAdded, setIsAdded] = useState(false);
     const [isBuying, setIsBuying] = useState(false);
     const [showToast, setShowToast] = useState(false);
@@ -29,16 +31,25 @@ const ProductDetail = () => {
     const productId = parseInt(id);
     const product = ALL_PRODUCTS.find(p => p.id === productId);
 
+    // If data isn't loaded yet or ID is wrong
+    if (!product) {
+        return (
+            <Container className="py-5 text-center" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div>
+                    <h2>Product not found</h2>
+                    <Button variant="primary" onClick={() => navigate('/products')}>Return to Shop</Button>
+                </div>
+            </Container>
+        );
+    }
+
     const productReviews = getProductReviews(productId);
     const averageRating = getAverageRating(productId);
 
+    // Filter related products from the Context data
     const relatedProducts = ALL_PRODUCTS
-        .filter(p => p.category === product?.category && p.id !== product?.id)
+        .filter(p => p.category === product.category && p.id !== product.id)
         .slice(0, 3);
-
-    if (!product) {
-        return <Container className="py-5 text-center"><h2>Product not found</h2></Container>;
-    }
 
     const handleAddToCart = () => {
         if (!user) {
@@ -66,7 +77,6 @@ const ProductDetail = () => {
         }, 800);
     };
 
-    // NEW: Handle Review Like
     const handleLikeReview = (reviewId) => {
         if (!user) {
             alert("Please login to like reviews!");
@@ -83,12 +93,17 @@ const ProductDetail = () => {
                 </Button>
 
                 <Row className="g-5 mb-5">
+                    {/* PRODUCT IMAGE */}
                     <Col md={6}>
                         <div className="position-relative rounded-4 overflow-hidden shadow-sm product-image-container">
                             <img src={product.image} alt={product.name} className="product-detail-img" />
-                            <span className="position-absolute top-0 start-0 m-4 px-4 py-2 fw-bold rounded-pill shadow-sm small" style={{ backgroundColor: '#ffffff', color: '#ff6b8b', letterSpacing: '1px', textTransform: 'uppercase', zIndex: 2 }}>{product.category}</span>
+                            <span className="position-absolute top-0 start-0 m-4 px-4 py-2 fw-bold rounded-pill shadow-sm small" style={{ backgroundColor: '#ffffff', color: '#ff6b8b', letterSpacing: '1px', textTransform: 'uppercase', zIndex: 2 }}>
+                                {product.category}
+                            </span>
                         </div>
                     </Col>
+
+                    {/* PRODUCT DETAILS */}
                     <Col md={6}>
                         <div className="h-100 d-flex flex-column justify-content-center">
                             <h1 className="display-4 fw-bold mb-3">{product.name}</h1>
@@ -101,10 +116,16 @@ const ProductDetail = () => {
                                 </div>
                             </div>
                             <p className="lead text-muted mb-5">{product.description}</p>
+                            
                             <div className="d-grid gap-3">
-                                <Button variant={isAdded ? "success" : "primary"} size="lg" className={`rounded-pill py-3 fw-bold d-flex align-items-center justify-content-center transition-all ${isAdded ? 'text-white border-success' : ''}`} onClick={handleAddToCart} disabled={isAdded || isBuying}>{isAdded ? <><Check size={20} className="me-2" /> ADDED TO BAG</> : <><ShoppingBag size={20} className="me-2" /> ADD TO BAG</>}</Button>
-                                <Button variant="outline-primary" size="lg" className="rounded-pill py-3 fw-bold d-flex align-items-center justify-content-center" onClick={handleBuyNow} disabled={isBuying || isAdded}>{isBuying ? <><Spinner animation="border" size="sm" className="me-2"/> PROCESSING...</> : <><CreditCard size={20} className="me-2" /> BUY NOW</>}</Button>
+                                <Button variant={isAdded ? "success" : "primary"} size="lg" className={`rounded-pill py-3 fw-bold d-flex align-items-center justify-content-center transition-all ${isAdded ? 'text-white border-success' : ''}`} onClick={handleAddToCart} disabled={isAdded || isBuying}>
+                                    {isAdded ? <><Check size={20} className="me-2" /> ADDED TO BAG</> : <><ShoppingBag size={20} className="me-2" /> ADD TO BAG</>}
+                                </Button>
+                                <Button variant="outline-primary" size="lg" className="rounded-pill py-3 fw-bold d-flex align-items-center justify-content-center" onClick={handleBuyNow} disabled={isBuying || isAdded}>
+                                    {isBuying ? <><Spinner animation="border" size="sm" className="me-2"/> PROCESSING...</> : <><CreditCard size={20} className="me-2" /> BUY NOW</>}
+                                </Button>
                             </div>
+
                             <div className="mt-5 pt-4 border-top">
                                 <small className="text-muted d-block mb-2"><strong>Free Shipping</strong> on orders over ₱5,000</small>
                                 <small className="text-muted d-block"><strong>30 Day Returns</strong> if you change your mind</small>
@@ -113,7 +134,7 @@ const ProductDetail = () => {
                     </Col>
                 </Row>
 
-                {/* REVIEWS SECTION WITH LIKES */}
+                {/* REVIEWS SECTION */}
                 <div className="mt-5 pt-5 border-top">
                     <h3 className="fw-bold mb-4">CUSTOMER REVIEWS ({productReviews.length})</h3>
                     
@@ -135,7 +156,6 @@ const ProductDetail = () => {
                                                 <p className="text-muted mb-3">"{review.comment}"</p>
                                             </div>
                                             
-                                            {/* LIKE BUTTON */}
                                             <div className="d-flex align-items-center mt-2">
                                                 <button 
                                                     className={`btn btn-sm rounded-pill d-flex align-items-center gap-1 ps-0 ${isLiked ? 'text-danger' : 'text-muted'}`}
@@ -156,6 +176,7 @@ const ProductDetail = () => {
                     )}
                 </div>
 
+                {/* RELATED PRODUCTS */}
                 {relatedProducts.length > 0 && (
                     <div className="mt-5 pt-5 border-top">
                         <h3 className="fw-bold mb-4">YOU MIGHT ALSO LIKE</h3>
