@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Card, Table, InputGroup, Form, Modal } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useProducts } from '../context/ProductContext'; // 💡 1. NEW IMPORT
 import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Truck, Tag, AlertTriangle } from 'lucide-react';
-import './Cart.css';
+import './styles/Cart.css';
 
 const Cart = () => {
-    // Added decreaseQuantity here
     const { cart, addToCart, removeFromCart, decreaseQuantity } = useCart();
+    
+    // 💡 2. GET MASTER PRODUCT LIST
+    const { products } = useProducts(); 
+    
     const navigate = useNavigate();
     const [promoCode, setPromoCode] = useState('');
     
@@ -22,8 +26,8 @@ const Cart = () => {
     // Initialize selection when cart loads (optional)
     useEffect(() => {
         // if (cart.length > 0 && selectedItems.length === 0) {
-        //     setSelectedItems(cart.map(item => item.id));
-        //     setSelectAll(true);
+        //      setSelectedItems(cart.map(item => item.id));
+        //      setSelectAll(true);
         // }
     }, [cart]);
 
@@ -148,53 +152,73 @@ const Cart = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {cart.map((item) => (
-                                        <tr key={item.id} className={selectedItems.includes(item.id) ? 'bg-light-primary' : ''}>
-                                            <td>
-                                                <Form.Check 
-                                                    type="checkbox" 
-                                                    checked={selectedItems.includes(item.id)}
-                                                    onChange={() => handleSelectItem(item.id)}
-                                                />
-                                            </td>
-                                            <td data-label="Product">
-                                                <div className="d-flex align-items-center gap-3">
-                                                    {item.image ? (
-                                                        <img src={item.image} alt={item.name} className="cart-item-img" />
-                                                    ) : (
-                                                        <div className="cart-item-img bg-light d-flex align-items-center justify-content-center text-muted">
-                                                            <ShoppingBag size={24} />
+                                    {cart.map((item) => {
+                                        // 💡 3. FIND REAL-TIME STOCK FOR THIS ITEM
+                                        const masterProduct = products.find(p => p.id === item.id);
+                                        const currentStock = masterProduct ? masterProduct.stock : 0;
+                                        const isMaxStockReached = item.quantity >= currentStock;
+
+                                        return (
+                                            <tr key={item.id} className={selectedItems.includes(item.id) ? 'bg-light-primary' : ''}>
+                                                <td>
+                                                    <Form.Check 
+                                                        type="checkbox" 
+                                                        checked={selectedItems.includes(item.id)}
+                                                        onChange={() => handleSelectItem(item.id)}
+                                                    />
+                                                </td>
+                                                <td data-label="Product">
+                                                    <div className="d-flex align-items-center gap-3">
+                                                        {item.image ? (
+                                                            <img src={item.image} alt={item.name} className="cart-item-img" />
+                                                        ) : (
+                                                            <div className="cart-item-img bg-light d-flex align-items-center justify-content-center text-muted">
+                                                                <ShoppingBag size={24} />
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <h6 className="fw-bold mb-1 text-dark">{item.name}</h6>
+                                                            <small className="text-muted">{item.category}</small>
+                                                            {/* Optional: Show Alert if maxed out */}
+                                                            {isMaxStockReached && <div className="text-danger x-small fw-bold mt-1">Max stock reached</div>}
                                                         </div>
-                                                    )}
-                                                    <div>
-                                                        <h6 className="fw-bold mb-1 text-dark">{item.name}</h6>
-                                                        <small className="text-muted">{item.category}</small>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td data-label="Price" className="fw-bold text-muted">₱{item.price.toLocaleString()}</td>
-                                            <td data-label="Quantity">
-                                                <div className="qty-group">
-                                                    <button 
-                                                        className="qty-btn" 
-                                                        // Use decreaseQuantity for simple reduction
-                                                        // If qty is 1, clicking minus triggers the Modal for confirmation
-                                                        onClick={() => item.quantity > 1 ? decreaseQuantity(item.id) : handleRemoveClick(item)}
-                                                    >
-                                                        <Minus size={14} />
+                                                </td>
+                                                <td data-label="Price" className="fw-bold text-muted">₱{item.price.toLocaleString()}</td>
+                                                <td data-label="Quantity">
+                                                    <div className="qty-group">
+                                                        <button 
+                                                            className="qty-btn" 
+                                                            onClick={() => item.quantity > 1 ? decreaseQuantity(item.id) : handleRemoveClick(item)}
+                                                        >
+                                                            <Minus size={14} />
+                                                        </button>
+                                                        
+                                                        <span className="qty-input">{item.quantity}</span>
+                                                        
+                                                        {/* 💡 4. DISABLE BUTTON IF MAX REACHED */}
+                                                        <button 
+                                                            className="qty-btn" 
+                                                            onClick={() => addToCart(item)}
+                                                            disabled={isMaxStockReached}
+                                                            style={{ 
+                                                                opacity: isMaxStockReached ? 0.5 : 1, 
+                                                                cursor: isMaxStockReached ? 'not-allowed' : 'pointer' 
+                                                            }}
+                                                        >
+                                                            <Plus size={14} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Total" className="fw-bold text-primary">₱{(item.price * item.quantity).toLocaleString()}</td>
+                                                <td data-label="">
+                                                    <button className="btn btn-link text-danger p-0" onClick={() => handleRemoveClick(item)}>
+                                                        <Trash2 size={18} />
                                                     </button>
-                                                    <span className="qty-input">{item.quantity}</span>
-                                                    <button className="qty-btn" onClick={() => addToCart(item)}><Plus size={14} /></button>
-                                                </div>
-                                            </td>
-                                            <td data-label="Total" className="fw-bold text-primary">₱{(item.price * item.quantity).toLocaleString()}</td>
-                                            <td data-label="">
-                                                <button className="btn btn-link text-danger p-0" onClick={() => handleRemoveClick(item)}>
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </Table>
                         </div>
@@ -220,17 +244,21 @@ const Cart = () => {
                                 </span>
                             </div>
                             
-                            <InputGroup className="my-4">
-                                <InputGroup.Text className="bg-white border-end-0 ps-3">
+                            <InputGroup className="my-4 border rounded-pill overflow-hidden bg-white p-1">
+                                <InputGroup.Text className="bg-transparent border-0 ps-3 pe-0">
                                     <Tag size={16} className="text-muted"/>
                                 </InputGroup.Text>
+                                
                                 <Form.Control 
                                     placeholder="Discount Code" 
-                                    className="border-start-0 ps-2 shadow-none"
+                                    className="bg-transparent border-0 shadow-none ps-2"
                                     value={promoCode}
                                     onChange={(e) => setPromoCode(e.target.value)}
                                 />
-                                <Button variant="dark" size="sm" className="px-3">Apply</Button>
+                                
+                                <Button variant="dark" size="sm" className="rounded-pill px-4">
+                                    Apply
+                                </Button>
                             </InputGroup>
 
                             <div className="summary-total">

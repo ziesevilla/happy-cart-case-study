@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, InputGroup, Modal } from 'react-bootstrap';
 import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext'; // Import Auth
+import { useAuth } from '../context/AuthContext'; 
+import { useOrders } from '../context/OrderContext';
+import { useAddress } from '../context/AddressContext';
+import { useProducts } from '../context/ProductContext'; // 💡 1. NEW IMPORT
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { CheckCircle, CreditCard, ShoppingBag, Smartphone, Banknote, ChevronDown, ChevronUp, ArrowRight, MapPin, Lock } from 'lucide-react';
-import './Checkout.css';
+import { CheckCircle, CreditCard, ShoppingBag, Smartphone, Banknote, ChevronDown, ChevronUp, ArrowRight, MapPin, Lock, Tag } from 'lucide-react';
+import './styles/Checkout.css';
 
 const Checkout = () => {
     const { cart, removeItems } = useCart(); 
-    const { addresses, addAddress, addOrder } = useAuth(); // Get addOrder
+    const { user } = useAuth(); 
+    
+    const { addOrder } = useOrders(); 
+    const { getUserAddresses, addAddress } = useAddress();
+    const { updateStockAfterPurchase } = useProducts(); // 💡 2. GET THE FUNCTION
+
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -32,6 +40,9 @@ const Checkout = () => {
     const [isSavedAddress, setIsSavedAddress] = useState(false);
     const [selectedAddressId, setSelectedAddressId] = useState('');
 
+    // Addresses for current user
+    const myAddresses = user ? getUserAddresses(user.id) : [];
+
     const [cardNum, setCardNum] = useState('');
     const [cardExpiry, setCardExpiry] = useState('');
     
@@ -46,8 +57,8 @@ const Checkout = () => {
 
     // Auto-fill default address on load
     useEffect(() => {
-        if (addresses.length > 0 && !selectedAddressId) {
-            const defaultAddr = addresses.find(addr => addr.default);
+        if (myAddresses.length > 0 && !selectedAddressId) {
+            const defaultAddr = myAddresses.find(addr => addr.default);
             if (defaultAddr) {
                 setFormData({
                     firstName: defaultAddr.firstName, 
@@ -62,7 +73,7 @@ const Checkout = () => {
                 setSelectedAddressId(defaultAddr.id);
             }
         }
-    }, [addresses, selectedAddressId]);
+    }, [myAddresses, selectedAddressId]);
 
     if (checkoutItems.length === 0) {
         navigate('/cart');
@@ -92,7 +103,7 @@ const Checkout = () => {
             return;
         }
         
-        const addr = addresses.find(a => a.id === parseInt(value));
+        const addr = myAddresses.find(a => a.id === parseInt(value));
         if (addr) {
             setFormData({ 
                 firstName: addr.firstName, 
@@ -123,11 +134,13 @@ const Checkout = () => {
         // 1. Create the Order Object
         const newOrder = {
             id: newOrderId,
+            customerName: `${formData.firstName} ${formData.lastName}`,
+            email: user?.email,
             date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
             itemsCount: checkoutItems.reduce((acc, item) => acc + item.quantity, 0),
             total: total,
-            status: 'Placed', // Initial status
-            shippingAddress: { ...formData }, // Save where it's going
+            status: 'Placed', 
+            shippingAddress: { ...formData }, 
             details: checkoutItems.map(item => ({
                 id: item.id,
                 name: item.name,
@@ -138,14 +151,17 @@ const Checkout = () => {
         };
 
         setTimeout(() => {
-            // 2. Save Order to Global State
+            // 💡 3. UPDATE STOCK HERE
+            updateStockAfterPurchase(checkoutItems);
+
+            // 4. Save Order to Global State
             addOrder(newOrder);
 
-            // 3. Clean up Cart
+            // 5. Clean up Cart
             const purchasedIds = checkoutItems.map(item => item.id);
             removeItems(purchasedIds);
             
-            // 4. Redirect
+            // 6. Redirect
             navigate('/confirmation', { state: { orderId: newOrderId, total: total } });
             setLoading(false);
         }, 2000);
@@ -153,16 +169,17 @@ const Checkout = () => {
 
     const handleFormSubmit = (e) => {
         e.preventDefault();
+        // If new address (not saved), check for duplicates or save
         if (!isSavedAddress) {
-            const isDuplicate = addresses.some(addr => addr.street.toLowerCase() === formData.street.toLowerCase() && addr.zip === formData.zip);
-            if (!isDuplicate) { setShowSaveModal(true); } else { processOrder(); }
+            const isDuplicate = myAddresses.some(addr => addr.street.toLowerCase() === formData.street.toLowerCase() && addr.zip === formData.zip);
+            if (!isDuplicate && user) { setShowSaveModal(true); } else { processOrder(); }
         } else { 
             processOrder(); 
         }
     };
 
     const handleSaveAndContinue = () => {
-        addAddress({ label: newAddressLabel, ...formData });
+        if (user) addAddress(user.id, { label: newAddressLabel, ...formData });
         setShowSaveModal(false);
         processOrder();
     };
@@ -200,13 +217,16 @@ const Checkout = () => {
                                     {isSavedAddress && <span className="badge bg-light text-muted border d-flex align-items-center"><Lock size={12} className="me-1"/> Locked</span>}
                                 </div>
                                 
-                                <div className="mb-4 p-3 bg-light rounded-3 border border-dashed border-secondary">
-                                    <Form.Label className="small fw-bold text-muted d-flex align-items-center"><MapPin size={14} className="me-2"/> Quick Fill from Saved Address</Form.Label>
-                                    <Form.Select className="checkout-input bg-white" value={selectedAddressId} onChange={handleAddressSelect}>
-                                        <option value="new">Enter New Address</option>
-                                        {addresses.map(addr => <option key={addr.id} value={addr.id}>{addr.label}: {addr.street}</option>)}
-                                    </Form.Select>
-                                </div>
+                                {/* ADDRESS SELECTOR (Only show if user has saved addresses) */}
+                                {myAddresses.length > 0 && (
+                                    <div className="mb-4 p-3 bg-light rounded-3 border border-dashed border-secondary">
+                                        <Form.Label className="small fw-bold text-muted d-flex align-items-center"><MapPin size={14} className="me-2"/> Quick Fill from Saved Address</Form.Label>
+                                        <Form.Select className="checkout-input bg-white" value={selectedAddressId} onChange={handleAddressSelect}>
+                                            <option value="new">Enter New Address</option>
+                                            {myAddresses.map(addr => <option key={addr.id} value={addr.id}>{addr.label}: {addr.street}</option>)}
+                                        </Form.Select>
+                                    </div>
+                                )}
 
                                 <Row className="g-3">
                                     <Col md={6}><Form.Label className="checkout-label">First Name</Form.Label><Form.Control required type="text" className={`checkout-input ${isSavedAddress ? 'bg-light' : ''}`} placeholder="John" name="firstName" value={formData.firstName} onChange={handleInputChange} readOnly={isSavedAddress}/></Col>
@@ -257,9 +277,10 @@ const Checkout = () => {
                                         </div>
                                     ))}
                                 </div>
-                                <InputGroup className="mb-4">
-                                    <Form.Control placeholder="Discount Code" className="checkout-input" value={promoCode} onChange={(e) => setPromoCode(e.target.value)} style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}/>
-                                    <Button variant="dark" className="px-4" onClick={handlePromoApply}>Apply</Button>
+                                <InputGroup className="my-4 border rounded-pill overflow-hidden bg-white p-1">
+                                    <InputGroup.Text className="bg-transparent border-0 ps-3 pe-0"><Tag size={16} className="text-muted"/></InputGroup.Text>
+                                    <Form.Control placeholder="Discount Code" className="bg-transparent border-0 shadow-none ps-2" value={promoCode} onChange={(e) => setPromoCode(e.target.value)}/>
+                                    <Button variant="dark" size="sm" className="rounded-pill px-4" onClick={handlePromoApply}>Apply</Button>
                                 </InputGroup>
                                 {promoError && <small className="text-danger mt-1 d-block">{promoError}</small>}
                                 {promoSuccess && <small className="text-success mt-1 d-block">{promoSuccess}</small>}

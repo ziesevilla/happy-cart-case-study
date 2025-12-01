@@ -65,9 +65,15 @@ const INITIAL_PRODUCTS = [
   },
   {
     id: 6,
-    name: "Oversized Knit Sweater", price: 60.00, category: "Clothing", subCategory: "Knitwear", image: "https://via.placeholder.com/300?text=Sweater", description: "Cozy, chunky knit sweater.", dateAdded: getRelativeDate(2), stock: 0 // Out of Stock Example
+    name: "Oversized Knit Sweater", 
+    price: 60.00, 
+    category: "Clothing", 
+    subCategory: "Knitwear", 
+    image: "https://via.placeholder.com/300?text=Sweater", 
+    description: "Cozy, chunky knit sweater.", 
+    dateAdded: getRelativeDate(2), 
+    stock: 0 // Out of Stock Example
   },
-  // ... (Add 'stock: 50' to all other items below to avoid errors)
   {
     id: 7, name: "Classic Leather Loafers", price: 120.00, category: "Shoes", subCategory: "Formal", 
     image: "https://via.placeholder.com/300?text=Loafers", description: "Genuine leather slip-on shoes.", dateAdded: getRelativeDate(30), stock: 12
@@ -144,6 +150,24 @@ export const ProductProvider = ({ children }) => {
         } : p));
     };
 
+    // 💡 NEW FUNCTION: Deduct stock based on purchased items
+    const updateStockAfterPurchase = (purchasedItems) => {
+        setProducts(prevProducts => {
+            return prevProducts.map(product => {
+                // Find if this product exists in the purchased list
+                const boughtItem = purchasedItems.find(item => item.id === product.id);
+                
+                if (boughtItem) {
+                    // Calculate new stock, ensuring it doesn't drop below 0
+                    const newStock = Math.max(0, product.stock - boughtItem.quantity);
+                    return { ...product, stock: newStock };
+                }
+                
+                return product; // Return unchanged if not bought
+            });
+        });
+    };
+
     const deleteProduct = (id) => {
         setProducts(prev => prev.filter(p => p.id !== id));
     };
@@ -154,7 +178,14 @@ export const ProductProvider = ({ children }) => {
     };
 
     return (
-        <ProductContext.Provider value={{ products, addProduct, updateProduct, deleteProduct, resetData }}>
+        <ProductContext.Provider value={{ 
+            products, 
+            addProduct, 
+            updateProduct, 
+            deleteProduct, 
+            resetData,
+            updateStockAfterPurchase // 💡 EXPORT THE NEW FUNCTION
+        }}>
             {children}
         </ProductContext.Provider>
     );

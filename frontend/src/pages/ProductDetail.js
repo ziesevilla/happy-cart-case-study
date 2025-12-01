@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Button, Toast, ToastContainer, Spinner } from 'react-bootstrap';
-import { ArrowLeft, Star, ShoppingBag, CreditCard, Check, Heart } from 'lucide-react';
+// 💡 Added Modal to imports
+import { Container, Row, Col, Button, Toast, ToastContainer, Spinner, Badge, Modal } from 'react-bootstrap';
+// 💡 Added Plus and Minus to imports
+import { ArrowLeft, Star, ShoppingBag, CreditCard, Check, Heart, Box, Plus, Minus } from 'lucide-react'; 
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useReviews } from '../context/ReviewContext';
-import { useProducts } from '../context/ProductContext'; // 💡 NEW IMPORT
+import { useProducts } from '../context/ProductContext'; 
 import ProductCard from '../components/ProductCard';
-import './ProductDetail.css';
+import './styles/ProductDetail.css';
 
 const ProductDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     
-    // 💡 USE CONTEXT FOR DATA
+    // USE CONTEXT FOR DATA
     const { products: ALL_PRODUCTS } = useProducts(); 
     
     const { addToCart } = useCart();
@@ -23,6 +25,10 @@ const ProductDetail = () => {
     const [isAdded, setIsAdded] = useState(false);
     const [isBuying, setIsBuying] = useState(false);
     const [showToast, setShowToast] = useState(false);
+
+    // 💡 NEW STATE FOR MODAL
+    const [showBuyModal, setShowBuyModal] = useState(false);
+    const [buyQuantity, setBuyQuantity] = useState(1);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -43,15 +49,22 @@ const ProductDetail = () => {
         );
     }
 
+    // 💡 STOCK LOGIC
+    const stock = product.stock || 0;
+    const isOutOfStock = stock === 0;
+    const isLowStock = stock > 0 && stock <= 5;
+
     const productReviews = getProductReviews(productId);
     const averageRating = getAverageRating(productId);
 
-    // Filter related products from the Context data
+    // Filter related products
     const relatedProducts = ALL_PRODUCTS
         .filter(p => p.category === product.category && p.id !== product.id)
         .slice(0, 3);
 
     const handleAddToCart = () => {
+        if (isOutOfStock) return; 
+
         if (!user) {
             alert("You must be logged in to add items to the cart!");
             navigate('/login');
@@ -63,16 +76,30 @@ const ProductDetail = () => {
         setTimeout(() => setIsAdded(false), 2000);
     };
 
-    const handleBuyNow = () => {
+    // 💡 1. OPEN MODAL INSTEAD OF REDIRECTING DIRECTLY
+    const handleBuyNowClick = () => {
+        if (isOutOfStock) return; 
+
         if (!user) {
             alert("You must be logged in to purchase!");
             navigate('/login');
             return;
         }
+        
+        // Reset quantity to 1 every time we open the modal
+        setBuyQuantity(1);
+        setShowBuyModal(true);
+    };
+
+    // 💡 2. ACTUAL REDIRECT (Called from inside Modal)
+    const confirmBuyNow = () => {
         setIsBuying(true);
-        const itemToCheckout = { ...product, quantity: 1 };
+        // Pass the specific quantity selected
+        const itemToCheckout = { ...product, quantity: buyQuantity };
+        
         setTimeout(() => {
             setIsBuying(false);
+            setShowBuyModal(false);
             navigate('/checkout', { state: { checkoutItems: [itemToCheckout] } });
         }, 800);
     };
@@ -83,6 +110,14 @@ const ProductDetail = () => {
             return;
         }
         toggleLike(reviewId);
+    };
+
+    // 💡 HELPER: Quantity Controls
+    const increaseQty = () => {
+        if (buyQuantity < stock) setBuyQuantity(prev => prev + 1);
+    };
+    const decreaseQty = () => {
+        if (buyQuantity > 1) setBuyQuantity(prev => prev - 1);
     };
 
     return (
@@ -96,7 +131,13 @@ const ProductDetail = () => {
                     {/* PRODUCT IMAGE */}
                     <Col md={6}>
                         <div className="position-relative rounded-4 overflow-hidden shadow-sm product-image-container">
-                            <img src={product.image} alt={product.name} className="product-detail-img" />
+                             {/* SOLD OUT OVERLAY */}
+                             {isOutOfStock && (
+                                <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10 }}>
+                                    <div className="bg-dark text-white px-4 py-2 text-uppercase fw-bold fs-4" style={{ letterSpacing: '4px' }}>SOLD OUT</div>
+                                </div>
+                            )}
+                            <img src={product.image} alt={product.name} className={`product-detail-img ${isOutOfStock ? 'grayscale' : ''}`} style={{ filter: isOutOfStock ? 'grayscale(100%)' : 'none' }} />
                             <span className="position-absolute top-0 start-0 m-4 px-4 py-2 fw-bold rounded-pill shadow-sm small" style={{ backgroundColor: '#ffffff', color: '#ff6b8b', letterSpacing: '1px', textTransform: 'uppercase', zIndex: 2 }}>
                                 {product.category}
                             </span>
@@ -115,13 +156,44 @@ const ProductDetail = () => {
                                     <span className="text-muted ms-1 small">({productReviews.length} reviews)</span>
                                 </div>
                             </div>
+                            
+                            {/* STOCK STATUS INDICATOR */}
+                            <div className="mb-4">
+                                {isOutOfStock ? (
+                                    <span className="text-danger fw-bold d-flex align-items-center"><Box size={18} className="me-2"/> Currently Out of Stock</span>
+                                ) : isLowStock ? (
+                                    <span className="text-danger fw-bold d-flex align-items-center animate-pulse"><Box size={18} className="me-2"/> Hurry! Only {stock} left in stock.</span>
+                                ) : (
+                                    <span className="text-success fw-bold d-flex align-items-center"><Check size={18} className="me-2"/> In Stock ({stock} available)</span>
+                                )}
+                            </div>
+
                             <p className="lead text-muted mb-5">{product.description}</p>
                             
                             <div className="d-grid gap-3">
-                                <Button variant={isAdded ? "success" : "primary"} size="lg" className={`rounded-pill py-3 fw-bold d-flex align-items-center justify-content-center transition-all ${isAdded ? 'text-white border-success' : ''}`} onClick={handleAddToCart} disabled={isAdded || isBuying}>
-                                    {isAdded ? <><Check size={20} className="me-2" /> ADDED TO BAG</> : <><ShoppingBag size={20} className="me-2" /> ADD TO BAG</>}
+                                <Button 
+                                    variant={isAdded ? "success" : (isOutOfStock ? "secondary" : "primary")} 
+                                    size="lg" 
+                                    className={`rounded-pill py-3 fw-bold d-flex align-items-center justify-content-center transition-all ${isAdded ? 'text-white border-success' : ''}`} 
+                                    onClick={handleAddToCart} 
+                                    disabled={isAdded || isBuying || isOutOfStock} 
+                                >
+                                    {isOutOfStock ? (
+                                        "SOLD OUT"
+                                    ) : isAdded ? (
+                                        <><Check size={20} className="me-2" /> ADDED TO BAG</> 
+                                    ) : (
+                                        <><ShoppingBag size={20} className="me-2" /> ADD TO BAG</>
+                                    )}
                                 </Button>
-                                <Button variant="outline-primary" size="lg" className="rounded-pill py-3 fw-bold d-flex align-items-center justify-content-center" onClick={handleBuyNow} disabled={isBuying || isAdded}>
+
+                                <Button 
+                                    variant="outline-primary" 
+                                    size="lg" 
+                                    className="rounded-pill py-3 fw-bold d-flex align-items-center justify-content-center" 
+                                    onClick={handleBuyNowClick} // 💡 CHANGED TO OPEN MODAL
+                                    disabled={isBuying || isAdded || isOutOfStock} 
+                                >
                                     {isBuying ? <><Spinner animation="border" size="sm" className="me-2"/> PROCESSING...</> : <><CreditCard size={20} className="me-2" /> BUY NOW</>}
                                 </Button>
                             </div>
@@ -137,7 +209,6 @@ const ProductDetail = () => {
                 {/* REVIEWS SECTION */}
                 <div className="mt-5 pt-5 border-top">
                     <h3 className="fw-bold mb-4">CUSTOMER REVIEWS ({productReviews.length})</h3>
-                    
                     {productReviews.length > 0 ? (
                         <Row>
                             {productReviews.map(review => {
@@ -155,7 +226,6 @@ const ProductDetail = () => {
                                                 </div>
                                                 <p className="text-muted mb-3">"{review.comment}"</p>
                                             </div>
-                                            
                                             <div className="d-flex align-items-center mt-2">
                                                 <button 
                                                     className={`btn btn-sm rounded-pill d-flex align-items-center gap-1 ps-0 ${isLiked ? 'text-danger' : 'text-muted'}`}
@@ -196,6 +266,44 @@ const ProductDetail = () => {
                         <Toast.Body className="text-white">{product.name} is now in your cart.</Toast.Body>
                     </Toast>
                 </ToastContainer>
+
+                {/* 💡 BUY NOW QUANTITY MODAL */}
+                <Modal show={showBuyModal} onHide={() => setShowBuyModal(false)} centered>
+                    <Modal.Header closeButton className="border-0">
+                        <Modal.Title className="fw-bold">Select Quantity</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body className="text-center py-4">
+                        <div className="d-flex align-items-center justify-content-center mb-4">
+                            <img src={product.image} alt={product.name} style={{width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px'}} className="me-3"/>
+                            <div className="text-start">
+                                <h6 className="fw-bold mb-0">{product.name}</h6>
+                                <small className="text-primary fw-bold">₱{product.price.toLocaleString()}</small>
+                            </div>
+                        </div>
+
+                        <div className="d-flex align-items-center justify-content-center gap-3">
+                            <Button variant="outline-secondary" className="rounded-circle p-0 d-flex align-items-center justify-content-center" style={{width: '40px', height: '40px'}} onClick={decreaseQty} disabled={buyQuantity <= 1}>
+                                <Minus size={16} />
+                            </Button>
+                            <span className="fw-bold fs-4" style={{width: '40px'}}>{buyQuantity}</span>
+                            <Button variant="outline-dark" className="rounded-circle p-0 d-flex align-items-center justify-content-center" style={{width: '40px', height: '40px'}} onClick={increaseQty} disabled={buyQuantity >= stock}>
+                                <Plus size={16} />
+                            </Button>
+                        </div>
+                        <div className="mt-2 text-muted small">
+                            Max available: {stock}
+                        </div>
+                        <div className="mt-3 fw-bold">
+                            Total: <span className="text-primary">₱{(product.price * buyQuantity).toLocaleString()}</span>
+                        </div>
+                    </Modal.Body>
+                    <Modal.Footer className="border-0 justify-content-center pb-4">
+                        <Button variant="outline-secondary" className="px-4 rounded-pill" onClick={() => setShowBuyModal(false)}>Cancel</Button>
+                        <Button variant="primary" className="px-5 rounded-pill fw-bold" onClick={confirmBuyNow} disabled={isBuying}>
+                            {isBuying ? <Spinner size="sm" animation="border"/> : <>Checkout <CreditCard size={16} className="ms-2"/></>}
+                        </Button>
+                    </Modal.Footer>
+                </Modal>
             </Container>
         </div>
     );

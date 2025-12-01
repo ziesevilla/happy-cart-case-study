@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
-import { Card, Button } from 'react-bootstrap';
+import { Card, Button, Badge } from 'react-bootstrap'; // Added Badge
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Shirt, ShoppingBag, Check, Footprints, Glasses } from 'lucide-react';
+import { Shirt, ShoppingBag, Check, Footprints, Glasses, AlertCircle } from 'lucide-react'; // Added AlertCircle
 
 const ProductCard = ({ product, onAddToCart }) => {
     const { addToCart } = useCart();
     const { user } = useAuth();
     const navigate = useNavigate();
     const [isAdded, setIsAdded] = useState(false);
+
+    // 💡 STOCK LOGIC
+    const stock = product.stock || 0;
+    const isOutOfStock = stock === 0;
+    const isLowStock = stock > 0 && stock <= 5;
 
     // Helper: Choose icon based on Fashion Category
     const getProductIcon = (category) => {
@@ -18,13 +23,17 @@ const ProductCard = ({ product, onAddToCart }) => {
         switch(category) {
             case 'Clothing': return <Shirt {...props} />;
             case 'Shoes': return <Footprints {...props} />;
-            case 'Accessories': return <Glasses {...props} />; // Or ShoppingBag
+            case 'Accessories': return <Glasses {...props} />; 
             default: return <ShoppingBag {...props} />;
         }
     };
 
     const handleAddToCart = (e) => {
         e.stopPropagation(); 
+        
+        // Prevent adding if out of stock
+        if (isOutOfStock) return;
+
         if (!user) {
             alert("You must be logged in to add items to the cart!");
             navigate('/login');
@@ -42,12 +51,22 @@ const ProductCard = ({ product, onAddToCart }) => {
 
     return (
         <Card 
-            className="h-100 shadow-sm hover-shadow border-0 overflow-hidden" 
+            className={`h-100 shadow-sm hover-shadow border-0 overflow-hidden ${isOutOfStock ? 'opacity-75' : ''}`} 
             style={{ cursor: 'pointer' }}
             onClick={() => navigate(`/products/${product.id}`)} 
         >
             {/* Image Area */}
             <div className="position-relative">
+                {/* 💡 SOLD OUT OVERLAY */}
+                {isOutOfStock && (
+                    <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
+                         style={{ backgroundColor: 'rgba(255,255,255,0.6)', zIndex: 10 }}>
+                        <Badge bg="dark" className="px-3 py-2 fs-6 text-uppercase" style={{ letterSpacing: '2px' }}>
+                            Sold Out
+                        </Badge>
+                    </div>
+                )}
+
                 {product.image && !product.image.includes('via.placeholder') ? (
                     <div 
                         style={{ 
@@ -55,12 +74,12 @@ const ProductCard = ({ product, onAddToCart }) => {
                             backgroundImage: `url(${product.image})`,
                             backgroundSize: 'cover',
                             backgroundPosition: 'top center',
-                            transition: 'transform 0.5s ease'
+                            transition: 'transform 0.5s ease',
+                            filter: isOutOfStock ? 'grayscale(100%)' : 'none' // Grayscale if sold out
                         }}
                         className="card-img-top"
                     />
                 ) : (
-                    // Fallback if image is a placeholder or missing
                     <div 
                         className="d-flex align-items-center justify-content-center" 
                         style={{ 
@@ -72,6 +91,7 @@ const ProductCard = ({ product, onAddToCart }) => {
                     </div>
                 )}
                 
+                {/* Category Badge */}
                 {product.category && (
                     <span 
                         className="position-absolute top-0 start-0 m-3 px-3 py-1 fw-bold rounded-pill small shadow-sm"
@@ -95,18 +115,27 @@ const ProductCard = ({ product, onAddToCart }) => {
                     <span className="text-primary fw-bold">₱{product.price.toLocaleString()}</span>
                 </div>
                 
+                {/* 💡 LOW STOCK INDICATOR */}
+                {isLowStock && !isOutOfStock && (
+                     <div className="d-flex align-items-center text-danger small fw-bold mb-2 animate-pulse">
+                        <AlertCircle size={14} className="me-1"/> Only {stock} left!
+                     </div>
+                )}
+
                 <Card.Text className="text-muted small mb-4 line-clamp-2">
                     {product.description}
                 </Card.Text>
                 
                 <div className="mt-auto">
                     <Button 
-                        variant={isAdded ? "success" : "outline-primary"} 
+                        variant={isAdded ? "success" : (isOutOfStock ? "secondary" : "outline-primary")} 
                         className={`w-100 rounded-pill fw-bold transition-all ${isAdded ? 'text-white border-success' : ''}`}
                         onClick={handleAddToCart}
-                        disabled={isAdded}
+                        disabled={isAdded || isOutOfStock} // 💡 DISABLE IF NO STOCK
                     >
-                        {isAdded ? (
+                        {isOutOfStock ? (
+                            "SOLD OUT"
+                        ) : isAdded ? (
                             <><Check size={18} className="me-2"/> ADDED</>
                         ) : (
                             "ADD TO CART"
