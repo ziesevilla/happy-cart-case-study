@@ -5,62 +5,88 @@ const OrderContext = createContext();
 export const OrderProvider = ({ children }) => {
     const [orders, setOrders] = useState(() => {
         try {
-            const saved = localStorage.getItem('happyCart_orders_v2');
+            // 💡 Changed Key to v3 to force a reset of the data
+            const saved = localStorage.getItem('happyCart_orders_v3');
             return saved ? JSON.parse(saved) : [
-                // INITIAL MOCK DATA (Rich data for both Admin and Customer views)
+                // --- MOCK DATA SYNCED WITH FASHION INVENTORY ---
                 { 
                     id: 'ORD-001', 
                     customerName: 'John Doe',
-                    email: 'user@example.com', // Links to the customer account
+                    email: 'user@example.com',
                     date: 'Oct 12, 2023', 
-                    total: 1299.00, 
+                    total: 110.00, // Matched total
                     status: 'Delivered',
                     itemsCount: 2,
                     shippingAddress: { name: 'John Doe', street: '123 Acacia Ave', city: 'Makati', zip: '1200' },
                     details: [ 
-                        { id: 1, name: 'Floral Summer Dress', price: 899.00, qty: 1, image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?q=80&w=100' }, 
-                        { id: 7, name: 'Gold Layered Necklace', price: 400.00, qty: 1, image: 'https://images.unsplash.com/photo-1599643478518-17488fbbcd75?q=80&w=100' } 
+                        // ID 1: Vintage Denim Jacket ($85)
+                        { id: 1, name: 'Vintage Wash Denim Jacket', price: 85.00, qty: 1, image: '' }, 
+                        // ID 2: Crewneck Tee ($25)
+                        { id: 2, name: 'Essential Crewneck T-Shirt', price: 25.00, qty: 1, image: '' } 
                     ]
                 },
                 { 
                     id: 'ORD-002', 
-                    customerName: 'John Doe',
-                    email: 'user@example.com',
+                    customerName: 'Jane Smith',
+                    email: 'jane@example.com',
                     date: 'Nov 05, 2023', 
-                    total: 599.50, 
+                    total: 65.00, 
                     status: 'Shipped', 
                     itemsCount: 1,
-                    shippingAddress: { name: 'John Doe', street: '123 Acacia Ave', city: 'Makati', zip: '1200' },
-                    details: [ { id: 5, name: 'White Leather Sneakers', price: 599.50, qty: 1, image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?q=80&w=100' } ]
+                    shippingAddress: { name: 'Jane Smith', street: '456 Mango St', city: 'Cebu', zip: '6000' },
+                    details: [ 
+                        // ID 6: Urban Canvas High-Tops ($65)
+                        { id: 6, name: 'Urban Canvas High-Tops', price: 65.00, qty: 1, image: '' } 
+                    ]
                 },
                 { 
                     id: 'ORD-003', 
-                    customerName: 'Jane Smith',
-                    email: 'jane@example.com',
+                    customerName: 'Michael Scott',
+                    email: 'michael@dundermifflin.com',
                     date: 'Nov 20, 2023', 
-                    total: 2100.00, 
+                    total: 165.00, 
                     status: 'Processing', 
                     itemsCount: 3,
-                    shippingAddress: { name: 'Jane Smith', street: '456 Mango St', city: 'Cebu', zip: '6000' },
-                    details: [ { id: 3, name: 'High-Waist Mom Jeans', price: 700.00, qty: 2, image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=100' } ]
+                    shippingAddress: { name: 'Michael Scott', street: '1725 Slough Ave', city: 'Scranton', zip: '18505' },
+                    details: [ 
+                        // ID 3: Chino Pants ($55 x 3 = $165)
+                        { id: 3, name: 'Slim-Fit Chino Pants', price: 55.00, qty: 3, image: '' } 
+                    ]
                 },
                 {
                     id: 'ORD-004',
                     customerName: 'Rachel Zane',
                     email: 'rachel@example.com',
                     date: 'Nov 22, 2023',
-                    total: 4999.00,
+                    total: 150.00,
                     status: 'Placed',
                     itemsCount: 1,
                     shippingAddress: { name: 'Rachel Zane', street: '789 Pearson Hardman', city: 'Taguig', zip: '1630' },
-                    details: [ { id: 8, name: 'Classic Trench Coat', price: 4999.00, qty: 1, image: 'https://images.unsplash.com/photo-1544923246-77307dd654cb?q=80&w=100' } ]
+                    details: [ 
+                        // ID 11: Aviator Sunglasses ($150)
+                        { id: 11, name: 'Polarized Aviator Sunglasses', price: 150.00, qty: 1, image: '' } 
+                    ]
+                },
+                {
+                    id: 'ORD-005',
+                    customerName: 'Dwight Schrute',
+                    email: 'dwight@dundermifflin.com',
+                    date: 'Nov 25, 2023',
+                    total: 180.00,
+                    status: 'Cancelled',
+                    itemsCount: 1,
+                    shippingAddress: { name: 'Dwight Schrute', street: 'Schrute Farms', city: 'Honesdale', zip: '18431' },
+                    details: [ 
+                        // ID 12: Leather Watch ($180)
+                        { id: 12, name: 'Minimalist Leather Watch', price: 180.00, qty: 1, image: '' } 
+                    ]
                 }
             ];
         } catch (error) { return []; }
     });
 
     useEffect(() => {
-        localStorage.setItem('happyCart_orders_v2', JSON.stringify(orders));
+        localStorage.setItem('happyCart_orders_v3', JSON.stringify(orders));
     }, [orders]);
 
     // --- ACTIONS ---

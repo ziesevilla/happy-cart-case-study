@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import ProfileSidebar from '../components/account/ProfileSidebar';
 import OrdersTab from '../components/account/OrdersTab';
 import AddressTab from '../components/account/AddressTab';
-import AdminDashboard from '../components/admin/AdminDashboard'; // NEW IMPORT
+import AdminDashboard from '../components/admin/AdminDashboard'; 
 import './Account.css';
 
 const Account = () => {
