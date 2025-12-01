@@ -1,25 +1,29 @@
 import React, { useState } from 'react';
-import { Button, Modal, Form, Alert } from 'react-bootstrap';
+import { Button, Modal, Form, Alert, Pagination } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { Package, Check, CheckCircle, ShoppingBag, RotateCcw, XCircle, AlertTriangle, Info, UploadCloud, ArrowUpDown, Star } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext'; 
 import { useReviews } from '../../context/ReviewContext'; 
-import { useOrders } from '../../context/OrderContext'; // 💡 NEW IMPORT
+import { useOrders } from '../../context/OrderContext'; 
 import ReviewModal from '../ReviewModal'; 
 
 const OrdersTab = ({ showNotification }) => {
     const { user } = useAuth(); 
-    const { orders: globalOrders, updateOrderStatus } = useOrders(); // 💡 CONSUME CONTEXT
-    const { hasReviewed } = useReviews(); 
+    const { orders: globalOrders, updateOrderStatus } = useOrders(); 
+    const { hasReviewed, canUserReview } = useReviews(); 
+    
     const navigate = useNavigate();
     
-    // 💡 FILTER ORDERS FOR CURRENT USER
     const userOrders = globalOrders.filter(order => order.email === user?.email);
 
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [sortOption, setSortOption] = useState('date-desc'); 
     
+    // --- PAGINATION STATE ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5; 
+
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showReturnModal, setShowReturnModal] = useState(false);
     const [returnReason, setReturnReason] = useState('');
@@ -27,7 +31,6 @@ const OrdersTab = ({ showNotification }) => {
     const [returnProof, setReturnProof] = useState(null);
     const [selectedReturnItems, setSelectedReturnItems] = useState({});
 
-    // Review State
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [reviewProduct, setReviewProduct] = useState(null);
 
@@ -61,7 +64,6 @@ const OrdersTab = ({ showNotification }) => {
     const handleCancelClick = () => setShowCancelModal(true);
     
     const handleConfirmCancel = () => {
-        // 💡 USE CONTEXT ACTION
         updateOrderStatus(selectedOrder.id, 'Cancelled');
         setShowCancelModal(false);
         setShowOrderModal(false);
@@ -77,7 +79,6 @@ const OrdersTab = ({ showNotification }) => {
 
     const handleSubmitReturn = (e) => {
         e.preventDefault();
-        // 💡 USE CONTEXT ACTION
         updateOrderStatus(selectedOrder.id, 'Return Requested');
         setShowReturnModal(false);
         showNotification("Return request submitted!");
@@ -91,6 +92,11 @@ const OrdersTab = ({ showNotification }) => {
     };
 
     const handleReviewClick = (item) => {
+        const check = canUserReview(item.id);
+        if (!check.allowed) {
+            showNotification(check.reason, "warning");
+            return;
+        }
         setReviewProduct(item);
         setShowReviewModal(true);
     };
@@ -106,17 +112,60 @@ const OrdersTab = ({ showNotification }) => {
         }
     });
 
+    // --- PAGINATION LOGIC ---
+    const indexOfLastOrder = currentPage * itemsPerPage;
+    const indexOfFirstOrder = indexOfLastOrder - itemsPerPage;
+    const currentOrders = sortedOrders.slice(indexOfFirstOrder, indexOfLastOrder);
+    const totalPages = Math.ceil(sortedOrders.length / itemsPerPage);
+
+    const handlePageChange = (pageNumber) => {
+        setCurrentPage(pageNumber);
+        // window.scrollTo({ top: 0, behavior: 'smooth' }); 
+    };
+
     return (
         <div className="animate-fade-in">
-            <div className="d-flex justify-content-end mb-3">
-                <div className="d-flex align-items-center gap-2">
+            
+            {/* 💡 HEADER ROW: Contains Pagination (Left) and Sort (Right) */}
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+                
+                {/* LEFT: PAGINATION */}
+                <div className="order-2 order-md-1">
+                    {totalPages > 1 && (
+                        <Pagination className="mb-0">
+                            <Pagination.Prev 
+                                disabled={currentPage === 1} 
+                                onClick={() => handlePageChange(currentPage - 1)} 
+                            />
+                            {[...Array(totalPages)].map((_, idx) => (
+                                <Pagination.Item 
+                                    key={idx + 1} 
+                                    active={idx + 1 === currentPage} 
+                                    onClick={() => handlePageChange(idx + 1)}
+                                >
+                                    {idx + 1}
+                                </Pagination.Item>
+                            ))}
+                            <Pagination.Next 
+                                disabled={currentPage === totalPages} 
+                                onClick={() => handlePageChange(currentPage + 1)} 
+                            />
+                        </Pagination>
+                    )}
+                </div>
+
+                {/* RIGHT: SORT CONTROLS */}
+                <div className="d-flex align-items-center gap-2 order-1 order-md-2 ms-auto">
                     <ArrowUpDown size={16} className="text-muted" />
                     <Form.Select 
                         size="sm" 
                         className="rounded-pill border-0 bg-light" 
-                        style={{width: 'auto', minWidth: '150px'}}
+                        style={{width: 'auto', minWidth: '200px'}}
                         value={sortOption}
-                        onChange={(e) => setSortOption(e.target.value)}
+                        onChange={(e) => {
+                            setSortOption(e.target.value);
+                            setCurrentPage(1); 
+                        }}
                     >
                         <option value="date-desc">Date: Newest First</option>
                         <option value="date-asc">Date: Oldest First</option>
@@ -127,8 +176,9 @@ const OrdersTab = ({ showNotification }) => {
                 </div>
             </div>
 
+            {/* ORDER LIST */}
             <div className="d-flex flex-column gap-3">
-                {sortedOrders.length > 0 ? sortedOrders.map((order, idx) => (
+                {currentOrders.length > 0 ? currentOrders.map((order, idx) => (
                     <div key={idx} className="order-card p-4 d-flex flex-column flex-md-row justify-content-between align-items-center">
                         <div className="d-flex align-items-center gap-4 mb-3 mb-md-0">
                             <div className="bg-light p-3 rounded-3"><Package size={24} className="text-muted"/></div>
@@ -316,6 +366,7 @@ const OrdersTab = ({ showNotification }) => {
                 </Modal.Body>
             </Modal>
 
+            {/* REVIEW MODAL */}
             {reviewProduct && (
                 <ReviewModal 
                     show={showReviewModal} 

@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
 import { Card, Button, Modal, Form, Row, Col } from 'react-bootstrap';
-import { Settings, LogOut, Camera, User, Package, Save } from 'lucide-react';
+// 💡 Added DollarSign, Star, Award to imports
+import { Settings, LogOut, Camera, User, Package, Save, DollarSign, Star, Award } from 'lucide-react'; 
 import { useAuth } from '../../context/AuthContext';
 
-const ProfileSidebar = ({ showNotification }) => {
+const ProfileSidebar = ({ 
+    showNotification, 
+    orderCount = 0, 
+    totalSpent = 0, 
+    reviewCount = 0, 
+    memberTier = 'Bronze' 
+}) => {
     const { user, login, logout } = useAuth();
     const [profileImage, setProfileImage] = useState(null);
     
@@ -37,7 +44,6 @@ const ProfileSidebar = ({ showNotification }) => {
 
     const handleSaveProfile = (e) => {
         e.preventDefault();
-        // Open confirmation modal instead of saving immediately
         setShowUpdateConfirmModal(true);
     };
 
@@ -83,13 +89,40 @@ const ProfileSidebar = ({ showNotification }) => {
 
             <Card className="border-0 shadow-sm rounded-4 p-4">
                  <h6 className="fw-bold text-muted mb-3 text-uppercase small">Account Details</h6>
+                 
+                 {/* Member Since */}
                  <div className="d-flex align-items-center mb-3">
                     <div className="bg-light p-2 rounded-circle me-3"><User size={20} className="text-primary"/></div>
                     <div><small className="d-block text-muted">Member Since</small><strong>October 2023</strong></div>
                  </div>
-                 <div className="d-flex align-items-center">
+
+                 {/* Order Count */}
+                 <div className="d-flex align-items-center mb-3">
                     <div className="bg-light p-2 rounded-circle me-3"><Package size={20} className="text-primary"/></div>
-                    <div><small className="d-block text-muted">Total Orders</small><strong>3 Orders</strong></div>
+                    <div><small className="d-block text-muted">Total Orders</small><strong>{orderCount} Orders</strong></div>
+                 </div>
+
+                 {/* Total Spent */}
+                 <div className="d-flex align-items-center mb-3">
+                    <div className="bg-light p-2 rounded-circle me-3"><DollarSign size={20} className="text-primary"/></div>
+                    <div><small className="d-block text-muted">Total Spent</small><strong>₱{totalSpent.toLocaleString()}</strong></div>
+                 </div>
+
+                 {/* Reviews Written */}
+                 <div className="d-flex align-items-center mb-3">
+                    <div className="bg-light p-2 rounded-circle me-3"><Star size={20} className="text-primary"/></div>
+                    <div><small className="d-block text-muted">Reviews</small><strong>{reviewCount} Written</strong></div>
+                 </div>
+
+                 {/* Loyalty Tier */}
+                 <div className="d-flex align-items-center">
+                    <div className="bg-light p-2 rounded-circle me-3"><Award size={20} className="text-warning"/></div>
+                    <div>
+                        <small className="d-block text-muted">Status</small>
+                        <strong className={memberTier === 'Platinum' ? 'text-info' : memberTier === 'Gold' ? 'text-warning' : 'text-dark'}>
+                            {memberTier} Member
+                        </strong>
+                    </div>
                  </div>
             </Card>
 

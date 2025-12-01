@@ -109,7 +109,6 @@ const AddressTab = () => {
     return (
         <div className="animate-fade-in">
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <h5 className="mb-0 fw-bold">Saved Addresses</h5>
                 <Button variant="primary" size="sm" className="rounded-pill" onClick={openAddModal}>
                     <Plus size={16} className="me-2"/> Add New
                 </Button>
