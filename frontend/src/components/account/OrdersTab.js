@@ -1,61 +1,21 @@
 import React, { useState } from 'react';
 import { Button, Modal, Form, Alert } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom'; // Import navigation hook
-import { Package, Check, CheckCircle, Clock, Truck, ShoppingBag, RotateCcw, XCircle, AlertTriangle, Info, UploadCloud, ArrowUpDown, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Package, Check, CheckCircle, ShoppingBag, RotateCcw, XCircle, AlertTriangle, Info, UploadCloud, ArrowUpDown, Star } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext'; 
 import { useReviews } from '../../context/ReviewContext'; 
+import { useOrders } from '../../context/OrderContext'; // 💡 NEW IMPORT
 import ReviewModal from '../ReviewModal'; 
 
-const INITIAL_ORDERS = [
-    { 
-        id: 'ORD-004', 
-        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), 
-        itemsCount: 1, 
-        total: 15449.00, 
-        status: 'Placed', 
-        // FIXED: Classic Trench Coat is ID 8 in products.js (was 401)
-        details: [ { id: 8, name: 'Classic Trench Coat', price: 4999.00, qty: 1, image: 'https://images.unsplash.com/photo-1544923246-77307dd654cb?auto=format&fit=crop&w=100' } ]
-    },
-    { 
-        id: 'ORD-001', 
-        date: 'Oct 12, 2023', 
-        itemsCount: 2, 
-        total: 1299.00, 
-        status: 'Delivered', 
-        // FIXED: Floral Dress is ID 1, Necklace is ID 7 (were 101, 102)
-        details: [ 
-            { id: 1, name: 'Floral Summer Dress', price: 899.00, qty: 1, image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=100' }, 
-            { id: 7, name: 'Gold Layered Necklace', price: 400.00, qty: 1, image: 'https://images.unsplash.com/photo-1599643478518-17488fbbcd75?auto=format&fit=crop&w=100' } 
-        ]
-    },
-    { 
-        id: 'ORD-002', 
-        date: 'Nov 05, 2023', 
-        itemsCount: 1, 
-        total: 599.50, 
-        status: 'Shipped', 
-        // FIXED: Sneakers is ID 5 (was 201)
-        details: [ { id: 5, name: 'White Leather Sneakers', price: 599.50, qty: 1, image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=100' } ]
-    },
-    { 
-        id: 'ORD-003', 
-        date: 'Nov 20, 2023', 
-        itemsCount: 3, 
-        total: 2100.00, 
-        status: 'Processing', 
-        // FIXED: Mom Jeans is ID 3, Sweater is ID 4 (were 301, 302)
-        details: [ 
-            { id: 3, name: 'High-Waist Mom Jeans', price: 700.00, qty: 2, image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=100' },
-            { id: 4, name: 'Cropped Knit Sweater', price: 700.00, qty: 1, image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=100' }
-        ]
-    }
-];
-
 const OrdersTab = ({ showNotification }) => {
-    const { orders: globalOrders, updateOrder } = useAuth(); 
+    const { user } = useAuth(); 
+    const { orders: globalOrders, updateOrderStatus } = useOrders(); // 💡 CONSUME CONTEXT
     const { hasReviewed } = useReviews(); 
-    const navigate = useNavigate(); // Initialize navigation
+    const navigate = useNavigate();
     
+    // 💡 FILTER ORDERS FOR CURRENT USER
+    const userOrders = globalOrders.filter(order => order.email === user?.email);
+
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [sortOption, setSortOption] = useState('date-desc'); 
@@ -101,7 +61,8 @@ const OrdersTab = ({ showNotification }) => {
     const handleCancelClick = () => setShowCancelModal(true);
     
     const handleConfirmCancel = () => {
-        updateOrder(selectedOrder.id, 'Cancelled');
+        // 💡 USE CONTEXT ACTION
+        updateOrderStatus(selectedOrder.id, 'Cancelled');
         setShowCancelModal(false);
         setShowOrderModal(false);
         showNotification("Order cancelled successfully", "secondary");
@@ -116,7 +77,8 @@ const OrdersTab = ({ showNotification }) => {
 
     const handleSubmitReturn = (e) => {
         e.preventDefault();
-        updateOrder(selectedOrder.id, 'Return Requested');
+        // 💡 USE CONTEXT ACTION
+        updateOrderStatus(selectedOrder.id, 'Return Requested');
         setShowReturnModal(false);
         showNotification("Return request submitted!");
     };
@@ -128,15 +90,12 @@ const OrdersTab = ({ showNotification }) => {
         }));
     };
 
-    // Handle Review Click
     const handleReviewClick = (item) => {
         setReviewProduct(item);
         setShowReviewModal(true);
     };
 
-    const displayOrders = globalOrders.length > 0 ? globalOrders : INITIAL_ORDERS;
-
-    const sortedOrders = [...displayOrders].sort((a, b) => {
+    const sortedOrders = [...userOrders].sort((a, b) => {
         switch (sortOption) {
             case 'date-desc': return new Date(b.date) - new Date(a.date);
             case 'date-asc': return new Date(a.date) - new Date(b.date);
@@ -189,9 +148,11 @@ const OrdersTab = ({ showNotification }) => {
                         </div>
                     </div>
                 )) : (
-                    <div className="empty-state">
+                    <div className="empty-state text-center py-5">
                         <ShoppingBag size={48} className="mb-3 opacity-25" />
                         <h5>No orders yet</h5>
+                        <p className="text-muted">Looks like you haven't made any purchases yet.</p>
+                        <Button variant="primary" className="rounded-pill mt-3" onClick={() => navigate('/products')}>Start Shopping</Button>
                     </div>
                 )}
             </div>
@@ -245,8 +206,8 @@ const OrdersTab = ({ showNotification }) => {
                                         <div 
                                             key={idx} 
                                             className="d-flex align-items-center justify-content-between order-detail-item p-3 rounded-3"
-                                            onClick={() => navigate(`/products/${item.id}`)} // Add navigation
-                                            style={{ cursor: 'pointer' }} // Add pointer cursor
+                                            onClick={() => navigate(`/products/${item.id}`)} 
+                                            style={{ cursor: 'pointer' }} 
                                             title="View Product Details"
                                         >
                                             <div className="d-flex align-items-center gap-3">
@@ -255,7 +216,6 @@ const OrdersTab = ({ showNotification }) => {
                                                     <h6 className="mb-0 fw-bold small">{item.name}</h6>
                                                     <small className="text-muted">Qty: {item.qty}</small>
                                                     
-                                                    {/* CONDITIONAL REVIEW BUTTON */}
                                                     {selectedOrder.status === 'Delivered' && (
                                                         <div className="mt-1">
                                                             {isReviewed ? (
@@ -265,8 +225,8 @@ const OrdersTab = ({ showNotification }) => {
                                                             ) : (
                                                                 <div 
                                                                     className="text-primary small fw-bold d-flex align-items-center" 
-                                                                    style={{cursor: 'pointer', zIndex: 10}} // Ensure it's above parent click
-                                                                    onClick={(e) => { e.stopPropagation(); handleReviewClick(item); }} // Stop propagation
+                                                                    style={{cursor: 'pointer', zIndex: 10}} 
+                                                                    onClick={(e) => { e.stopPropagation(); handleReviewClick(item); }} 
                                                                 >
                                                                     <Star size={12} className="me-1" /> Write a Review
                                                                 </div>
@@ -295,7 +255,7 @@ const OrdersTab = ({ showNotification }) => {
                 </Modal.Body>
             </Modal>
 
-            {/* OTHER MODALS (Cancel, Return, Review) */}
+            {/* CANCEL CONFIRMATION MODAL */}
             <Modal show={showCancelModal} onHide={() => setShowCancelModal(false)} centered size="sm">
                 <Modal.Body className="text-center p-4">
                     <div className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{width:'60px', height:'60px'}}><AlertTriangle size={24} className="text-danger" /></div>
@@ -308,6 +268,7 @@ const OrdersTab = ({ showNotification }) => {
                 </Modal.Body>
             </Modal>
             
+            {/* RETURN REQUEST MODAL */}
             <Modal show={showReturnModal} onHide={() => setShowReturnModal(false)} centered size="lg">
                 <Modal.Header closeButton className="border-0"><Modal.Title className="fw-bold">Request Return</Modal.Title></Modal.Header>
                 <Modal.Body className="px-4 pb-4">
