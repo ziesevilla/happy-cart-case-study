@@ -2,13 +2,12 @@ import React from 'react';
 import { Container } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Twitter, Youtube, Mail, MapPin, Phone, CreditCard, Lock, Smartphone } from 'lucide-react';
-import { useAuth } from '../context/AuthContext'; // Import Auth Context
+import { useAuth } from '../context/AuthContext'; 
 import './FootNav.css';
 
 const Footer = () => {
-    const { user } = useAuth(); // Get user status
+    const { user } = useAuth(); 
 
-    // Helper to determine link path based on auth
     const getAuthLink = (path) => {
         return user ? path : '/login';
     };
@@ -31,11 +30,11 @@ const Footer = () => {
                     <div className="footer-col">
                         <h6>SHOP</h6>
                         <ul>
-                            <li><Link to="/products">New Arrivals</Link></li>
-                            <li><Link to="/products">Best Sellers</Link></li>
-                            <li><Link to="/products">Women's Clothing</Link></li>
-                            <li><Link to="/products">Men's Clothing</Link></li>
-                            <li><Link to="/products">Accessories</Link></li>
+                            {/* 💡 UPDATED LINKS HERE */}
+                            <li><Link to="/products?collection=New">New Arrivals</Link></li>
+                            <li><Link to="/products?collection=Clothing">Clothing</Link></li>
+                            <li><Link to="/products?collection=Shoes">Shoes</Link></li>
+                            <li><Link to="/products?collection=Accessories">Accessories</Link></li>
                         </ul>
                     </div>
 
@@ -45,7 +44,7 @@ const Footer = () => {
                             <li><Link to="/help">Help Center</Link></li>
                             <li><Link to="/shipping">Shipping & Delivery</Link></li>
                             <li><Link to="/returns">Returns & Exchanges</Link></li>
-                            <li><Link to="/account">Track Your Order</Link></li> {/* Handled by Account/Login flow */}
+                            <li><Link to="/account">Track Your Order</Link></li> 
                         </ul>
                     </div>
 
@@ -53,7 +52,7 @@ const Footer = () => {
                         <h6>COMPANY</h6>
                         <ul>
                             <li><Link to="/about">About Happy Cart</Link></li>
-                            <li><Link to="/about">Sustainability</Link></li> {/* Reuse About or add new */}
+                            <li><Link to="/about">Sustainability</Link></li> 
                             <li><Link to="/about">Press & Media</Link></li>
                             <li><Link to="/privacy">Privacy Policy</Link></li>
                             <li><Link to="/terms">Terms of Service</Link></li>
@@ -63,10 +62,9 @@ const Footer = () => {
                     <div className="footer-col">
                         <h6>MY ACCOUNT</h6>
                         <ul>
-                            {/* Conditional Links */}
                             <li><Link to={getAuthLink('/account')}>My Profile</Link></li>
                             <li><Link to={getAuthLink('/account')}>Order History</Link></li>
-                            <li><Link to="/cart">My Shopping Bag</Link></li> {/* Cart is public */}
+                            <li><Link to="/cart">My Shopping Bag</Link></li> 
                             {!user && <li><Link to="/login">Login / Register</Link></li>}
                         </ul>
                     </div>

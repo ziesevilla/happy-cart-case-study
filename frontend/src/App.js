@@ -29,7 +29,8 @@ import Account from './pages/Account';
 import Confirmation from './pages/Confirmation';
 
 // Info Pages
-import { About, Shipping, Returns, Privacy, Terms, HelpCenter } from './pages/InfoPages';
+// 💡 Updated imports to include Sustainability and Press
+import { About, Shipping, Returns, Privacy, Terms, HelpCenter, Sustainability, Press } from './pages/InfoPages';
 
 const Layout = () => {
   const location = useLocation();
@@ -58,6 +59,10 @@ const Layout = () => {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/help" element={<HelpCenter />} />
+          
+          {/* 💡 NEW ROUTES ADDED HERE */}
+          <Route path="/sustainability" element={<Sustainability />} />
+          <Route path="/press" element={<Press />} />
         </Routes>
       </main>
 
