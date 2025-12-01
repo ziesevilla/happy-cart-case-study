@@ -2,7 +2,7 @@ import React from 'react';
 import { Container, Button } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 import { Check, ShoppingBag, ArrowRight, FileText } from 'lucide-react';
-import './Confirmation.css';
+import './styles/Confirmation.css';
 
 const Confirmation = () => {
     const location = useLocation();
@@ -68,7 +68,7 @@ const Confirmation = () => {
                         
                         <Button 
                             as={Link} 
-                            to="/products" 
+                            to="/products?collection=New" /* 💡 CHANGED LINK HERE */
                             variant="primary" 
                             className="rounded-pill py-3 fw-bold shadow-sm"
                         >

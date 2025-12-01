@@ -4,7 +4,7 @@ import { Search, SlidersHorizontal, X, Clock } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom'; 
 import ProductCard from '../components/ProductCard';
 import { useProducts } from '../context/ProductContext'; 
-import './Products.css';
+import './styles/Products.css';
 
 const Products = () => {
     const { products: ALL_PRODUCTS } = useProducts(); 
