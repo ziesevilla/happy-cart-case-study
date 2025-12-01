@@ -26,19 +26,23 @@ const Login = () => {
 
         // Simulate API delay
         setTimeout(() => {
+            // 💡 FIX: Added 'id' property to match AddressContext data
             if (email === "admin@example.com" && password === "password") {
-                login({ name: "Admin User", email: email, role: "admin" });
+                // Admin is User ID 3 in your dummy data
+                login({ id: 3, name: "Admin User", email: email, role: "admin" }); 
                 navigate('/account');
-            } else if (email === "user@example.com" && password === "password") {
-                login({ name: "John Doe", email: email, role: "customer" });
+            } 
+            else if (email === "user@example.com" && password === "password") {
+                // John Doe is User ID 1 in your dummy data
+                login({ id: 1, name: "John Doe", email: email, role: "customer" }); 
                 navigate('/account');
-            } else {
+            } 
+            else {
                 setError("Invalid credentials. Try user@example.com / password");
                 setLoading(false);
             }
         }, 1500);
     };
-
     const handleResetPassword = (e) => {
         e.preventDefault();
         alert(`Password reset link sent to ${resetEmail}`);
