@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Form, Button, Alert, FloatingLabel } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Check, X, Chrome, Facebook } from 'lucide-react';
-import './Auth.css';
+import './styles/Auth.css';
 
 const Register = () => {
     const [formData, setFormData] = useState({

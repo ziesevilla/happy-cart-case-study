@@ -3,7 +3,7 @@ import { Row, Col, Form, Button, Alert, Modal, FloatingLabel } from 'react-boots
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; 
 import { ArrowRight, Eye, EyeOff, Facebook, Chrome } from 'lucide-react';
-import './Auth.css';
+import './styles/Auth.css';
 
 const Login = () => {
     const [email, setEmail] = useState('');
