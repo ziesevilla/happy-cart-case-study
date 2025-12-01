@@ -115,9 +115,10 @@ export const AddressProvider = ({ children }) => {
         localStorage.setItem('happyCart_addresses_v3', JSON.stringify(addresses));
     }, [addresses]);
 
-    // --- HELPER: GET ADDRESSES FOR SPECIFIC USER ---
     const getUserAddresses = (userId) => {
-        return addresses.filter(addr => addr.userId === userId);
+        if (!userId) return []; 
+        // 💡 Convert both to String to ensure types match
+        return addresses.filter(addr => String(addr.userId) === String(userId));
     };
 
     // --- ACTIONS ---
