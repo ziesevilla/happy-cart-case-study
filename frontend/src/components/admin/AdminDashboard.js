@@ -87,9 +87,6 @@ const AdminDashboard = () => {
                         <h2 className="fw-bold mb-1 text-dark">Admin Portal</h2>
                         <p className="text-muted">Overview and Management</p>
                     </div>
-                    <Button variant="danger" className="rounded-pill px-4 d-flex align-items-center" onClick={handleLogout}>
-                        <LogOut size={18} className="me-2" /> Logout
-                    </Button>
                 </div>
 
                 {/* KPI STATS ROW (DYNAMIC DATA) */}
@@ -168,7 +165,7 @@ const AdminDashboard = () => {
                                             eventKey="users" 
                                             className={`fw-bold py-3 d-flex align-items-center rounded-3 ${activeTab === 'users' ? 'text-white' : 'text-dark'}`}
                                         >
-                                            <Users size={18} className="me-3"/> Users
+                                            <Users size={18} className="me-3"/> Customers
                                         </Nav.Link>
                                     </Nav.Item>
                                     <Nav.Item className="mb-1">

@@ -1,17 +1,109 @@
 import React from 'react';
 import { Row, Col, Card, Button, Form } from 'react-bootstrap';
-import { Download, TrendingUp, Users, ShoppingBag } from 'lucide-react';
+import { Download, TrendingUp, Users, ShoppingBag, FileText } from 'lucide-react';
+import { useOrders } from '../../context/OrderContext';
+import { useProducts } from '../../context/ProductContext';
+import { useUsers } from '../../context/UserContext';
 
 const AdminReports = ({ showNotification }) => {
+    // 💡 CONSUME LIVE DATA
+    const { orders } = useOrders();
+    const { products } = useProducts();
+    const { users } = useUsers();
+
+    // --- HELPER: Convert JSON to CSV ---
+    const convertToCSV = (data) => {
+        if (!data || !data.length) return '';
+        const headers = Object.keys(data[0]).join(',');
+        const rows = data.map(obj => 
+            Object.values(obj).map(val => 
+                // Escape quotes and wrap strings in quotes to handle commas
+                `"${String(val).replace(/"/g, '""')}"`
+            ).join(',')
+        );
+        return [headers, ...rows].join('\n');
+    };
+
+    // --- HELPER: Trigger Download ---
+    const downloadCSV = (csvContent, fileName) => {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
+
     const handleGenerate = (type) => {
-        showNotification(`Generating ${type} Report... Download will start shortly.`);
+        showNotification(`Generating ${type} Report...`);
+        
+        let data = [];
+        let filename = `${type}_Report_${new Date().toISOString().slice(0,10)}.csv`;
+
+        switch(type) {
+            case 'Sales':
+                // Flatten order data for CSV
+                data = orders.map(o => ({
+                    OrderID: o.id,
+                    Customer: o.customerName,
+                    Date: o.date,
+                    Total: o.total,
+                    Status: o.status,
+                    Items: o.itemsCount
+                }));
+                break;
+            case 'Inventory':
+                data = products.map(p => ({
+                    ID: p.id,
+                    Name: p.name,
+                    Category: p.category,
+                    SubCategory: p.subCategory,
+                    Price: p.price,
+                    Stock: p.stock,
+                    DateAdded: p.dateAdded
+                }));
+                break;
+            case 'User Activity':
+                data = users.map(u => ({
+                    ID: u.id,
+                    Name: u.name,
+                    Email: u.email,
+                    Role: u.role,
+                    Status: u.status,
+                    Joined: u.joined
+                }));
+                break;
+            default:
+                return;
+        }
+
+        if (data.length > 0) {
+            const csv = convertToCSV(data);
+            downloadCSV(csv, filename);
+        } else {
+            showNotification("No data available to export.", "warning");
+        }
     };
 
     return (
         <div className="animate-fade-in">
-            <h4 className="fw-bold mb-4">Analytics & Reports</h4>
+            <div className="d-flex align-items-center mb-4">
+                <div className="bg-white p-2 rounded-circle shadow-sm me-3 border">
+                    <FileText size={24} className="text-primary"/>
+                </div>
+                <div>
+                    <h4 className="fw-bold mb-0">Reports</h4>
+                    <p className="text-muted small mb-0">Generate and export system data</p>
+                </div>
+            </div>
 
             <Row className="g-4">
+                {/* SALES REPORT */}
                 <Col md={4}>
                     <Card className="h-100 border-0 shadow-sm rounded-4">
                         <Card.Body className="p-4">
@@ -19,13 +111,13 @@ const AdminReports = ({ showNotification }) => {
                                 <TrendingUp size={24} className="me-2"/>
                                 <h5 className="mb-0 fw-bold">Sales Report</h5>
                             </div>
-                            <p className="text-muted small mb-4">Export detailed sales data including revenue, tax, and shipping costs.</p>
+                            <p className="text-muted small mb-4">Export detailed sales data including revenue, order status, and customer details.</p>
                             <Form.Group className="mb-3">
                                 <Form.Label className="small fw-bold text-muted">DATE RANGE</Form.Label>
                                 <Form.Select className="rounded-pill bg-light border-0">
-                                    <option>Last 7 Days</option>
-                                    <option>Last 30 Days</option>
-                                    <option>This Year</option>
+                                    <option>All Time</option>
+                                    <option disabled>Last 7 Days (Pro)</option>
+                                    <option disabled>Last 30 Days (Pro)</option>
                                 </Form.Select>
                             </Form.Group>
                             <Button variant="primary" className="w-100 rounded-pill" onClick={() => handleGenerate("Sales")}>
@@ -35,6 +127,7 @@ const AdminReports = ({ showNotification }) => {
                     </Card>
                 </Col>
 
+                {/* INVENTORY REPORT */}
                 <Col md={4}>
                     <Card className="h-100 border-0 shadow-sm rounded-4">
                         <Card.Body className="p-4">
@@ -42,16 +135,17 @@ const AdminReports = ({ showNotification }) => {
                                 <ShoppingBag size={24} className="me-2"/>
                                 <h5 className="mb-0 fw-bold">Inventory Report</h5>
                             </div>
-                            <p className="text-muted small mb-4">Current stock levels, low stock alerts, and product valuation.</p>
+                            <p className="text-muted small mb-4">Current stock levels, product valuation, and category breakdown.</p>
                             <div className="mt-auto">
                                 <Button variant="outline-success" className="w-100 rounded-pill mt-5" onClick={() => handleGenerate("Inventory")}>
-                                    <Download size={16} className="me-2"/> Download PDF
+                                    <Download size={16} className="me-2"/> Download CSV
                                 </Button>
                             </div>
                         </Card.Body>
                     </Card>
                 </Col>
 
+                {/* USER REPORT */}
                 <Col md={4}>
                     <Card className="h-100 border-0 shadow-sm rounded-4">
                         <Card.Body className="p-4">
@@ -59,7 +153,7 @@ const AdminReports = ({ showNotification }) => {
                                 <Users size={24} className="me-2"/>
                                 <h5 className="mb-0 fw-bold">User Activity</h5>
                             </div>
-                            <p className="text-muted small mb-4">New signups, active users, and customer retention metrics.</p>
+                            <p className="text-muted small mb-4">Detailed list of registered users, roles, status, and join dates.</p>
                             <div className="mt-auto">
                                 <Button variant="outline-info" className="w-100 rounded-pill mt-5" onClick={() => handleGenerate("User Activity")}>
                                     <Download size={16} className="me-2"/> Download CSV

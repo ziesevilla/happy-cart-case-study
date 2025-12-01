@@ -1,35 +1,198 @@
-import React, { useState } from 'react';
-import { Card, Button, Form, Row, Col, ListGroup } from 'react-bootstrap';
-import { Plus, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Card, Button, Form, Row, Col, ListGroup, Alert, InputGroup, Badge } from 'react-bootstrap';
+import { Plus, X, Save, RefreshCw, ShieldAlert, Settings as SettingsIcon, Tag, ToggleLeft, Store, Truck, Bell, Mail } from 'lucide-react';
+import { useProducts } from '../../context/ProductContext'; 
+import { useSettings } from '../../context/SettingsContext'; 
 
 const AdminSettings = ({ showNotification }) => {
-    const [categories, setCategories] = useState(['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 'Accessories']);
-    const [newCategory, setNewCategory] = useState('');
+    const { resetData } = useProducts(); 
+    
+    const { 
+        categories, 
+        addCategory, 
+        deleteCategory, 
+        settings, 
+        toggleSetting, 
+        resetSettings,
+        storeInfo,      
+        updateStoreInfo 
+    } = useSettings();
 
+    const [newCategory, setNewCategory] = useState('');
+    const [localStoreInfo, setLocalStoreInfo] = useState(storeInfo);
+
+    useEffect(() => {
+        setLocalStoreInfo(storeInfo);
+    }, [storeInfo]);
+
+    // --- HANDLERS ---
     const handleAddCategory = (e) => {
         e.preventDefault();
-        if (newCategory) {
-            setCategories([...categories, newCategory]);
-            setNewCategory('');
-            showNotification("Category added successfully!");
+        if (newCategory.trim()) {
+            const success = addCategory(newCategory.trim());
+            if (success) {
+                setNewCategory('');
+                showNotification("Category added successfully!");
+            } else {
+                showNotification("Category already exists.", "warning");
+            }
         }
     };
 
     const handleDeleteCategory = (cat) => {
-        if(window.confirm(`Delete category ${cat}?`)) {
-            setCategories(categories.filter(c => c !== cat));
+        if(window.confirm(`Delete category "${cat}"?`)) {
+            deleteCategory(cat);
+            showNotification("Category deleted.");
+        }
+    };
+
+    const handleSaveStoreInfo = (e) => {
+        e.preventDefault();
+        updateStoreInfo(localStoreInfo);
+        showNotification("Store settings saved successfully!");
+    };
+
+    const handleSystemReset = () => {
+        if (window.confirm("CRITICAL WARNING: This will wipe ALL data (Products, Orders, Settings). Are you sure?")) {
+            resetData(); 
+            resetSettings(); 
+            showNotification("System reset to factory defaults.", "danger");
         }
     };
 
     return (
         <div className="animate-fade-in">
-            <h4 className="fw-bold mb-4">System Settings</h4>
+            <div className="d-flex align-items-center mb-4">
+                <div className="bg-white p-2 rounded-circle shadow-sm me-3 border">
+                    <SettingsIcon size={24} className="text-primary"/>
+                </div>
+                <div>
+                    <h4 className="fw-bold mb-0">System Configuration</h4>
+                    <p className="text-muted small mb-0">Manage general settings, store preferences, and system defaults</p>
+                </div>
+            </div>
             
             <Row className="g-4">
-                <Col md={6}>
+                
+                {/* 💡 1. GENERAL STORE SETTINGS */}
+                <Col md={8}>
+                    <Card className="border-0 shadow-sm rounded-4 mb-4">
+                        <Card.Body className="p-4">
+                            <div className="d-flex align-items-center mb-4">
+                                <Store size={20} className="text-primary me-2" />
+                                <h5 className="fw-bold mb-0">General Store Information</h5>
+                            </div>
+                            
+                            <Form onSubmit={handleSaveStoreInfo}>
+                                <Row className="g-3">
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-muted">STORE NAME</Form.Label>
+                                            {/* 💡 UNIFIED PILL STYLE */}
+                                            <InputGroup className="border rounded-pill overflow-hidden bg-light">
+                                                <InputGroup.Text className="bg-transparent border-0 pe-0 text-muted">
+                                                    <Store size={18}/>
+                                                </InputGroup.Text>
+                                                <Form.Control 
+                                                    className="bg-transparent border-0 shadow-none ps-2" 
+                                                    value={localStoreInfo.name} 
+                                                    onChange={(e) => setLocalStoreInfo({...localStoreInfo, name: e.target.value})}
+                                                />
+                                            </InputGroup>
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-muted">SUPPORT EMAIL</Form.Label>
+                                            {/* 💡 UNIFIED PILL STYLE */}
+                                            <InputGroup className="border rounded-pill overflow-hidden bg-light">
+                                                <InputGroup.Text className="bg-transparent border-0 pe-0 text-muted">
+                                                    <Mail size={18}/>
+                                                </InputGroup.Text>
+                                                <Form.Control 
+                                                    className="bg-transparent border-0 shadow-none ps-2" 
+                                                    value={localStoreInfo.email} 
+                                                    onChange={(e) => setLocalStoreInfo({...localStoreInfo, email: e.target.value})}
+                                                />
+                                            </InputGroup>
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+                            </Form>
+                        </Card.Body>
+                    </Card>
+
+                    {/* 💡 2. SHIPPING & FINANCIALS */}
+                    <Card className="border-0 shadow-sm rounded-4 mb-4">
+                        <Card.Body className="p-4">
+                            <div className="d-flex align-items-center mb-4">
+                                <Truck size={20} className="text-primary me-2" />
+                                <h5 className="fw-bold mb-0">Shipping & Financials</h5>
+                            </div>
+                            
+                            <Row className="g-3">
+                                <Col md={4}>
+                                    <Form.Group>
+                                        <Form.Label className="small fw-bold text-muted">SHIPPING FEE</Form.Label>
+                                        {/* 💡 UNIFIED PILL STYLE */}
+                                        <InputGroup className="border rounded-pill overflow-hidden bg-light">
+                                            <InputGroup.Text className="bg-transparent border-0 pe-2 text-muted fw-bold">₱</InputGroup.Text>
+                                            <Form.Control 
+                                                type="number" 
+                                                className="bg-transparent border-0 shadow-none ps-0" 
+                                                value={localStoreInfo.shippingFee} 
+                                                onChange={(e) => setLocalStoreInfo({...localStoreInfo, shippingFee: e.target.value})} 
+                                            />
+                                        </InputGroup>
+                                    </Form.Group>
+                                </Col>
+                                <Col md={4}>
+                                    <Form.Group>
+                                        <Form.Label className="small fw-bold text-muted">FREE SHIPPING AT</Form.Label>
+                                        {/* 💡 UNIFIED PILL STYLE */}
+                                        <InputGroup className="border rounded-pill overflow-hidden bg-light">
+                                            <InputGroup.Text className="bg-transparent border-0 pe-2 text-muted fw-bold">₱</InputGroup.Text>
+                                            <Form.Control 
+                                                type="number" 
+                                                className="bg-transparent border-0 shadow-none ps-0" 
+                                                value={localStoreInfo.freeShippingThreshold} 
+                                                onChange={(e) => setLocalStoreInfo({...localStoreInfo, freeShippingThreshold: e.target.value})} 
+                                            />
+                                        </InputGroup>
+                                    </Form.Group>
+                                </Col>
+                                <Col md={4}>
+                                    <Form.Group>
+                                        <Form.Label className="small fw-bold text-muted">TAX RATE</Form.Label>
+                                        {/* 💡 UNIFIED PILL STYLE */}
+                                        <InputGroup className="border rounded-pill overflow-hidden bg-light">
+                                            <InputGroup.Text className="bg-transparent border-0 pe-2 text-muted fw-bold">%</InputGroup.Text>
+                                            <Form.Control 
+                                                type="number" 
+                                                className="bg-transparent border-0 shadow-none ps-0" 
+                                                value={localStoreInfo.taxRate} 
+                                                onChange={(e) => setLocalStoreInfo({...localStoreInfo, taxRate: e.target.value})} 
+                                            />
+                                        </InputGroup>
+                                    </Form.Group>
+                                </Col>
+                            </Row>
+                            <div className="mt-4 text-end">
+                                <Button variant="primary" className="rounded-pill fw-bold px-4" onClick={handleSaveStoreInfo}>
+                                    <Save size={16} className="me-2"/> Save Changes
+                                </Button>
+                            </div>
+                        </Card.Body>
+                    </Card>
+
+                    {/* 3. CATEGORY MANAGEMENT */}
                     <Card className="border-0 shadow-sm rounded-4">
                         <Card.Body className="p-4">
-                            <h5 className="fw-bold mb-3">Product Categories</h5>
+                            <div className="d-flex align-items-center mb-4">
+                                <Tag size={20} className="text-primary me-2" />
+                                <h5 className="fw-bold mb-0">Product Categories</h5>
+                            </div>
+                            
                             <Form onSubmit={handleAddCategory} className="d-flex gap-2 mb-4">
                                 <Form.Control 
                                     placeholder="New Category Name" 
@@ -37,33 +200,80 @@ const AdminSettings = ({ showNotification }) => {
                                     value={newCategory}
                                     onChange={(e) => setNewCategory(e.target.value)}
                                 />
-                                <Button type="submit" variant="primary" className="rounded-pill px-4"><Plus size={20}/></Button>
+                                <Button type="submit" variant="outline-primary" className="rounded-pill px-4 d-flex align-items-center">
+                                    <Plus size={18} className="me-1"/> Add
+                                </Button>
                             </Form>
                             
-                            <ListGroup variant="flush">
+                            <div className="d-flex flex-wrap gap-2">
                                 {categories.map(cat => (
-                                    <ListGroup.Item key={cat} className="d-flex justify-content-between align-items-center border-0 px-0">
+                                    <Badge key={cat} bg="light" text="dark" className="border px-3 py-2 d-flex align-items-center gap-2 rounded-pill">
                                         {cat}
-                                        <Button variant="link" size="sm" className="text-danger p-0" onClick={() => handleDeleteCategory(cat)}>
-                                            <X size={16}/>
-                                        </Button>
-                                    </ListGroup.Item>
+                                        <X size={14} className="text-muted cursor-pointer" style={{cursor:'pointer'}} onClick={() => handleDeleteCategory(cat)}/>
+                                    </Badge>
                                 ))}
-                            </ListGroup>
+                            </div>
                         </Card.Body>
                     </Card>
                 </Col>
 
-                <Col md={6}>
-                    <Card className="border-0 shadow-sm rounded-4">
+                {/* RIGHT COLUMN (Remains same structure, just ensuring consistency) */}
+                <Col md={4}>
+                    <Card className="border-0 shadow-sm rounded-4 mb-4">
                         <Card.Body className="p-4">
-                            <h5 className="fw-bold mb-3">Platform Settings</h5>
-                            <Form>
-                                <Form.Check type="switch" id="maintenance" label="Maintenance Mode" className="mb-3" />
-                                <Form.Check type="switch" id="registration" label="Allow User Registration" defaultChecked className="mb-3" />
-                                <Form.Check type="switch" id="reviews" label="Enable Product Reviews" defaultChecked className="mb-3" />
-                                <Button variant="dark" className="rounded-pill mt-3">Save Configuration</Button>
-                            </Form>
+                            <div className="d-flex align-items-center mb-4">
+                                <ToggleLeft size={20} className="text-primary me-2" />
+                                <h5 className="fw-bold mb-0">System Toggles</h5>
+                            </div>
+                            {/* Toggles remain as Form.Check, no input group needed here */}
+                            <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-3 border-dashed">
+                                <div>
+                                    <div className="fw-bold">Maintenance</div>
+                                    <small className="text-muted">Disable user access</small>
+                                </div>
+                                <Form.Check type="switch" checked={settings.maintenanceMode} onChange={() => toggleSetting('maintenanceMode')} />
+                            </div>
+                            <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-3 border-dashed">
+                                <div>
+                                    <div className="fw-bold">Sign Ups</div>
+                                    <small className="text-muted">Allow registrations</small>
+                                </div>
+                                <Form.Check type="switch" checked={settings.allowRegistration} onChange={() => toggleSetting('allowRegistration')} />
+                            </div>
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <div className="fw-bold">Reviews</div>
+                                    <small className="text-muted">Enable comments</small>
+                                </div>
+                                <Form.Check type="switch" checked={settings.enableReviews} onChange={() => toggleSetting('enableReviews')} />
+                            </div>
+                        </Card.Body>
+                    </Card>
+
+                    <Card className="border-0 shadow-sm rounded-4 mb-4">
+                        <Card.Body className="p-4">
+                            <div className="d-flex align-items-center mb-4">
+                                <Bell size={20} className="text-primary me-2" />
+                                <h5 className="fw-bold mb-0">Notifications</h5>
+                            </div>
+                            <Form.Check type="checkbox" label="Email on new order" defaultChecked className="mb-2 text-muted small" />
+                            <Form.Check type="checkbox" label="Email on low stock" defaultChecked className="mb-2 text-muted small" />
+                            <Form.Check type="checkbox" label="Email on new user signup" className="text-muted small" />
+                        </Card.Body>
+                    </Card>
+
+                    <Card className="border-danger shadow-sm rounded-4 bg-white">
+                        <Card.Body className="p-4">
+                            <div className="d-flex align-items-center gap-2 text-danger mb-3">
+                                <ShieldAlert size={20} />
+                                <h5 className="fw-bold mb-0">Danger Zone</h5>
+                            </div>
+                            <p className="small text-muted mb-3">
+                                Resetting the system will delete all custom products and restore default inventory.
+                            </p>
+                            <Button variant="outline-danger" className="w-100 rounded-pill fw-bold py-2" onClick={handleSystemReset}>
+                                <RefreshCw size={16} className="me-2"/> Factory Reset
+                            </Button>
                         </Card.Body>
                     </Card>
                 </Col>
