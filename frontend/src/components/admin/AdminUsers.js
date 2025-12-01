@@ -1,167 +1,327 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Button, Badge, Form, InputGroup, Dropdown, Pagination, Row, Col, Card } from 'react-bootstrap';
-import { Search, MoreVertical, UserX, Lock, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Package, LayoutList, Columns, User, Mail, Calendar, Phone, MapPin } from 'lucide-react';
-import { useUsers } from '../../context/UserContext'; // NEW IMPORT
+import React, { useState } from 'react';
+import { Table, Button, Form, InputGroup, Row, Col, Card, Badge, Tab, Nav } from 'react-bootstrap';
+import { Search, User, Mail, Calendar, DollarSign, ShoppingBag, CreditCard, ChevronRight, X, MapPin } from 'lucide-react';
+import { useUsers } from '../../context/UserContext';
+import { useOrders } from '../../context/OrderContext';
+import { useTransactions } from '../../context/TransactionContext';
+import { useAddress } from '../../context/AddressContext'; // 💡 1. NEW IMPORT
 
 const AdminUsers = ({ showNotification }) => {
-    const { users, updateUserStatus } = useUsers(); // USE GLOBAL CONTEXT
+    // CONSUME CONTEXTS
+    const { users, updateUserStatus } = useUsers();
+    const { orders } = useOrders();
+    const { transactions } = useTransactions();
+    const { getUserAddresses } = useAddress(); // 💡 2. CONSUME ADDRESS HOOK
+
     const [searchTerm, setSearchTerm] = useState('');
-    const [viewMode, setViewMode] = useState('list'); 
-    const [selectedUserId, setSelectedUserId] = useState(null);
-    
-    // ... (State and Logic generally same, just using 'users' from context) ...
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 8;
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+    const [selectedUser, setSelectedUser] = useState(null); 
+    const [activeDetailTab, setActiveDetailTab] = useState('history'); 
 
-    useEffect(() => {
-        if (viewMode === 'split' && !selectedUserId && users.length > 0) {
-            setSelectedUserId(users[0].id);
-        }
-    }, [viewMode, users, selectedUserId]);
-
-    // ... (Helpers same) ...
-    const handleSort = (key) => { /* ... */ };
-    const getSortIcon = (key) => { /* ... */ };
-
-    const handleStatusChange = (id, newStatus) => {
-        updateUserStatus(id, newStatus); // Use global update
-        showNotification(`User status updated to ${newStatus}`);
-    };
-
-    const handleResetPassword = (email) => {
-        if(window.confirm(`Send password reset link to ${email}?`)) {
-            showNotification(`Reset link sent to ${email}`);
-        }
-    };
-
-    // ... (Filtering/Sorting/Pagination logic identical) ...
+    // --- FILTER USERS LIST ---
     const filteredUsers = users.filter(u => 
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const sortedUsers = [...filteredUsers].sort((a, b) => {
-        // (Sorting logic same as before)
-        return 0; 
-    });
+    // --- DATA LOGIC FOR SELECTED USER ---
     
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = sortedUsers.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
-    const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
+    // 1. Get User Orders
+    const userOrders = selectedUser 
+        ? orders.filter(o => o.email === selectedUser.email).sort((a,b) => new Date(b.date) - new Date(a.date))
+        : [];
 
-    // (Rest of the render code is identical to previous version, just ensure it uses the functions above)
-    // I'll return the full component for safety:
-    
-    const renderSplitView = () => {
-        const activeUser = users.find(u => u.id === selectedUserId) || currentItems[0];
-        return (
-            <Row className="g-4">
-                {/* LEFT: Interactive List */}
-                <Col md={4}>
-                    <div className="bg-white rounded-4 shadow-sm border overflow-hidden d-flex flex-column" style={{height: '600px'}}>
-                        <div className="p-3 border-bottom bg-light"><small className="fw-bold text-muted text-uppercase">User Directory</small></div>
-                        <div className="overflow-auto flex-grow-1 p-2">
-                            {currentItems.map(user => (
-                                <div key={user.id} className={`d-flex align-items-center p-3 mb-2 rounded-3 cursor-pointer border transition-all ${selectedUserId === user.id ? 'border-primary bg-primary-subtle' : 'border-transparent hover-bg-light'}`} onClick={() => setSelectedUserId(user.id)} style={{ cursor: 'pointer' }}>
-                                    <div className={`rounded-circle d-flex align-items-center justify-content-center fw-bold me-3 ${selectedUserId === user.id ? 'bg-primary text-white' : 'bg-light text-dark'}`} style={{width:'40px', height:'40px'}}>{user.name.charAt(0)}</div>
-                                    <div className="flex-grow-1">
-                                        <div className="d-flex justify-content-between align-items-center"><h6 className="mb-0 fw-bold text-truncate" style={{maxWidth: '120px'}}>{user.name}</h6><Badge bg={user.status === 'Active' ? 'success' : 'danger'} style={{fontSize: '0.6rem'}}>{user.status}</Badge></div>
-                                        <small className="text-muted text-truncate d-block" style={{maxWidth: '150px'}}>{user.email}</small>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="p-3 border-top bg-light text-center">
-                            <Pagination size="sm" className="mb-0 justify-content-center"><Pagination.Prev onClick={() => handlePageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} /><span className="mx-2 my-auto small text-muted">Page {currentPage} of {totalPages}</span><Pagination.Next onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} /></Pagination>
-                        </div>
-                    </div>
-                </Col>
+    // 2. Get User Transactions
+    const userOrderIds = userOrders.map(o => o.id);
+    const userTransactions = selectedUser 
+        ? transactions.filter(t => userOrderIds.includes(t.orderId)).sort((a,b) => new Date(b.date) - new Date(a.date))
+        : [];
 
-                {/* RIGHT: Detailed Profile */}
-                <Col md={8}>
-                    {activeUser ? (
-                        <Card className="border-0 shadow-sm rounded-4 h-100">
-                            <Card.Body className="p-5 d-flex flex-column">
-                                <div className="d-flex justify-content-between align-items-start mb-4">
-                                    <div className="d-flex align-items-center">
-                                        <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold me-4 display-5 shadow" style={{width:'80px', height:'80px'}}>{activeUser.name.charAt(0)}</div>
-                                        <div>
-                                            <h2 className="fw-bold mb-1">{activeUser.name}</h2>
-                                            <div className="d-flex align-items-center gap-3"><Badge bg="dark" className="fw-normal">{activeUser.role}</Badge><span className="text-muted small"><Calendar size={14} className="me-1"/> Joined {activeUser.joined}</span></div>
-                                        </div>
-                                    </div>
-                                    <Badge bg={activeUser.status === 'Active' ? 'success' : 'danger'} className="px-3 py-2 fs-6 rounded-pill">{activeUser.status} Account</Badge>
-                                </div>
-                                <hr className="text-muted opacity-25 my-4" />
-                                <Row className="g-4 mb-4">
-                                    <Col sm={6}><div className="p-3 bg-light rounded-4 border border-light"><small className="text-muted d-block mb-1 text-uppercase fw-bold" style={{fontSize:'0.7rem'}}>Contact Info</small><div className="mb-2"><Mail size={16} className="me-2 text-primary"/> {activeUser.email}</div><div className="mb-2"><Phone size={16} className="me-2 text-primary"/> +63 912 345 6789</div><div><MapPin size={16} className="me-2 text-primary"/> Manila, Philippines</div></div></Col>
-                                    <Col sm={6}><div className="p-3 bg-light rounded-4 border border-light h-100"><small className="text-muted d-block mb-1 text-uppercase fw-bold" style={{fontSize:'0.7rem'}}>Platform Stats</small><div className="d-flex justify-content-between mb-2"><span>Total Orders</span><span className="fw-bold">12</span></div><div className="d-flex justify-content-between"><span>Total Spend</span><span className="fw-bold text-success">₱{Math.floor(Math.random() * 50000).toLocaleString()}</span></div></div></Col>
-                                </Row>
-                                <div className="mt-auto pt-4">
-                                    <h6 className="fw-bold mb-3">Account Actions</h6>
-                                    <div className="d-flex gap-3">
-                                        <Button variant="outline-secondary" className="rounded-pill px-4" onClick={() => handleResetPassword(activeUser.email)}><Lock size={16} className="me-2"/> Reset Password</Button>
-                                        {activeUser.status === 'Active' ? <Button variant="danger" className="rounded-pill px-4" onClick={() => handleStatusChange(activeUser.id, 'Suspended')}><UserX size={16} className="me-2"/> Suspend Account</Button> : <Button variant="success" className="rounded-pill px-4" onClick={() => handleStatusChange(activeUser.id, 'Active')}><CheckCircle size={16} className="me-2"/> Reactivate User</Button>}
-                                    </div>
-                                </div>
-                            </Card.Body>
-                        </Card>
-                    ) : <div className="h-100 d-flex align-items-center justify-content-center text-muted border rounded-4 bg-light">Select a user to view details</div>}
-                </Col>
-            </Row>
-        );
+    // 3. Get User Spending
+    const totalSpent = userOrders
+        .filter(o => !['Cancelled', 'Refunded'].includes(o.status))
+        .reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+
+    // 💡 4. GET USER ADDRESSES (Fixes the error)
+    const userAddresses = selectedUser ? getUserAddresses(selectedUser.id) : [];
+
+    const handleStatusToggle = (user) => {
+        const newStatus = user.status === 'Active' ? 'Suspended' : 'Active';
+        if(window.confirm(`Are you sure you want to change status to ${newStatus}?`)) {
+            updateUserStatus(user.id, newStatus);
+            setSelectedUser({...user, status: newStatus});
+            showNotification(`User ${newStatus === 'Active' ? 'activated' : 'suspended'} successfully`);
+        }
     };
 
     return (
-        <div className="animate-fade-in">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-                <h4 className="fw-bold mb-0">User Management</h4>
-                <div className="d-flex gap-3">
-                    <div style={{ width: '300px' }}><InputGroup><InputGroup.Text className="bg-white border-end-0"><Search size={18}/></InputGroup.Text><Form.Control placeholder="Search users..." className="border-start-0 ps-0 shadow-none" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}/></InputGroup></div>
-                    <div className="bg-white p-1 rounded-pill border d-flex">
-                        <Button variant={viewMode === 'list' ? 'dark' : 'light'} size="sm" className="rounded-pill px-3 d-flex align-items-center gap-2" onClick={() => setViewMode('list')}><LayoutList size={14}/> List</Button>
-                        <Button variant={viewMode === 'split' ? 'dark' : 'light'} size="sm" className="rounded-pill px-3 d-flex align-items-center gap-2" onClick={() => setViewMode('split')}><Columns size={14}/> Split</Button>
+        <div className="animate-fade-in h-100">
+            <Row className="h-100 g-4">
+                
+                {/* --- LEFT COLUMN: USER LIST --- */}
+                <Col md={selectedUser ? 5 : 12} className={`d-flex flex-column ${selectedUser ? 'd-none d-md-flex' : ''}`}>
+                    
+                    {/* Header & Search */}
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h4 className="fw-bold mb-0">Users</h4>
+                        <div style={{ width: '200px' }}>
+                            <InputGroup size="sm">
+                                <InputGroup.Text className="bg-white border-end-0"><Search size={16} className="text-muted"/></InputGroup.Text>
+                                <Form.Control 
+                                    placeholder="Search users..." 
+                                    className="border-start-0 ps-0 shadow-none"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </InputGroup>
+                        </div>
                     </div>
-                </div>
-            </div>
-            {viewMode === 'list' ? (
-                <div className="bg-white rounded-4 shadow-sm overflow-hidden border mb-4">
-                    <Table responsive hover className="mb-0 align-middle">
-                        <thead className="bg-light">
-                            <tr>
-                                <th className="ps-4 py-3 pointer" onClick={() => handleSort('name')}>User</th>
-                                <th className="pointer" onClick={() => handleSort('role')}>Role</th>
-                                <th className="pointer" onClick={() => handleSort('status')}>Status</th>
-                                <th className="pointer" onClick={() => handleSort('joined')}>Joined</th>
-                                <th className="text-end pe-4">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {currentItems.length > 0 ? currentItems.map(user => (
-                                <tr key={user.id}>
-                                    <td className="ps-4"><div className="fw-bold">{user.name}</div><div className="small text-muted">{user.email}</div></td>
-                                    <td><Badge bg="light" text="dark" className="border">{user.role}</Badge></td>
-                                    <td><Badge bg={user.status === 'Active' ? 'success' : 'danger'}>{user.status}</Badge></td>
-                                    <td className="text-muted small">{user.joined}</td>
-                                    <td className="text-end pe-4">
-                                        <Dropdown align="end">
-                                            <Dropdown.Toggle variant="link" className="text-muted p-0 no-caret"><MoreVertical size={18} /></Dropdown.Toggle>
-                                            <Dropdown.Menu>
-                                                <Dropdown.Item onClick={() => handleResetPassword(user.email)}><Lock size={14} className="me-2"/> Reset PW</Dropdown.Item>
-                                                {user.status === 'Active' ? <Dropdown.Item className="text-danger" onClick={() => handleStatusChange(user.id, 'Suspended')}><UserX size={14} className="me-2"/> Suspend</Dropdown.Item> : <Dropdown.Item className="text-success" onClick={() => handleStatusChange(user.id, 'Active')}><CheckCircle size={14} className="me-2"/> Activate</Dropdown.Item>}
-                                            </Dropdown.Menu>
-                                        </Dropdown>
-                                    </td>
-                                </tr>
-                            )) : <tr><td colSpan="5" className="text-center py-5 text-muted"><Package size={48} className="mb-3 opacity-25"/><p>No users found.</p></td></tr>}
-                        </tbody>
-                    </Table>
-                </div>
-            ) : renderSplitView()}
-            {totalPages > 1 && <div className="d-flex justify-content-center"><Pagination><Pagination.Prev onClick={() => handlePageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} /><Pagination.Next onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} /></Pagination></div>}
+
+                    {/* Scrollable User List */}
+                    <Card className="border-0 shadow-sm flex-grow-1 overflow-hidden">
+                        <div className="overflow-auto h-100">
+                            <Table hover className="mb-0 align-middle table-borderless">
+                                <thead className="bg-light sticky-top" style={{zIndex: 1}}>
+                                    <tr>
+                                        <th className="ps-4 text-muted small">Name</th>
+                                        <th className="text-muted small">Status</th>
+                                        <th className="text-end pe-4 text-muted small">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredUsers.map(user => (
+                                        <tr 
+                                            key={user.id} 
+                                            onClick={() => setSelectedUser(user)}
+                                            style={{ cursor: 'pointer', backgroundColor: selectedUser?.id === user.id ? '#f0f9ff' : 'transparent' }}
+                                            className="border-bottom"
+                                        >
+                                            <td className="ps-4 py-3">
+                                                <div className="d-flex align-items-center gap-3">
+                                                    <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{width: '35px', height: '35px', fontSize: '0.9rem'}}>
+                                                        {user.name.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <div className="fw-bold text-dark">{user.name}</div>
+                                                        <small className="text-muted">{user.role}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <Badge bg={user.status === 'Active' ? 'success' : 'danger'} className="fw-normal rounded-pill px-3">
+                                                    {user.status}
+                                                </Badge>
+                                            </td>
+                                            <td className="text-end pe-4">
+                                                <ChevronRight size={16} className="text-muted" />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                        </div>
+                    </Card>
+                </Col>
+
+                {/* --- RIGHT COLUMN: DETAILED PROFILE --- */}
+                {selectedUser && (
+                    <Col md={7} className="h-100 animate-slide-in-right">
+                        <Card className="border-0 shadow-sm h-100 overflow-hidden">
+                            
+                            {/* Profile Header */}
+                            <div className="p-4 border-bottom bg-light">
+                                <div className="d-flex justify-content-between align-items-start mb-3">
+                                    <div className="d-flex align-items-center gap-3">
+                                        <div className="bg-primary text-white rounded-4 d-flex align-items-center justify-content-center fw-bold display-6" style={{width: '70px', height: '70px'}}>
+                                            {selectedUser.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h3 className="fw-bold mb-0">{selectedUser.name}</h3>
+                                            <div className="d-flex align-items-center gap-2 text-muted mt-1">
+                                                <Mail size={14}/> {selectedUser.email}
+                                            </div>
+                                            <div className="d-flex align-items-center gap-2 text-muted mt-1">
+                                                <Calendar size={14}/> Joined: {selectedUser.joined}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Button variant="light" size="sm" className="rounded-circle p-2" onClick={() => setSelectedUser(null)}>
+                                        <X size={20} />
+                                    </Button>
+                                </div>
+
+                                <Row className="g-3 mt-2">
+                                    <Col xs={6}>
+                                        <div className="bg-white p-3 rounded-3 border">
+                                            <small className="text-muted text-uppercase fw-bold" style={{fontSize: '0.7rem'}}>Total Spent</small>
+                                            <h4 className="fw-bold text-primary mb-0 mt-1">₱{totalSpent.toLocaleString()}</h4>
+                                        </div>
+                                    </Col>
+                                    <Col xs={6}>
+                                        <div className="bg-white p-3 rounded-3 border">
+                                            <small className="text-muted text-uppercase fw-bold" style={{fontSize: '0.7rem'}}>Total Orders</small>
+                                            <h4 className="fw-bold text-dark mb-0 mt-1">{userOrders.length}</h4>
+                                        </div>
+                                    </Col>
+                                </Row>
+
+                                <div className="mt-4 d-flex gap-2">
+                                    <Button 
+                                        variant={selectedUser.status === 'Active' ? 'outline-danger' : 'outline-success'} 
+                                        size="sm" 
+                                        className="rounded-pill px-4 fw-bold"
+                                        onClick={() => handleStatusToggle(selectedUser)}
+                                    >
+                                        {selectedUser.status === 'Active' ? 'Suspend User' : 'Activate User'}
+                                    </Button>
+                                    <Button variant="outline-dark" size="sm" className="rounded-pill px-4 fw-bold">
+                                        Reset Password
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* DETAILED TABS */}
+                            <div className="flex-grow-1 overflow-hidden d-flex flex-column">
+                                <Tab.Container activeKey={activeDetailTab} onSelect={(k) => setActiveDetailTab(k)}>
+                                    <div className="px-4 pt-3 border-bottom">
+                                        <Nav variant="tabs" className="border-bottom-0">
+                                            <Nav.Item>
+                                                <Nav.Link eventKey="history" className="text-dark fw-bold small text-uppercase">
+                                                    <ShoppingBag size={14} className="me-2 mb-1"/>Order History
+                                                </Nav.Link>
+                                            </Nav.Item>
+                                            <Nav.Item>
+                                                <Nav.Link eventKey="transactions" className="text-dark fw-bold small text-uppercase">
+                                                    <CreditCard size={14} className="me-2 mb-1"/>Transactions
+                                                </Nav.Link>
+                                            </Nav.Item>
+                                            {/* 💡 3. ADDRESS TAB */}
+                                            <Nav.Item>
+                                                <Nav.Link eventKey="addresses" className="text-dark fw-bold small text-uppercase">
+                                                    <MapPin size={14} className="me-2 mb-1"/>Addresses
+                                                </Nav.Link>
+                                            </Nav.Item>
+                                        </Nav>
+                                    </div>
+
+                                    <div className="p-0 overflow-auto flex-grow-1 bg-white">
+                                        <Tab.Content>
+                                            {/* ORDER HISTORY TAB */}
+                                            <Tab.Pane eventKey="history">
+                                                {userOrders.length > 0 ? (
+                                                    <Table hover responsive className="mb-0 align-middle">
+                                                        <thead className="bg-light sticky-top">
+                                                            <tr>
+                                                                <th className="ps-4 text-muted small">Order ID</th>
+                                                                <th className="text-muted small">Date</th>
+                                                                <th className="text-muted small">Total</th>
+                                                                <th className="text-muted small">Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {userOrders.map(order => (
+                                                                <tr key={order.id}>
+                                                                    <td className="ps-4 fw-bold text-primary small">{order.id}</td>
+                                                                    <td className="small">{order.date}</td>
+                                                                    <td className="fw-bold small">₱{order.total.toLocaleString()}</td>
+                                                                    <td>
+                                                                        <Badge bg={
+                                                                            order.status === 'Delivered' ? 'success' : 
+                                                                            order.status === 'Cancelled' ? 'danger' : 'warning'
+                                                                        } className="fw-normal rounded-pill" style={{fontSize: '0.7rem'}}>
+                                                                            {order.status}
+                                                                        </Badge>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </Table>
+                                                ) : (
+                                                    <div className="text-center py-5 text-muted">
+                                                        <ShoppingBag size={32} className="mb-2 opacity-50"/>
+                                                        <p>No orders found for this user.</p>
+                                                    </div>
+                                                )}
+                                            </Tab.Pane>
+
+                                            {/* TRANSACTIONS TAB */}
+                                            <Tab.Pane eventKey="transactions">
+                                                {userTransactions.length > 0 ? (
+                                                    <Table hover responsive className="mb-0 align-middle">
+                                                        <thead className="bg-light sticky-top">
+                                                            <tr>
+                                                                <th className="ps-4 text-muted small">Trans ID</th>
+                                                                <th className="text-muted small">Order Ref</th>
+                                                                <th className="text-muted small">Method</th>
+                                                                <th className="text-muted small">Amount</th>
+                                                                <th className="text-muted small">Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {userTransactions.map(trx => (
+                                                                <tr key={trx.id}>
+                                                                    <td className="ps-4 text-muted small">{trx.id}</td>
+                                                                    <td className="text-primary small fw-bold">{trx.orderId}</td>
+                                                                    <td className="small">{trx.method}</td>
+                                                                    <td className="fw-bold small">₱{trx.amount.toLocaleString()}</td>
+                                                                    <td>
+                                                                        <span className={`small fw-bold ${trx.status === 'Paid' ? 'text-success' : 'text-danger'}`}>
+                                                                            {trx.status}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </Table>
+                                                ) : (
+                                                    <div className="text-center py-5 text-muted">
+                                                        <CreditCard size={32} className="mb-2 opacity-50"/>
+                                                        <p>No transactions found for this user.</p>
+                                                    </div>
+                                                )}
+                                            </Tab.Pane>
+
+                                            {/* 💡 4. ADDRESS TAB CONTENT */}
+                                            <Tab.Pane eventKey="addresses">
+                                                <div className="p-4">
+                                                    {userAddresses.length > 0 ? (
+                                                        <Row className="g-3">
+                                                            {userAddresses.map(addr => (
+                                                                <Col xs={12} key={addr.id}>
+                                                                    <div className="p-3 border rounded-3 bg-light position-relative">
+                                                                        <div className="d-flex justify-content-between align-items-start mb-2">
+                                                                            <div className="d-flex align-items-center gap-2">
+                                                                                <MapPin size={16} className="text-primary"/>
+                                                                                <span className="fw-bold">{addr.label}</span>
+                                                                                {addr.default && <Badge bg="primary" style={{fontSize: '0.6rem'}}>Default</Badge>}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="small text-muted ps-4">
+                                                                            <div className="text-dark fw-bold">{addr.firstName} {addr.lastName}</div>
+                                                                            <div>{addr.street}</div>
+                                                                            <div>{addr.city}, {addr.zip}</div>
+                                                                            <div className="mt-1">📞 {addr.phone}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                </Col>
+                                                            ))}
+                                                        </Row>
+                                                    ) : (
+                                                        <div className="text-center py-5 text-muted">
+                                                            <MapPin size={32} className="mb-2 opacity-50"/>
+                                                            <p>No addresses found for this user.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </Tab.Pane>
+
+                                        </Tab.Content>
+                                    </div>
+                                </Tab.Container>
+                            </div>
+                        </Card>
+                    </Col>
+                )}
+            </Row>
         </div>
     );
 };

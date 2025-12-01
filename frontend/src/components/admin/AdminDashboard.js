@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Button, Tab, Nav, Row, Col, Card, Toast, ToastContainer } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Package, ShoppingBag, Users, TrendingUp, Settings, FileText, CreditCard } from 'lucide-react';
+
+// 💡 IMPORT CONTEXTS
+import { useOrders } from '../../context/OrderContext';
+import { useUsers } from '../../context/UserContext';
+import { useTransactions } from '../../context/TransactionContext';
+
 import AdminInventory from './AdminInventory';
 import AdminUsers from './AdminUsers';
 import AdminOrders from './AdminOrders';
@@ -13,8 +19,53 @@ import AdminSettings from './AdminSettings';
 const AdminDashboard = () => {
     const { logout } = useAuth();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('orders'); // Start on Orders
+    
+    // 💡 CONSUME DATA FROM CONTEXTS
+    const { orders } = useOrders();
+    const { users } = useUsers();
+    const { transactions } = useTransactions();
+
+    const [activeTab, setActiveTab] = useState('orders'); 
     const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
+
+    // 💡 STATE FOR DASHBOARD STATS
+    const [stats, setStats] = useState({
+        totalRevenue: 0,
+        activeOrders: 0,
+        totalCustomers: 0,
+        refundsProcessed: 0
+    });
+
+    // 💡 CALCULATE STATS DYNAMICALLY
+    useEffect(() => {
+        // 1. Calculate Total Revenue (Sum of 'Paid' transactions)
+        // Alternatively, you could sum order totals where status != Cancelled
+        const revenue = transactions
+            .filter(t => t.status === 'Paid')
+            .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
+        // 2. Calculate Active Orders (Pending, Processing, Shipped)
+        const active = orders.filter(o => 
+            ['Pending', 'Processing', 'Shipped', 'Placed'].includes(o.status)
+        ).length;
+
+        // 3. Calculate Total Customers
+        const customerCount = users.filter(u => u.role === 'Customer').length;
+
+        // 4. Calculate Refunds (Sum of 'Refunded' transactions)
+        const refunds = transactions
+            .filter(t => t.status === 'Refunded')
+            .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
+        // 5. Update State
+        setStats({
+            totalRevenue: revenue,
+            activeOrders: active,
+            totalCustomers: customerCount,
+            refundsProcessed: refunds
+        });
+
+    }, [orders, users, transactions]); // Re-run whenever context data changes
 
     const handleLogout = () => {
         if(window.confirm("Are you sure you want to log out?")) {
@@ -41,7 +92,7 @@ const AdminDashboard = () => {
                     </Button>
                 </div>
 
-                {/* KPI STATS ROW */}
+                {/* KPI STATS ROW (DYNAMIC DATA) */}
                 <Row className="g-4 mb-5">
                     <Col md={3}>
                         <Card className="border-0 shadow-sm rounded-4 bg-primary text-white h-100">
@@ -49,8 +100,8 @@ const AdminDashboard = () => {
                                 <div className="d-flex justify-content-between align-items-start mb-3">
                                     <div className="bg-white bg-opacity-25 p-2 rounded-3"><ShoppingBag size={24}/></div>
                                 </div>
-                                <h3 className="fw-bold mb-0 text-white">₱124k</h3>
-                                <small className="opacity-75">Total Revenue</small>
+                                <h3 className="fw-bold mb-0 text-white">₱{stats.totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}</h3>
+                                <small className="opacity-75">Total Revenue (Paid)</small>
                             </Card.Body>
                         </Card>
                     </Col>
@@ -60,7 +111,7 @@ const AdminDashboard = () => {
                                 <div className="d-flex justify-content-between align-items-start mb-3">
                                     <div className="bg-light p-2 rounded-3 text-success"><Package size={24}/></div>
                                 </div>
-                                <h3 className="fw-bold mb-0">45</h3>
+                                <h3 className="fw-bold mb-0">{stats.activeOrders}</h3>
                                 <small className="text-muted">Active Orders</small>
                             </Card.Body>
                         </Card>
@@ -71,7 +122,7 @@ const AdminDashboard = () => {
                                 <div className="d-flex justify-content-between align-items-start mb-3">
                                     <div className="bg-light p-2 rounded-3 text-warning"><Users size={24}/></div>
                                 </div>
-                                <h3 className="fw-bold mb-0">1,204</h3>
+                                <h3 className="fw-bold mb-0">{stats.totalCustomers.toLocaleString()}</h3>
                                 <small className="text-muted">Total Customers</small>
                             </Card.Body>
                         </Card>
@@ -82,7 +133,7 @@ const AdminDashboard = () => {
                                 <div className="d-flex justify-content-between align-items-start mb-3">
                                     <div className="bg-light p-2 rounded-3 text-info"><CreditCard size={24}/></div>
                                 </div>
-                                <h3 className="fw-bold mb-0">₱12k</h3>
+                                <h3 className="fw-bold mb-0">₱{stats.refundsProcessed.toLocaleString(undefined, {minimumFractionDigits: 2})}</h3>
                                 <small className="text-muted">Refunds Processed</small>
                             </Card.Body>
                         </Card>
@@ -93,7 +144,7 @@ const AdminDashboard = () => {
                 <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
                     <Row>
                         <Col md={2} className="mb-4">
-                            {/* STICKY SIDEBAR FIX: Removed h-100, added sticky styling */}
+                            {/* STICKY SIDEBAR */}
                             <div style={{ position: 'sticky', top: '100px', zIndex: 10 }}>
                                 <Nav variant="pills" className="flex-column bg-white p-3 rounded-4 shadow-sm border">
                                     <Nav.Item className="mb-1">

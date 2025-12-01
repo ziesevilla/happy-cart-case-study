@@ -1,180 +1,252 @@
 import React, { useState } from 'react';
-import { Table, Badge, Form, Button, Pagination, Row, Col, Card } from 'react-bootstrap';
-import { Eye, ArrowUpDown, ArrowUp, ArrowDown, Package, LayoutList, Kanban } from 'lucide-react';
-import { useOrders } from '../../context/OrderContext'; // NEW IMPORT
+import { Table, Button, Form, InputGroup, Row, Col, Card, Badge, Dropdown } from 'react-bootstrap';
+import { Search, ShoppingBag, User, MapPin, Calendar, X, MoreVertical, Truck, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { useOrders } from '../../context/OrderContext';
+import { useProducts } from '../../context/ProductContext'; // 💡 1. IMPORT PRODUCT CONTEXT
 
 const AdminOrders = ({ showNotification }) => {
-    const { orders, updateOrderStatus } = useOrders(); // USE GLOBAL CONTEXT
-    const [viewMode, setViewMode] = useState('table'); 
+    const { orders, updateOrderStatus } = useOrders();
+    const { products } = useProducts(); // 💡 2. CONSUME PRODUCTS
     
-    // ... (Rest of Pagination/Sorting State same as before)
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 8;
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedOrder, setSelectedOrder] = useState(null); 
 
-    // ... (Sorting helpers same as before)
-    const handleSort = (key) => {
-        let direction = 'asc';
-        if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
-        setSortConfig({ key, direction });
-    };
+    const sortedOrders = [...orders].sort((a, b) => new Date(b.date) - new Date(a.date)); 
 
-    const getSortIcon = (key) => {
-        if (sortConfig.key !== key) return <ArrowUpDown size={14} className="text-muted ms-1" />;
-        return sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-primary ms-1" /> : <ArrowDown size={14} className="text-primary ms-1" />;
-    };
+    const filteredOrders = sortedOrders.filter(order => 
+        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-    const handleStatusUpdate = (id, newStatus) => {
-        updateOrderStatus(id, newStatus); // Update Global State
-        showNotification(`Order ${id} updated to ${newStatus}`);
-    };
-
-    const getStatusColor = (status) => {
+    const getStatusVariant = (status) => {
         switch(status) {
             case 'Delivered': return 'success';
-            case 'Shipped': return 'primary';
-            case 'Processing': return 'info';
-            case 'Placed': return 'warning';
-            case 'Cancelled': return 'secondary';
-            default: return 'light';
+            case 'Shipped': return 'info';
+            case 'Processing': return 'primary';
+            case 'Pending': return 'warning';
+            case 'Cancelled': return 'danger';
+            default: return 'secondary';
         }
     };
 
-    // Sort Logic
-    const sortedOrders = [...orders].sort((a, b) => {
-        if (!sortConfig.key) return 0;
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
-        if (sortConfig.key === 'total') return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
-    });
+    const getStatusIcon = (status) => {
+        switch(status) {
+            case 'Delivered': return <CheckCircle size={16} className="me-1"/>;
+            case 'Shipped': return <Truck size={16} className="me-1"/>;
+            case 'Cancelled': return <XCircle size={16} className="me-1"/>;
+            default: return <Clock size={16} className="me-1"/>;
+        }
+    };
 
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = sortedOrders.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(sortedOrders.length / itemsPerPage);
-    const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
-
-    // ... (Render Kanban Board - Update map source to 'orders') ...
-    const renderKanbanBoard = () => {
-        const statuses = ['Placed', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
-        return (
-            <div className="d-flex gap-3 pb-4 overflow-auto" style={{ minHeight: '600px' }}>
-                {statuses.map(status => {
-                    const statusOrders = orders.filter(o => o.status === status);
-                    const color = getStatusColor(status);
-                    
-                    return (
-                        <div key={status} className="flex-shrink-0" style={{ width: '280px' }}>
-                            <div className={`d-flex justify-content-between align-items-center p-3 mb-3 rounded-3 bg-${color} bg-opacity-10 border border-${color}`}>
-                                <h6 className={`mb-0 fw-bold text-${color} text-uppercase`}>{status}</h6>
-                                <Badge bg={color}>{statusOrders.length}</Badge>
-                            </div>
-                            <div className="d-flex flex-column gap-3">
-                                {statusOrders.map(order => (
-                                    <Card key={order.id} className="border-0 shadow-sm">
-                                        <Card.Body className="p-3">
-                                            <div className="d-flex justify-content-between mb-2">
-                                                <span className="fw-bold small">{order.id}</span>
-                                                <span className="text-muted small">{order.date}</span>
-                                            </div>
-                                            <h6 className="mb-1">{order.customerName}</h6>
-                                            <div className="d-flex justify-content-between align-items-center mt-3">
-                                                <span className="fw-bold text-primary">₱{order.total.toLocaleString()}</span>
-                                                <Form.Select 
-                                                    size="sm" 
-                                                    style={{width: 'auto', fontSize: '0.7rem'}}
-                                                    value={order.status}
-                                                    onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
-                                                >
-                                                    <option value="Placed">Placed</option>
-                                                    <option value="Processing">Proc.</option>
-                                                    <option value="Shipped">Ship</option>
-                                                    <option value="Delivered">Done</option>
-                                                    <option value="Cancelled">Cancel</option>
-                                                </Form.Select>
-                                            </div>
-                                        </Card.Body>
-                                    </Card>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        );
+    const handleStatusUpdate = (newStatus) => {
+        if (!selectedOrder) return;
+        updateOrderStatus(selectedOrder.id, newStatus);
+        setSelectedOrder(prev => ({...prev, status: newStatus}));
+        showNotification(`Order ${selectedOrder.id} updated to ${newStatus}`);
     };
 
     return (
-        <div className="animate-fade-in">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-                <h4 className="fw-bold mb-0">Order Management</h4>
+        <div className="animate-fade-in h-100">
+            <Row className="h-100 g-4">
                 
-                <div className="bg-white p-1 rounded-pill border d-flex">
-                    <Button variant={viewMode === 'table' ? 'dark' : 'light'} size="sm" className="rounded-pill px-3 d-flex align-items-center gap-2" onClick={() => setViewMode('table')}><LayoutList size={14}/> List</Button>
-                    <Button variant={viewMode === 'kanban' ? 'dark' : 'light'} size="sm" className="rounded-pill px-3 d-flex align-items-center gap-2" onClick={() => setViewMode('kanban')}><Kanban size={14}/> Board</Button>
-                </div>
-            </div>
-            
-            {viewMode === 'table' ? (
-                <>
-                    <div className="bg-white rounded-4 shadow-sm overflow-hidden border mb-4">
-                        <Table responsive hover className="mb-0 align-middle">
-                            <thead className="bg-light">
-                                <tr>
-                                    <th className="ps-4 py-3 pointer" onClick={() => handleSort('id')}>ID {getSortIcon('id')}</th>
-                                    <th className="pointer" onClick={() => handleSort('customerName')}>Customer {getSortIcon('customerName')}</th>
-                                    <th className="pointer" onClick={() => handleSort('date')}>Date {getSortIcon('date')}</th>
-                                    <th className="pointer" onClick={() => handleSort('total')}>Total {getSortIcon('total')}</th>
-                                    <th className="pointer" onClick={() => handleSort('status')}>Status {getSortIcon('status')}</th>
-                                    <th className="text-end pe-4">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {currentItems.map(order => (
-                                    <tr key={order.id}>
-                                        <td className="ps-4 fw-bold">{order.id}</td>
-                                        <td>{order.customerName}</td>
-                                        <td className="text-muted small">{order.date}</td>
-                                        <td className="fw-bold">₱{order.total.toLocaleString()}</td>
-                                        <td>
-                                            <Form.Select 
-                                                size="sm" 
-                                                value={order.status}
-                                                onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
-                                                className={`border-${getStatusColor(order.status)} text-${getStatusColor(order.status)} fw-bold`}
-                                                style={{width: '130px'}}
-                                            >
-                                                <option value="Placed">Placed</option>
-                                                <option value="Processing">Processing</option>
-                                                <option value="Shipped">Shipped</option>
-                                                <option value="Delivered">Delivered</option>
-                                                <option value="Cancelled">Cancelled</option>
-                                            </Form.Select>
-                                        </td>
-                                        <td className="text-end pe-4">
-                                            <Button variant="light" size="sm" className="rounded-circle p-2"><Eye size={16} className="text-primary"/></Button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </Table>
-                    </div>
+                {/* --- LEFT COLUMN: ORDER LIST --- */}
+                <Col md={selectedOrder ? 5 : 12} className={`d-flex flex-column ${selectedOrder ? 'd-none d-md-flex' : ''}`}>
                     
-                    {totalPages > 1 && (
-                        <div className="d-flex justify-content-center">
-                            <Pagination>
-                                <Pagination.Prev onClick={() => handlePageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} />
-                                <Pagination.Next onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} />
-                            </Pagination>
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h4 className="fw-bold mb-0">Orders</h4>
+                        <div style={{ width: '200px' }}>
+                            <InputGroup size="sm">
+                                <InputGroup.Text className="bg-white border-end-0"><Search size={16} className="text-muted"/></InputGroup.Text>
+                                <Form.Control 
+                                    placeholder="Search orders..." 
+                                    className="border-start-0 ps-0 shadow-none"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </InputGroup>
                         </div>
-                    )}
-                </>
-            ) : (
-                renderKanbanBoard()
-            )}
+                    </div>
+
+                    <Card className="border-0 shadow-sm flex-grow-1 overflow-hidden">
+                        <div className="overflow-auto h-100">
+                            <Table hover className="mb-0 align-middle table-borderless">
+                                <thead className="bg-light sticky-top" style={{zIndex: 1}}>
+                                    <tr>
+                                        <th className="ps-4 text-muted small">Order ID</th>
+                                        <th className="text-muted small">Status</th>
+                                        <th className="text-end pe-4 text-muted small">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredOrders.map(order => (
+                                        <tr 
+                                            key={order.id} 
+                                            onClick={() => setSelectedOrder(order)}
+                                            style={{ cursor: 'pointer', backgroundColor: selectedOrder?.id === order.id ? '#f0f9ff' : 'transparent' }}
+                                            className="border-bottom"
+                                        >
+                                            <td className="ps-4 py-3">
+                                                <div className="d-flex flex-column">
+                                                    <span className="fw-bold text-dark">{order.id}</span>
+                                                    <small className="text-muted">{order.customerName}</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <Badge bg={getStatusVariant(order.status)} className="fw-normal rounded-pill px-2 d-inline-flex align-items-center">
+                                                    {order.status}
+                                                </Badge>
+                                            </td>
+                                            <td className="text-end pe-4">
+                                                <div className="fw-bold text-dark">₱{order.total.toLocaleString()}</div>
+                                                <small className="text-muted">{order.date}</small>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                        </div>
+                    </Card>
+                </Col>
+
+                {/* --- RIGHT COLUMN: ORDER DETAILS --- */}
+                {selectedOrder && (
+                    <Col md={7} className="h-100 animate-slide-in-right">
+                        <Card className="border-0 shadow-sm h-100 overflow-hidden">
+                            
+                            <div className="p-4 border-bottom bg-light d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div className="d-flex align-items-center gap-2 mb-1">
+                                        <h3 className="fw-bold mb-0 text-primary">{selectedOrder.id}</h3>
+                                        <Badge bg={getStatusVariant(selectedOrder.status)} className="rounded-pill px-3 py-2">
+                                            {getStatusIcon(selectedOrder.status)} {selectedOrder.status}
+                                        </Badge>
+                                    </div>
+                                    <small className="text-muted d-flex align-items-center gap-2">
+                                        <Calendar size={14}/> Placed on {selectedOrder.date}
+                                    </small>
+                                </div>
+                                <div className="d-flex gap-2">
+                                    <Dropdown>
+                                        <Dropdown.Toggle variant="white" size="sm" className="border rounded-pill px-3 fw-bold">
+                                            Update Status
+                                        </Dropdown.Toggle>
+                                        <Dropdown.Menu align="end">
+                                            <Dropdown.Item onClick={() => handleStatusUpdate('Pending')}>Pending</Dropdown.Item>
+                                            <Dropdown.Item onClick={() => handleStatusUpdate('Processing')}>Processing</Dropdown.Item>
+                                            <Dropdown.Item onClick={() => handleStatusUpdate('Shipped')}>Shipped</Dropdown.Item>
+                                            <Dropdown.Item onClick={() => handleStatusUpdate('Delivered')}>Delivered</Dropdown.Item>
+                                            <Dropdown.Divider />
+                                            <Dropdown.Item onClick={() => handleStatusUpdate('Cancelled')} className="text-danger">Cancelled</Dropdown.Item>
+                                        </Dropdown.Menu>
+                                    </Dropdown>
+                                    <Button variant="light" size="sm" className="rounded-circle p-2" onClick={() => setSelectedOrder(null)}>
+                                        <X size={20} />
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="overflow-auto p-0 flex-grow-1 bg-white">
+                                <div className="p-4">
+                                    <Row className="g-4 mb-4">
+                                        <Col md={6}>
+                                            <div className="p-3 border rounded-3 h-100">
+                                                <h6 className="fw-bold text-muted small mb-3 text-uppercase"><User size={14} className="me-1 mb-1"/> Customer</h6>
+                                                <div className="fw-bold">{selectedOrder.customerName}</div>
+                                                <div className="text-muted small">{selectedOrder.email}</div>
+                                                <div className="text-muted small">+63 912 345 6789</div>
+                                            </div>
+                                        </Col>
+                                        <Col md={6}>
+                                            <div className="p-3 border rounded-3 h-100">
+                                                <h6 className="fw-bold text-muted small mb-3 text-uppercase"><MapPin size={14} className="me-1 mb-1"/> Shipping Address</h6>
+                                                <div className="small text-dark">
+                                                    {selectedOrder.shippingAddress?.street}<br/>
+                                                    {selectedOrder.shippingAddress?.city}, {selectedOrder.shippingAddress?.zip}<br/>
+                                                    Philippines
+                                                </div>
+                                            </div>
+                                        </Col>
+                                    </Row>
+
+                                    <h6 className="fw-bold text-muted small mb-3 text-uppercase"><ShoppingBag size={14} className="me-1 mb-1"/> Items ({selectedOrder.details?.length || 0})</h6>
+                                    <div className="border rounded-3 overflow-hidden mb-4">
+                                        <Table className="mb-0 align-middle">
+                                            <thead className="bg-light">
+                                                <tr>
+                                                    <th className="ps-3 small text-muted">Product</th>
+                                                    <th className="text-center small text-muted">Qty</th>
+                                                    <th className="text-end pe-3 small text-muted">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {selectedOrder.details && selectedOrder.details.length > 0 ? (
+                                                    selectedOrder.details.map((item, index) => {
+                                                        // 💡 3. CROSS-REFERENCE WITH PRODUCT CONTEXT
+                                                        // Find the live product details using the ID from the order item
+                                                        const liveProduct = products.find(p => p.id === item.id);
+                                                        
+                                                        // If live product exists, use its image/name. If deleted, use the order snapshot.
+                                                        const displayImage = liveProduct?.image || item.image;
+                                                        const displayName = liveProduct?.name || item.name;
+                                                        
+                                                        // Note: We usually keep the PRICE from the order (item.price) because
+                                                        // price changes in inventory shouldn't affect past orders.
+
+                                                        return (
+                                                            <tr key={index}>
+                                                                <td className="ps-3 py-3">
+                                                                    <div className="d-flex align-items-center gap-3">
+                                                                        <div className="rounded bg-light d-flex align-items-center justify-content-center border overflow-hidden" style={{width: '40px', height: '40px'}}>
+                                                                            {displayImage ? (
+                                                                                <img src={displayImage} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}}/>
+                                                                            ) : (
+                                                                                <ShoppingBag size={16} className="text-muted"/>
+                                                                            )}
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className="fw-bold small">{displayName}</div>
+                                                                            <div className="text-muted small">₱{item.price.toLocaleString()}</div>
+                                                                            {/* Optional: Show if product was deleted from inventory */}
+                                                                            {!liveProduct && <Badge bg="danger" style={{fontSize: '0.6rem'}}>Discontinued</Badge>}
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="text-center fw-bold text-muted">x{item.qty}</td>
+                                                                <td className="text-end pe-3 fw-bold">₱{(item.price * item.qty).toLocaleString()}</td>
+                                                            </tr>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <tr><td colSpan="3" className="text-center py-3 text-muted">No items details available.</td></tr>
+                                                )}
+                                            </tbody>
+                                        </Table>
+                                    </div>
+
+                                    <div className="d-flex justify-content-end">
+                                        <div style={{minWidth: '250px'}}>
+                                            <div className="d-flex justify-content-between mb-2 small text-muted">
+                                                <span>Subtotal</span>
+                                                <span>₱{(selectedOrder.total - 150).toLocaleString()}</span>
+                                            </div>
+                                            <div className="d-flex justify-content-between mb-2 small text-muted">
+                                                <span>Shipping</span>
+                                                <span>₱150.00</span>
+                                            </div>
+                                            <hr/>
+                                            <div className="d-flex justify-content-between fw-bold text-dark fs-5">
+                                                <span>Total</span>
+                                                <span>₱{selectedOrder.total.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </Card>
+                    </Col>
+                )}
+            </Row>
         </div>
     );
 };
