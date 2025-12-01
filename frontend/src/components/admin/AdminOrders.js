@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Table, Button, Form, InputGroup, Row, Col, Card, Badge, Dropdown } from 'react-bootstrap';
-import { Search, ShoppingBag, User, MapPin, Calendar, X, MoreVertical, Truck, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Search, ShoppingBag, User, MapPin, Calendar, X, MoreVertical, Truck, CheckCircle, XCircle, Clock} from 'lucide-react';
 import { useOrders } from '../../context/OrderContext';
-import { useProducts } from '../../context/ProductContext'; // 💡 1. IMPORT PRODUCT CONTEXT
+import { useProducts } from '../../context/ProductContext'; 
 
 const AdminOrders = ({ showNotification }) => {
     const { orders, updateOrderStatus } = useOrders();
-    const { products } = useProducts(); // 💡 2. CONSUME PRODUCTS
+    const { products } = useProducts(); 
     
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedOrder, setSelectedOrder] = useState(null); 
@@ -45,21 +45,48 @@ const AdminOrders = ({ showNotification }) => {
         showNotification(`Order ${selectedOrder.id} updated to ${newStatus}`);
     };
 
+    // 💡 Helper to calculate totals
+    const calculateTotals = (details) => {
+        if (!details) return { subtotal: 0, shipping: 0, total: 0 };
+        const subtotal = details.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        const shipping = 150;
+        const total = subtotal + shipping;
+        return { subtotal, shipping, total };
+    };
+
+    const { subtotal, shipping, total } = selectedOrder ? calculateTotals(selectedOrder.details) : { subtotal: 0, shipping: 0, total: 0 };
+
+    // 💡 HELPER: Currency Formatter
+    const formatCurrency = (amount) => {
+        return amount.toLocaleString(undefined, { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        });
+    };
+
     return (
         <div className="animate-fade-in h-100">
             <Row className="h-100 g-4">
-                
-                {/* --- LEFT COLUMN: ORDER LIST --- */}
                 <Col md={selectedOrder ? 5 : 12} className={`d-flex flex-column ${selectedOrder ? 'd-none d-md-flex' : ''}`}>
                     
                     <div className="d-flex justify-content-between align-items-center mb-4">
-                        <h4 className="fw-bold mb-0">Orders</h4>
-                        <div style={{ width: '200px' }}>
-                            <InputGroup size="sm">
-                                <InputGroup.Text className="bg-white border-end-0"><Search size={16} className="text-muted"/></InputGroup.Text>
+                        <div className="d-flex align-items-center mb-4">
+                            <div className="bg-white p-2 rounded-circle shadow-sm me-3 border">
+                                <ShoppingBag size={24} className="text-primary"/>
+                            </div>
+                            <div>
+                                <h4 className="fw-bold mb-0">Orders</h4>
+                                <p className="text-muted small mb-0">Manage orders by customers</p>
+                            </div>
+                        </div>
+                        <div style={{ width: '300px'}}>
+                            <InputGroup size="sm" className="border rounded-pill bg-white overflow-hidden">
+                                <InputGroup.Text className="bg-white border-0 pe-0">
+                                    <Search size={16} className="text-muted"/>
+                                </InputGroup.Text>
                                 <Form.Control 
                                     placeholder="Search orders..." 
-                                    className="border-start-0 ps-0 shadow-none"
+                                    className="border-0 shadow-none ps-2" // Remove border, focus shadow, and add padding left
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
@@ -78,30 +105,34 @@ const AdminOrders = ({ showNotification }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredOrders.map(order => (
-                                        <tr 
-                                            key={order.id} 
-                                            onClick={() => setSelectedOrder(order)}
-                                            style={{ cursor: 'pointer', backgroundColor: selectedOrder?.id === order.id ? '#f0f9ff' : 'transparent' }}
-                                            className="border-bottom"
-                                        >
-                                            <td className="ps-4 py-3">
-                                                <div className="d-flex flex-column">
-                                                    <span className="fw-bold text-dark">{order.id}</span>
-                                                    <small className="text-muted">{order.customerName}</small>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <Badge bg={getStatusVariant(order.status)} className="fw-normal rounded-pill px-2 d-inline-flex align-items-center">
-                                                    {order.status}
-                                                </Badge>
-                                            </td>
-                                            <td className="text-end pe-4">
-                                                <div className="fw-bold text-dark">₱{order.total.toLocaleString()}</div>
-                                                <small className="text-muted">{order.date}</small>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {filteredOrders.map(order => {
+                                        const orderTotals = calculateTotals(order.details);
+                                        return (
+                                            <tr 
+                                                key={order.id} 
+                                                onClick={() => setSelectedOrder(order)}
+                                                style={{ cursor: 'pointer', backgroundColor: selectedOrder?.id === order.id ? '#f0f9ff' : 'transparent' }}
+                                                className="border-bottom"
+                                            >
+                                                <td className="ps-4 py-3">
+                                                    <div className="d-flex flex-column">
+                                                        <span className="fw-bold text-dark">{order.id}</span>
+                                                        <small className="text-muted">{order.customerName}</small>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <Badge bg={getStatusVariant(order.status)} className="fw-normal rounded-pill px-2 d-inline-flex align-items-center">
+                                                        {order.status}
+                                                    </Badge>
+                                                </td>
+                                                <td className="text-end pe-4">
+                                                    {/* Display Formatted Total */}
+                                                    <div className="fw-bold text-dark">₱{formatCurrency(orderTotals.total)}</div>
+                                                    <small className="text-muted">{order.date}</small>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </Table>
                         </div>
@@ -181,17 +212,10 @@ const AdminOrders = ({ showNotification }) => {
                                             <tbody>
                                                 {selectedOrder.details && selectedOrder.details.length > 0 ? (
                                                     selectedOrder.details.map((item, index) => {
-                                                        // 💡 3. CROSS-REFERENCE WITH PRODUCT CONTEXT
-                                                        // Find the live product details using the ID from the order item
                                                         const liveProduct = products.find(p => p.id === item.id);
-                                                        
-                                                        // If live product exists, use its image/name. If deleted, use the order snapshot.
                                                         const displayImage = liveProduct?.image || item.image;
                                                         const displayName = liveProduct?.name || item.name;
                                                         
-                                                        // Note: We usually keep the PRICE from the order (item.price) because
-                                                        // price changes in inventory shouldn't affect past orders.
-
                                                         return (
                                                             <tr key={index}>
                                                                 <td className="ps-3 py-3">
@@ -205,14 +229,13 @@ const AdminOrders = ({ showNotification }) => {
                                                                         </div>
                                                                         <div>
                                                                             <div className="fw-bold small">{displayName}</div>
-                                                                            <div className="text-muted small">₱{item.price.toLocaleString()}</div>
-                                                                            {/* Optional: Show if product was deleted from inventory */}
+                                                                            <div className="text-muted small">₱{formatCurrency(item.price)}</div>
                                                                             {!liveProduct && <Badge bg="danger" style={{fontSize: '0.6rem'}}>Discontinued</Badge>}
                                                                         </div>
                                                                     </div>
                                                                 </td>
                                                                 <td className="text-center fw-bold text-muted">x{item.qty}</td>
-                                                                <td className="text-end pe-3 fw-bold">₱{(item.price * item.qty).toLocaleString()}</td>
+                                                                <td className="text-end pe-3 fw-bold">₱{formatCurrency(item.price * item.qty)}</td>
                                                             </tr>
                                                         );
                                                     })
@@ -223,20 +246,24 @@ const AdminOrders = ({ showNotification }) => {
                                         </Table>
                                     </div>
 
+                                    {/* 💡 ORDER SUMMARY FOOTER */}
                                     <div className="d-flex justify-content-end">
                                         <div style={{minWidth: '250px'}}>
                                             <div className="d-flex justify-content-between mb-2 small text-muted">
                                                 <span>Subtotal</span>
-                                                <span>₱{(selectedOrder.total - 150).toLocaleString()}</span>
+                                                {/* 💡 Formatted Subtotal */}
+                                                <span>₱{formatCurrency(subtotal)}</span>
                                             </div>
                                             <div className="d-flex justify-content-between mb-2 small text-muted">
                                                 <span>Shipping</span>
-                                                <span>₱150.00</span>
+                                                {/* 💡 Formatted Shipping */}
+                                                <span>₱{formatCurrency(shipping)}</span>
                                             </div>
                                             <hr/>
                                             <div className="d-flex justify-content-between fw-bold text-dark fs-5">
                                                 <span>Total</span>
-                                                <span>₱{selectedOrder.total.toLocaleString()}</span>
+                                                {/* 💡 Formatted Total */}
+                                                <span>₱{formatCurrency(total)}</span>
                                             </div>
                                         </div>
                                     </div>

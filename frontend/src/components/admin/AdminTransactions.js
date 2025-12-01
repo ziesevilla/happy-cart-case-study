@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { Table, Button, Badge, Pagination, Row, Col, Card } from 'react-bootstrap';
-import { RefreshCcw, XCircle, CheckCircle, Package, LayoutList, LayoutGrid, CreditCard, Banknote, Smartphone, Calendar, Hash, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { useTransactions } from '../../context/TransactionContext'; // NEW IMPORT
+import { Table, Button, Badge, Pagination, Row, Col, Card, InputGroup, Form } from 'react-bootstrap';
+import { RefreshCcw, XCircle, CheckCircle, Package, LayoutList, LayoutGrid, CreditCard, Banknote, Smartphone, Calendar, Hash, ArrowUpDown, ArrowUp, ArrowDown, Search, Layers } from 'lucide-react';
+import { useTransactions } from '../../context/TransactionContext'; 
 
 const AdminTransactions = ({ showNotification }) => {
-    const { transactions, updateTransactionStatus } = useTransactions(); // USE GLOBAL CONTEXT
+    const { transactions, updateTransactionStatus } = useTransactions(); 
     
+    const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState('list'); 
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = viewMode === 'list' ? 8 : 12;
 
+    // 💡 STATE: Grouping Mode ('method' or 'status')
+    const [groupBy, setGroupBy] = useState('method');
+
     // --- SORTING STATE ---
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+    const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' }); 
 
     const handleSort = (key) => {
         let direction = 'asc';
@@ -27,8 +31,14 @@ const AdminTransactions = ({ showNotification }) => {
         return <ArrowDown size={14} className="text-primary ms-1" />;
     };
 
-    // --- SORT LOGIC ---
-    const sortedTransactions = [...transactions].sort((a, b) => {
+    // --- FILTER & SORT LOGIC ---
+    const filteredTransactions = transactions.filter(trx => 
+        trx.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        trx.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        trx.method.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const sortedTransactions = [...filteredTransactions].sort((a, b) => {
         if (!sortConfig.key) return 0;
         
         const aValue = a[sortConfig.key];
@@ -44,8 +54,8 @@ const AdminTransactions = ({ showNotification }) => {
                 : new Date(bValue) - new Date(aValue);
         }
 
-        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        if (String(aValue) < String(bValue)) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (String(aValue) > String(bValue)) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
     });
 
@@ -65,16 +75,64 @@ const AdminTransactions = ({ showNotification }) => {
         setCurrentPage(pageNumber);
     };
 
+    // --- ICONS ---
     const getMethodIcon = (method) => {
         if (method === 'Credit Card') return <CreditCard size={18}/>;
         if (method === 'GCash') return <Smartphone size={18}/>;
         return <Banknote size={18}/>;
     };
 
+    const getStatusIcon = (status) => {
+        if (status === 'Paid') return <CheckCircle size={18} className="text-success"/>;
+        if (status === 'Refunded') return <RefreshCcw size={18} className="text-warning"/>;
+        return <XCircle size={18} className="text-danger"/>;
+    };
+
+    // 💡 DYNAMIC GROUPING FUNCTION
+    const groupTransactions = (items) => {
+        return items.reduce((groups, item) => {
+            // Group by 'method' OR 'status' based on state
+            const key = item[groupBy] || 'Other';
+            if (!groups[key]) {
+                groups[key] = [];
+            }
+            groups[key].push(item);
+            return groups;
+        }, {});
+    };
+
+    const groupedGridItems = groupTransactions(currentItems);
+
     return (
         <div className="animate-fade-in">
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <h4 className="fw-bold mb-0">Financial Records</h4>
+
+                <div className="d-flex align-items-center mb-4">
+                    <div className="bg-white p-2 rounded-circle shadow-sm me-3 border">
+                        <Banknote size={24} className="text-primary"/>
+                    </div>
+                    <div>
+                        <h4 className="fw-bold mb-0">Transactions</h4>
+                        <p className="text-muted small mb-0">Manage order transactions</p>
+                    </div>
+                </div>
+
+                <div className="d-flex gap-3 align-items-center">
+                    {/* 💡 GROUPING SELECTOR (Only visible in Grid Mode) */}
+                    {viewMode === 'grid' && (
+                        <InputGroup size="sm" style={{ width: '200px' }}>
+                            <InputGroup.Text className="bg-white"><Layers size={16} className="text-muted"/></InputGroup.Text>
+                            <Form.Select 
+                                value={groupBy} 
+                                onChange={(e) => setGroupBy(e.target.value)}
+                                className="shadow-none fw-bold text-muted"
+                            >
+                                <option value="method">Group by Method</option>
+                                <option value="status">Group by Status</option>
+                            </Form.Select>
+                        </InputGroup>
+                    )}
+                </div>
                 
                 <div className="bg-white p-1 rounded-pill border d-flex">
                     <Button 
@@ -94,6 +152,20 @@ const AdminTransactions = ({ showNotification }) => {
                         <LayoutGrid size={14}/> Grid
                     </Button>
                 </div>
+
+                <div style={{ width: '300px'}}>
+                    <InputGroup size="sm" className="border rounded-pill bg-white overflow-hidden">
+                        <InputGroup.Text className="bg-white border-0 pe-0">
+                            <Search size={16} className="text-muted"/>
+                        </InputGroup.Text>
+                        <Form.Control 
+                            placeholder="Search transactions..." 
+                            className="border-0 shadow-none ps-2" // Remove border, focus shadow, and add padding left
+                            value={searchTerm}
+                            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                        />
+                    </InputGroup>
+                </div>
             </div>
 
             {viewMode === 'list' ? (
@@ -106,6 +178,9 @@ const AdminTransactions = ({ showNotification }) => {
                                 </th>
                                 <th className="pointer" onClick={() => handleSort('orderId')}>
                                     Order Ref {getSortIcon('orderId')}
+                                </th>
+                                <th className="pointer" onClick={() => handleSort('date')}>
+                                    Date {getSortIcon('date')}
                                 </th>
                                 <th className="pointer" onClick={() => handleSort('method')}>
                                     Method {getSortIcon('method')}
@@ -124,8 +199,13 @@ const AdminTransactions = ({ showNotification }) => {
                                 <tr key={trx.id}>
                                     <td className="ps-4 font-monospace small">{trx.id}</td>
                                     <td className="text-primary small">{trx.orderId}</td>
-                                    <td>{trx.method}</td>
-                                    <td className="fw-bold">₱{trx.amount.toLocaleString()}</td>
+                                    <td className="small text-muted">{trx.date}</td>
+                                    <td>
+                                        <div className="d-flex align-items-center gap-2">
+                                            {getMethodIcon(trx.method)} {trx.method}
+                                        </div>
+                                    </td>
+                                    <td className="fw-bold">₱{trx.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                                     <td>
                                         <Badge bg={trx.status === 'Paid' ? 'success' : trx.status === 'Refunded' ? 'warning' : 'danger'}>
                                             {trx.status}
@@ -138,7 +218,7 @@ const AdminTransactions = ({ showNotification }) => {
                                             </Button>
                                         )}
                                         {trx.status === 'Failed' && (
-                                            <span className="text-danger small"><XCircle size={14} className="me-1"/> Payment Failed</span>
+                                            <span className="text-danger small"><XCircle size={14} className="me-1"/> Failed</span>
                                         )}
                                         {trx.status === 'Refunded' && (
                                             <span className="text-warning small"><CheckCircle size={14} className="me-1"/> Refunded</span>
@@ -147,7 +227,7 @@ const AdminTransactions = ({ showNotification }) => {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="6" className="text-center py-5 text-muted">
+                                    <td colSpan="7" className="text-center py-5 text-muted">
                                         <Package size={48} className="mb-3 opacity-25"/>
                                         <p>No transactions found.</p>
                                     </td>
@@ -157,44 +237,75 @@ const AdminTransactions = ({ showNotification }) => {
                     </Table>
                 </div>
             ) : (
-                /* GRID VIEW */
-                <Row className="g-4 mb-4">
-                    {currentItems.map(trx => (
-                        <Col md={3} key={trx.id}>
-                            <Card className="h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-                                <div className="bg-light p-3 border-bottom d-flex justify-content-between align-items-center">
-                                    <span className="font-monospace small text-muted">{trx.id}</span>
-                                    <Badge bg={trx.status === 'Paid' ? 'success' : trx.status === 'Refunded' ? 'warning' : 'danger'}>{trx.status}</Badge>
-                                </div>
-                                <Card.Body className="p-4">
-                                    <div className="text-center mb-4">
-                                        <h2 className="fw-bold mb-0">₱{trx.amount.toLocaleString()}</h2>
-                                        <small className="text-muted">Total Amount</small>
-                                    </div>
+                /* 💡 GRID VIEW - DYNAMICALLY GROUPED */
+                <div className="mb-4">
+                    {Object.keys(groupedGridItems).length > 0 ? (
+                        Object.keys(groupedGridItems).sort().map(groupKey => (
+                            <div key={groupKey} className="mb-5">
+                                {/* Group Header */}
+                                <h5 className="fw-bold text-secondary text-uppercase mb-3 ps-2 border-start border-4 border-primary d-flex align-items-center gap-2">
+                                    {/* Show specific icon based on grouping mode */}
+                                    {groupBy === 'method' ? getMethodIcon(groupKey) : getStatusIcon(groupKey)}
+                                    {groupKey} 
+                                    <span className="text-muted small ms-2 fw-normal">({groupedGridItems[groupKey].length})</span>
+                                </h5>
+                                
+                                <Row className="g-4">
+                                    {groupedGridItems[groupKey].map(trx => (
+                                        <Col md={3} key={trx.id}>
+                                            <Card className="h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+                                                
+                                                {/* 💡 DYNAMIC HEADER: Badge changes based on grouping */}
+                                                <div className="bg-light p-3 border-bottom d-flex justify-content-between align-items-center">
+                                                    <span className="font-monospace small text-muted">{trx.id}</span>
+                                                    
+                                                    {groupBy === 'status' ? (
+                                                        // If grouped by status, show Method Badge
+                                                        <Badge bg="secondary" className="fw-normal text-white d-flex align-items-center gap-1">
+                                                            {getMethodIcon(trx.method)} {trx.method}
+                                                        </Badge>
+                                                    ) : (
+                                                        // If grouped by method, show Status Badge
+                                                        <Badge bg={trx.status === 'Paid' ? 'success' : trx.status === 'Refunded' ? 'warning' : 'danger'}>
+                                                            {trx.status}
+                                                        </Badge>
+                                                    )}
+                                                </div>
 
-                                    <div className="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2 border-dashed">
-                                        <span className="text-muted small d-flex align-items-center"><Hash size={14} className="me-2"/> Order Ref</span>
-                                        <span className="fw-bold text-primary small">{trx.orderId}</span>
-                                    </div>
-                                    <div className="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2 border-dashed">
-                                        <span className="text-muted small d-flex align-items-center"><Calendar size={14} className="me-2"/> Date</span>
-                                        <span className="small fw-bold">{trx.date}</span>
-                                    </div>
-                                    <div className="d-flex justify-content-between align-items-center mb-3">
-                                        <span className="text-muted small d-flex align-items-center">{getMethodIcon(trx.method)} <span className="ms-2">Method</span></span>
-                                        <span className="small fw-bold">{trx.method}</span>
-                                    </div>
+                                                <Card.Body className="p-4">
+                                                    <div className="text-center mb-4">
+                                                        <h2 className="fw-bold mb-0">₱{trx.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</h2>
+                                                        <small className="text-muted">Total Amount</small>
+                                                    </div>
 
-                                    {trx.status === 'Paid' && (
-                                        <Button variant="outline-secondary" size="sm" className="w-100 rounded-pill dashed-border" onClick={() => handleRefund(trx.id)}>
-                                            Process Refund
-                                        </Button>
-                                    )}
-                                </Card.Body>
-                            </Card>
-                        </Col>
-                    ))}
-                </Row>
+                                                    <div className="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2 border-dashed">
+                                                        <span className="text-muted small d-flex align-items-center"><Hash size={14} className="me-2"/> Order Ref</span>
+                                                        <span className="fw-bold text-primary small">{trx.orderId}</span>
+                                                    </div>
+                                                    <div className="d-flex justify-content-between align-items-center mb-3">
+                                                        <span className="text-muted small d-flex align-items-center"><Calendar size={14} className="me-2"/> Date</span>
+                                                        <span className="small fw-bold">{trx.date}</span>
+                                                    </div>
+                                                    
+                                                    {trx.status === 'Paid' && (
+                                                        <Button variant="outline-secondary" size="sm" className="w-100 rounded-pill dashed-border" onClick={() => handleRefund(trx.id)}>
+                                                            Process Refund
+                                                        </Button>
+                                                    )}
+                                                </Card.Body>
+                                            </Card>
+                                        </Col>
+                                    ))}
+                                </Row>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="text-center py-5 text-muted">
+                            <Package size={48} className="mb-3 opacity-25"/>
+                            <p>No transactions found.</p>
+                        </div>
+                    )}
+                </div>
             )}
 
             {/* PAGINATION */}

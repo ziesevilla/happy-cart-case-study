@@ -1,74 +1,145 @@
 import React, { useState } from 'react';
-import { Table, Button, Form, InputGroup, Row, Col, Card, Badge, Tab, Nav } from 'react-bootstrap';
-import { Search, User, Mail, Calendar, DollarSign, ShoppingBag, CreditCard, ChevronRight, X, MapPin } from 'lucide-react';
+import { Table, Button, Form, InputGroup, Row, Col, Card, Badge, Tab, Nav, Modal, Spinner } from 'react-bootstrap';
+import { Search, User, Mail, Calendar, ShoppingBag, CreditCard, ChevronRight, X, MapPin, Download, AlertTriangle, Key, Lock, UserX } from 'lucide-react'; // 💡 Added Key, Lock
 import { useUsers } from '../../context/UserContext';
 import { useOrders } from '../../context/OrderContext';
 import { useTransactions } from '../../context/TransactionContext';
-import { useAddress } from '../../context/AddressContext'; // 💡 1. NEW IMPORT
+import { useAddress } from '../../context/AddressContext'; 
 
 const AdminUsers = ({ showNotification }) => {
-    // CONSUME CONTEXTS
     const { users, updateUserStatus } = useUsers();
     const { orders } = useOrders();
     const { transactions } = useTransactions();
-    const { getUserAddresses } = useAddress(); // 💡 2. CONSUME ADDRESS HOOK
+    const { getUserAddresses } = useAddress(); 
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedUser, setSelectedUser] = useState(null); 
     const [activeDetailTab, setActiveDetailTab] = useState('history'); 
 
-    // --- FILTER USERS LIST ---
+    // --- MODAL STATES ---
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [userToToggle, setUserToToggle] = useState(null);
+
+    // 💡 RESET PASSWORD STATES
+    const [showResetModal, setShowResetModal] = useState(false);
+    const [userToReset, setUserToReset] = useState(null);
+    const [isResetting, setIsResetting] = useState(false);
+
     const filteredUsers = users.filter(u => 
         u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // --- DATA LOGIC FOR SELECTED USER ---
-    
-    // 1. Get User Orders
+    // --- DATA LOGIC ---
     const userOrders = selectedUser 
         ? orders.filter(o => o.email === selectedUser.email).sort((a,b) => new Date(b.date) - new Date(a.date))
         : [];
 
-    // 2. Get User Transactions
     const userOrderIds = userOrders.map(o => o.id);
     const userTransactions = selectedUser 
         ? transactions.filter(t => userOrderIds.includes(t.orderId)).sort((a,b) => new Date(b.date) - new Date(a.date))
         : [];
 
-    // 3. Get User Spending
     const totalSpent = userOrders
         .filter(o => !['Cancelled', 'Refunded'].includes(o.status))
         .reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
 
-    // 💡 4. GET USER ADDRESSES (Fixes the error)
     const userAddresses = selectedUser ? getUserAddresses(selectedUser.id) : [];
 
-    const handleStatusToggle = (user) => {
-        const newStatus = user.status === 'Active' ? 'Suspended' : 'Active';
-        if(window.confirm(`Are you sure you want to change status to ${newStatus}?`)) {
-            updateUserStatus(user.id, newStatus);
-            setSelectedUser({...user, status: newStatus});
-            showNotification(`User ${newStatus === 'Active' ? 'activated' : 'suspended'} successfully`);
+    const handleExportUser = () => {
+        if (!selectedUser) return;
+        showNotification("Exporting user data...", "info");
+
+        const activityLog = [
+            ...userOrders.map(o => ({
+                Date: o.date, Type: 'ORDER', ID: o.id, Details: `${o.itemsCount} Item(s)`, Amount: o.total, Status: o.status
+            })),
+            ...userTransactions.map(t => ({
+                Date: t.date, Type: 'TRANSACTION', ID: t.id, Details: `Ref: ${t.orderId} via ${t.method}`, Amount: t.amount, Status: t.status
+            }))
+        ].sort((a, b) => new Date(b.Date) - new Date(a.Date));
+
+        if (activityLog.length === 0) {
+            showNotification("No history to export.", "warning");
+            return;
         }
+
+        const headers = Object.keys(activityLog[0]).join(',');
+        const rows = activityLog.map(obj => Object.values(obj).map(val => `"${val}"`).join(','));
+        const csvContent = [headers, ...rows].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${selectedUser.name}_History_Log.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleStatusToggle = (user) => {
+        setUserToToggle(user);
+        setShowConfirmModal(true);
+    };
+
+    const confirmAction = () => {
+        if (!userToToggle) return;
+        const newStatus = userToToggle.status === 'Active' ? 'Suspended' : 'Active';
+        updateUserStatus(userToToggle.id, newStatus);
+        if (selectedUser && selectedUser.id === userToToggle.id) {
+            setSelectedUser({ ...userToToggle, status: newStatus });
+        }
+        showNotification(`User ${newStatus === 'Active' ? 'activated' : 'suspended'} successfully`);
+        setShowConfirmModal(false);
+        setUserToToggle(null);
+    };
+
+    // 💡 HANDLER: Open Reset Modal
+    const handleResetPassword = () => {
+        if (!selectedUser) return;
+        setUserToReset(selectedUser);
+        setShowResetModal(true);
+    };
+
+    // 💡 HANDLER: Execute Reset (Simulated)
+    const confirmReset = () => {
+        setIsResetting(true);
+        
+        // Simulate API call delay
+        setTimeout(() => {
+            setIsResetting(false);
+            setShowResetModal(false);
+            showNotification(`Password reset link sent to ${userToReset.email}`, 'success');
+            setUserToReset(null);
+        }, 1500);
     };
 
     return (
         <div className="animate-fade-in h-100">
             <Row className="h-100 g-4">
                 
-                {/* --- LEFT COLUMN: USER LIST --- */}
+                {/* LEFT COLUMN */}
                 <Col md={selectedUser ? 5 : 12} className={`d-flex flex-column ${selectedUser ? 'd-none d-md-flex' : ''}`}>
-                    
-                    {/* Header & Search */}
                     <div className="d-flex justify-content-between align-items-center mb-4">
-                        <h4 className="fw-bold mb-0">Users</h4>
-                        <div style={{ width: '200px' }}>
-                            <InputGroup size="sm">
-                                <InputGroup.Text className="bg-white border-end-0"><Search size={16} className="text-muted"/></InputGroup.Text>
+                        <div className="d-flex align-items-center mb-4">
+                            <div className="bg-white p-2 rounded-circle shadow-sm me-3 border">
+                                <User size={24} className="text-primary"/>
+                            </div>
+                            <div>
+                                <h4 className="fw-bold mb-0">Customers</h4>
+                                <p className="text-muted small mb-0">Manage customer accounts</p>
+                            </div>
+                        </div>
+                        <div style={{ width: '300px'}}>
+                            <InputGroup size="sm" className="border rounded-pill bg-white overflow-hidden">
+                                <InputGroup.Text className="bg-white border-0 pe-0">
+                                    <Search size={16} className="text-muted"/>
+                                </InputGroup.Text>
                                 <Form.Control 
-                                    placeholder="Search users..." 
-                                    className="border-start-0 ps-0 shadow-none"
+                                    placeholder="Search customer..." 
+                                    className="border-0 shadow-none ps-2" // Remove border, focus shadow, and add padding left
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
@@ -76,7 +147,6 @@ const AdminUsers = ({ showNotification }) => {
                         </div>
                     </div>
 
-                    {/* Scrollable User List */}
                     <Card className="border-0 shadow-sm flex-grow-1 overflow-hidden">
                         <div className="overflow-auto h-100">
                             <Table hover className="mb-0 align-middle table-borderless">
@@ -122,12 +192,10 @@ const AdminUsers = ({ showNotification }) => {
                     </Card>
                 </Col>
 
-                {/* --- RIGHT COLUMN: DETAILED PROFILE --- */}
+                {/* RIGHT COLUMN: PROFILE */}
                 {selectedUser && (
                     <Col md={7} className="h-100 animate-slide-in-right">
                         <Card className="border-0 shadow-sm h-100 overflow-hidden">
-                            
-                            {/* Profile Header */}
                             <div className="p-4 border-bottom bg-light">
                                 <div className="d-flex justify-content-between align-items-start mb-3">
                                     <div className="d-flex align-items-center gap-3">
@@ -164,22 +232,38 @@ const AdminUsers = ({ showNotification }) => {
                                     </Col>
                                 </Row>
 
-                                <div className="mt-4 d-flex gap-2">
+                                <div className="mt-4 d-flex flex-wrap gap-2">
                                     <Button 
                                         variant={selectedUser.status === 'Active' ? 'outline-danger' : 'outline-success'} 
                                         size="sm" 
                                         className="rounded-pill px-4 fw-bold"
                                         onClick={() => handleStatusToggle(selectedUser)}
                                     >
-                                        {selectedUser.status === 'Active' ? 'Suspend User' : 'Activate User'}
+                                        <UserX size={16} className="me-2"/> {selectedUser.status === 'Active' ? 'Suspend User' : 'Activate User'}
                                     </Button>
-                                    <Button variant="outline-dark" size="sm" className="rounded-pill px-4 fw-bold">
-                                        Reset Password
+                                    
+                                    <Button 
+                                        variant="outline-primary" 
+                                        size="sm" 
+                                        className="rounded-pill px-4 fw-bold"
+                                        onClick={handleExportUser}
+                                    >
+                                        <Download size={16} className="me-2"/> Export Data
+                                    </Button>
+
+                                    {/* 💡 RESET PASSWORD BUTTON */}
+                                    <Button 
+                                        variant="outline-dark" 
+                                        size="sm" 
+                                        className="rounded-pill px-4 fw-bold"
+                                        onClick={handleResetPassword}
+                                    >
+                                        <Key size={16} className="me-2"/> Reset Password
                                     </Button>
                                 </div>
                             </div>
 
-                            {/* DETAILED TABS */}
+                            {/* DETAILED TABS (Same as before) */}
                             <div className="flex-grow-1 overflow-hidden d-flex flex-column">
                                 <Tab.Container activeKey={activeDetailTab} onSelect={(k) => setActiveDetailTab(k)}>
                                     <div className="px-4 pt-3 border-bottom">
@@ -194,7 +278,6 @@ const AdminUsers = ({ showNotification }) => {
                                                     <CreditCard size={14} className="me-2 mb-1"/>Transactions
                                                 </Nav.Link>
                                             </Nav.Item>
-                                            {/* 💡 3. ADDRESS TAB */}
                                             <Nav.Item>
                                                 <Nav.Link eventKey="addresses" className="text-dark fw-bold small text-uppercase">
                                                     <MapPin size={14} className="me-2 mb-1"/>Addresses
@@ -224,10 +307,7 @@ const AdminUsers = ({ showNotification }) => {
                                                                     <td className="small">{order.date}</td>
                                                                     <td className="fw-bold small">₱{order.total.toLocaleString()}</td>
                                                                     <td>
-                                                                        <Badge bg={
-                                                                            order.status === 'Delivered' ? 'success' : 
-                                                                            order.status === 'Cancelled' ? 'danger' : 'warning'
-                                                                        } className="fw-normal rounded-pill" style={{fontSize: '0.7rem'}}>
+                                                                        <Badge bg={order.status === 'Delivered' ? 'success' : order.status === 'Cancelled' ? 'danger' : 'warning'} className="fw-normal rounded-pill" style={{fontSize: '0.7rem'}}>
                                                                             {order.status}
                                                                         </Badge>
                                                                     </td>
@@ -280,7 +360,7 @@ const AdminUsers = ({ showNotification }) => {
                                                 )}
                                             </Tab.Pane>
 
-                                            {/* 💡 4. ADDRESS TAB CONTENT */}
+                                            {/* ADDRESS TAB CONTENT */}
                                             <Tab.Pane eventKey="addresses">
                                                 <div className="p-4">
                                                     {userAddresses.length > 0 ? (
@@ -313,7 +393,6 @@ const AdminUsers = ({ showNotification }) => {
                                                     )}
                                                 </div>
                                             </Tab.Pane>
-
                                         </Tab.Content>
                                     </div>
                                 </Tab.Container>
@@ -322,6 +401,69 @@ const AdminUsers = ({ showNotification }) => {
                     </Col>
                 )}
             </Row>
+
+            {/* SUSPEND CONFIRMATION MODAL */}
+            <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
+                <Modal.Header closeButton className="border-0">
+                    <Modal.Title className="fw-bold text-dark">
+                        {userToToggle?.status === 'Active' ? 'Suspend User' : 'Activate User'}
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="text-center py-4">
+                    <AlertTriangle size={48} className={`mb-3 ${userToToggle?.status === 'Active' ? 'text-danger' : 'text-success'}`} />
+                    <h5 className="fw-bold">Are you sure?</h5>
+                    <p className="text-muted mb-0">
+                        {userToToggle?.status === 'Active' 
+                            ? `This will prevent ${userToToggle?.name} from logging in and placing orders.`
+                            : `This will restore access for ${userToToggle?.name}.`
+                        }
+                    </p>
+                </Modal.Body>
+                <Modal.Footer className="border-0 justify-content-center pb-4">
+                    <Button variant="light" className="rounded-pill px-4" onClick={() => setShowConfirmModal(false)}>
+                        Cancel
+                    </Button>
+                    <Button 
+                        variant={userToToggle?.status === 'Active' ? 'danger' : 'success'} 
+                        className="rounded-pill px-4 fw-bold" 
+                        onClick={confirmAction}
+                    >
+                        {userToToggle?.status === 'Active' ? 'Suspend Account' : 'Activate Account'}
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* 💡 RESET PASSWORD MODAL */}
+            <Modal show={showResetModal} onHide={() => !isResetting && setShowResetModal(false)} centered>
+                <Modal.Header closeButton={!isResetting} className="border-0">
+                    <Modal.Title className="fw-bold text-dark">Reset Password</Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="text-center py-4">
+                    <div className="bg-light rounded-circle d-inline-flex p-3 mb-3">
+                        <Lock size={32} className="text-primary"/>
+                    </div>
+                    <h5 className="fw-bold">Confirm Password Reset</h5>
+                    <p className="text-muted mb-0">
+                        This will invalidate the current password for <strong>{userToReset?.name}</strong>.
+                        <br/>
+                        A secure recovery link will be sent to: <br/>
+                        <span className="text-dark fw-bold">{userToReset?.email}</span>
+                    </p>
+                </Modal.Body>
+                <Modal.Footer className="border-0 justify-content-center pb-4">
+                    <Button variant="light" className="rounded-pill px-4" onClick={() => setShowResetModal(false)} disabled={isResetting}>
+                        Cancel
+                    </Button>
+                    <Button variant="dark" className="rounded-pill px-4 fw-bold" onClick={confirmReset} disabled={isResetting}>
+                        {isResetting ? (
+                            <><Spinner animation="border" size="sm" className="me-2"/> Sending...</>
+                        ) : (
+                            'Send Recovery Email'
+                        )}
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
         </div>
     );
 };
