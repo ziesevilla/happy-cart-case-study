@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Table, Button, Form, InputGroup, Row, Col, Card, Badge, Tab, Nav, Modal, Spinner } from 'react-bootstrap';
-import { Search, User, Mail, Calendar, ShoppingBag, CreditCard, ChevronRight, X, MapPin, Download, AlertTriangle, Key, Lock, UserX } from 'lucide-react'; // 💡 Added Key, Lock
+import { Table, Button, Form, InputGroup, Row, Col, Card, Badge, Tab, Nav, Modal, Spinner, Pagination } from 'react-bootstrap';
+import { Search, User, Mail, Calendar, ShoppingBag, CreditCard, ChevronRight, X, MapPin, Download, AlertTriangle, Key, Lock, UserX } from 'lucide-react';
 import { useUsers } from '../../context/UserContext';
 import { useOrders } from '../../context/OrderContext';
 import { useTransactions } from '../../context/TransactionContext';
@@ -16,6 +16,10 @@ const AdminUsers = ({ showNotification }) => {
     const [selectedUser, setSelectedUser] = useState(null); 
     const [activeDetailTab, setActiveDetailTab] = useState('history'); 
 
+    // 💡 PAGINATION STATE & CONFIG
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 8; // Display 8 users per page
+
     // --- MODAL STATES ---
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [userToToggle, setUserToToggle] = useState(null);
@@ -25,12 +29,68 @@ const AdminUsers = ({ showNotification }) => {
     const [userToReset, setUserToReset] = useState(null);
     const [isResetting, setIsResetting] = useState(false);
 
+    // --- FILTERING & PAGINATION LOGIC ---
     const filteredUsers = users.filter(u => 
         u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // --- DATA LOGIC ---
+    // Calculate total pages
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
+    // Calculate the start and end index for slicing the data
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    
+    // Slice the array to get the users for the current page
+    const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+
+    // Function to change the current page
+    const handlePageChange = (pageNumber) => {
+        if (pageNumber < 1 || pageNumber > totalPages) return;
+        setCurrentPage(pageNumber);
+        setSelectedUser(null); // Clear selection when changing page
+    };
+
+    // Function to generate the Pagination items
+    const renderPaginationItems = () => {
+        let items = [];
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        items.push(<Pagination.First key="first" onClick={() => handlePageChange(1)} disabled={currentPage === 1} />);
+        items.push(<Pagination.Prev key="prev" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} />);
+
+        if (startPage > 1) {
+            items.push(<Pagination.Ellipsis key="start-ellipsis" />);
+        }
+
+        for (let number = startPage; number <= endPage; number++) {
+            items.push(
+                <Pagination.Item key={number} active={number === currentPage} onClick={() => handlePageChange(number)}>
+                    {number}
+                </Pagination.Item>
+            );
+        }
+
+        if (endPage < totalPages) {
+            items.push(<Pagination.Ellipsis key="end-ellipsis" />);
+        }
+        
+        items.push(<Pagination.Next key="next" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} />);
+        items.push(<Pagination.Last key="last" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} />);
+
+        return items;
+    };
+    // --- END PAGINATION LOGIC ---
+
+
+    // --- DATA LOGIC (Unchanged, but relies on selectedUser) ---
     const userOrders = selectedUser 
         ? orders.filter(o => o.email === selectedUser.email).sort((a,b) => new Date(b.date) - new Date(a.date))
         : [];
@@ -96,14 +156,12 @@ const AdminUsers = ({ showNotification }) => {
         setUserToToggle(null);
     };
 
-    // 💡 HANDLER: Open Reset Modal
     const handleResetPassword = () => {
         if (!selectedUser) return;
         setUserToReset(selectedUser);
         setShowResetModal(true);
     };
 
-    // 💡 HANDLER: Execute Reset (Simulated)
     const confirmReset = () => {
         setIsResetting(true);
         
@@ -120,7 +178,7 @@ const AdminUsers = ({ showNotification }) => {
         <div className="animate-fade-in h-100">
             <Row className="h-100 g-4">
                 
-                {/* LEFT COLUMN */}
+                {/* LEFT COLUMN: USER LIST */}
                 <Col md={selectedUser ? 5 : 12} className={`d-flex flex-column ${selectedUser ? 'd-none d-md-flex' : ''}`}>
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <div className="d-flex align-items-center mb-4">
@@ -139,16 +197,19 @@ const AdminUsers = ({ showNotification }) => {
                                 </InputGroup.Text>
                                 <Form.Control 
                                     placeholder="Search customer..." 
-                                    className="border-0 shadow-none ps-2" // Remove border, focus shadow, and add padding left
+                                    className="border-0 shadow-none ps-2" 
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => { 
+                                        setSearchTerm(e.target.value);
+                                        setCurrentPage(1); // Reset to page 1 on search
+                                    }}
                                 />
                             </InputGroup>
                         </div>
                     </div>
 
                     <Card className="border-0 shadow-sm flex-grow-1 overflow-hidden">
-                        <div className="overflow-auto h-100">
+                        <div>
                             <Table hover className="mb-0 align-middle table-borderless">
                                 <thead className="bg-light sticky-top" style={{zIndex: 1}}>
                                     <tr>
@@ -158,41 +219,60 @@ const AdminUsers = ({ showNotification }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredUsers.map(user => (
-                                        <tr 
-                                            key={user.id} 
-                                            onClick={() => setSelectedUser(user)}
-                                            style={{ cursor: 'pointer', backgroundColor: selectedUser?.id === user.id ? '#f0f9ff' : 'transparent' }}
-                                            className="border-bottom"
-                                        >
-                                            <td className="ps-4 py-3">
-                                                <div className="d-flex align-items-center gap-3">
-                                                    <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{width: '35px', height: '35px', fontSize: '0.9rem'}}>
-                                                        {user.name.charAt(0)}
+                                    {/* Use currentUsers (the sliced list) */}
+                                    {currentUsers.length > 0 ? (
+                                        currentUsers.map(user => (
+                                            <tr 
+                                                key={user.id} 
+                                                onClick={() => setSelectedUser(user)}
+                                                style={{ cursor: 'pointer', backgroundColor: selectedUser?.id === user.id ? '#f0f9ff' : 'transparent' }}
+                                                className="border-bottom"
+                                            >
+                                                <td className="ps-4 py-3">
+                                                    <div className="d-flex align-items-center gap-3">
+                                                        <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{width: '35px', height: '35px', fontSize: '0.9rem'}}>
+                                                            {user.name.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <div className="fw-bold text-dark">{user.name}</div>
+                                                            <small className="text-muted">{user.role}</small>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <div className="fw-bold text-dark">{user.name}</div>
-                                                        <small className="text-muted">{user.role}</small>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <Badge bg={user.status === 'Active' ? 'success' : 'danger'} className="fw-normal rounded-pill px-3">
-                                                    {user.status}
-                                                </Badge>
-                                            </td>
-                                            <td className="text-end pe-4">
-                                                <ChevronRight size={16} className="text-muted" />
-                                            </td>
+                                                </td>
+                                                <td>
+                                                    <Badge bg={user.status === 'Active' ? 'success' : 'danger'} className="fw-normal rounded-pill px-3">
+                                                        {user.status}
+                                                    </Badge>
+                                                </td>
+                                                <td className="text-end pe-4">
+                                                    <ChevronRight size={16} className="text-muted" />
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="3" className="text-center py-5 text-muted">No customers found.</td>
                                         </tr>
-                                    ))}
+                                    )}
                                 </tbody>
                             </Table>
                         </div>
+
+                        {/* ✅ PAGINATION UI FOOTER */}
+                        {totalPages > 1 && (
+                            <Card.Footer className="bg-white border-top d-flex justify-content-between align-items-center py-3 px-4">
+                                <div className="small text-muted">
+                                    Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredUsers.length)} of {filteredUsers.length} users
+                                </div>
+                                <Pagination size="sm" className="mb-0">
+                                    {renderPaginationItems()}
+                                </Pagination>
+                            </Card.Footer>
+                        )}
                     </Card>
                 </Col>
 
-                {/* RIGHT COLUMN: PROFILE */}
+                {/* RIGHT COLUMN: PROFILE (Unchanged) */}
                 {selectedUser && (
                     <Col md={7} className="h-100 animate-slide-in-right">
                         <Card className="border-0 shadow-sm h-100 overflow-hidden">
@@ -251,7 +331,7 @@ const AdminUsers = ({ showNotification }) => {
                                         <Download size={16} className="me-2"/> Export Data
                                     </Button>
 
-                                    {/* 💡 RESET PASSWORD BUTTON */}
+                                    {/* RESET PASSWORD BUTTON */}
                                     <Button 
                                         variant="outline-dark" 
                                         size="sm" 
@@ -402,7 +482,7 @@ const AdminUsers = ({ showNotification }) => {
                 )}
             </Row>
 
-            {/* SUSPEND CONFIRMATION MODAL */}
+            {/* SUSPEND CONFIRMATION MODAL (Unchanged) */}
             <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
                 <Modal.Header closeButton className="border-0">
                     <Modal.Title className="fw-bold text-dark">
@@ -433,7 +513,7 @@ const AdminUsers = ({ showNotification }) => {
                 </Modal.Footer>
             </Modal>
 
-            {/* 💡 RESET PASSWORD MODAL */}
+            {/* RESET PASSWORD MODAL (Unchanged) */}
             <Modal show={showResetModal} onHide={() => !isResetting && setShowResetModal(false)} centered>
                 <Modal.Header closeButton={!isResetting} className="border-0">
                     <Modal.Title className="fw-bold text-dark">Reset Password</Modal.Title>
@@ -444,7 +524,7 @@ const AdminUsers = ({ showNotification }) => {
                     </div>
                     <h5 className="fw-bold">Confirm Password Reset</h5>
                     <p className="text-muted mb-0">
-                        This will invalidate the current password for <strong>{userToReset?.name}</strong>.
+                        This will invalidate the current password for **{userToReset?.name}**.
                         <br/>
                         A secure recovery link will be sent to: <br/>
                         <span className="text-dark fw-bold">{userToReset?.email}</span>

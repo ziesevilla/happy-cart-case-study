@@ -180,3 +180,73 @@ h1, h2, h3, h4, h5, .navbar-brand, .btn {
 .order-card .bg-light .text-muted {
     color: white !important;
 }
+
+/* ... (Keep all your existing code) ... */
+
+/* =========================================
+   CUSTOM PAGINATION (Pink & Circular)
+   ========================================= */
+
+.pagination {
+    gap: 8px; /* Space between buttons */
+    align-items: center;
+}
+
+/* Base Style for Page Links */
+.page-item .page-link {
+    border: none;
+    border-radius: 50% !important; /* Force Circle */
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    background-color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    margin: 0;
+}
+
+/* Hover State */
+.page-item .page-link:hover {
+    background-color: #fff5f7; /* Soft Pink Bg */
+    color: var(--primary-solid); /* Pink Text */
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(255, 107, 139, 0.15);
+    z-index: 2;
+}
+
+/* Active State (Selected Page) */
+.page-item.active .page-link {
+    background-color: var(--primary-solid) !important;
+    color: white !important;
+    box-shadow: 0 4px 10px rgba(255, 107, 139, 0.3);
+    transform: scale(1.1);
+}
+
+/* Disabled State (e.g. Prev button on page 1) */
+.page-item.disabled .page-link {
+    background-color: transparent;
+    color: #e2e8f0;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Remove default Bootstrap focus rings */
+.page-link:focus {
+    box-shadow: none;
+    background-color: #fff5f7;
+    color: var(--primary-solid);
+}
+
+/* Adjust Previous/Next buttons to have icons centered */
+.page-item:first-child .page-link,
+.page-item:last-child .page-link {
+    border-radius: 50% !important;
+    font-size: 1.2rem; /* Larger arrows */
+    padding-bottom: 4px; /* Visual alignment fix */
+}

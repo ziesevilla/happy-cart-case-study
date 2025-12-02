@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Button, Form, InputGroup, Row, Col, Card, Badge, Dropdown } from 'react-bootstrap';
+import { Table, Button, Form, InputGroup, Row, Col, Card, Badge, Dropdown, Pagination } from 'react-bootstrap'; 
 import { Search, ShoppingBag, User, MapPin, Calendar, X, MoreVertical, Truck, CheckCircle, XCircle, Clock} from 'lucide-react';
 import { useOrders } from '../../context/OrderContext';
 import { useProducts } from '../../context/ProductContext'; 
@@ -10,13 +10,36 @@ const AdminOrders = ({ showNotification }) => {
     
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedOrder, setSelectedOrder] = useState(null); 
-
+    
+    // 💡 PAGINATION STATE & CALCULATIONS
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 7; // Adjusted to a smaller number for visible pagination demonstration
+    
     const sortedOrders = [...orders].sort((a, b) => new Date(b.date) - new Date(a.date)); 
 
     const filteredOrders = sortedOrders.filter(order => 
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    // Calculate total pages
+    const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+
+    // Calculate the start and end index for slicing the data
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    
+    // Slice the array to get the orders for the current page
+    const currentOrders = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
+    
+    // Function to change the current page
+    const paginate = (pageNumber) => {
+        if (pageNumber < 1 || pageNumber > totalPages) return;
+        setCurrentPage(pageNumber);
+        setSelectedOrder(null); 
+    };
+    // 💡 END PAGINATION STATE & CALCULATIONS
+
 
     const getStatusVariant = (status) => {
         switch(status) {
@@ -45,7 +68,7 @@ const AdminOrders = ({ showNotification }) => {
         showNotification(`Order ${selectedOrder.id} updated to ${newStatus}`);
     };
 
-    // 💡 Helper to calculate totals
+    // Helper to calculate totals
     const calculateTotals = (details) => {
         if (!details) return { subtotal: 0, shipping: 0, total: 0 };
         const subtotal = details.reduce((sum, item) => sum + (item.price * item.qty), 0);
@@ -56,13 +79,50 @@ const AdminOrders = ({ showNotification }) => {
 
     const { subtotal, shipping, total } = selectedOrder ? calculateTotals(selectedOrder.details) : { subtotal: 0, shipping: 0, total: 0 };
 
-    // 💡 HELPER: Currency Formatter
+    // HELPER: Currency Formatter
     const formatCurrency = (amount) => {
         return amount.toLocaleString(undefined, { 
             minimumFractionDigits: 2, 
             maximumFractionDigits: 2 
         });
     };
+    
+    // Function to generate the Pagination items
+    const renderPaginationItems = () => {
+        let items = [];
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        items.push(<Pagination.First key="first" onClick={() => paginate(1)} disabled={currentPage === 1} />);
+        items.push(<Pagination.Prev key="prev" onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} />);
+
+        if (startPage > 1) {
+            items.push(<Pagination.Ellipsis key="start-ellipsis" />);
+        }
+
+        for (let number = startPage; number <= endPage; number++) {
+            items.push(
+                <Pagination.Item key={number} active={number === currentPage} onClick={() => paginate(number)}>
+                    {number}
+                </Pagination.Item>
+            );
+        }
+
+        if (endPage < totalPages) {
+            items.push(<Pagination.Ellipsis key="end-ellipsis" />);
+        }
+        
+        items.push(<Pagination.Next key="next" onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} />);
+        items.push(<Pagination.Last key="last" onClick={() => paginate(totalPages)} disabled={currentPage === totalPages} />);
+
+        return items;
+    };
+
 
     return (
         <div className="animate-fade-in h-100">
@@ -86,16 +146,20 @@ const AdminOrders = ({ showNotification }) => {
                                 </InputGroup.Text>
                                 <Form.Control 
                                     placeholder="Search orders..." 
-                                    className="border-0 shadow-none ps-2" // Remove border, focus shadow, and add padding left
+                                    className="border-0 shadow-none ps-2"
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value);
+                                        setCurrentPage(1); // Reset to page 1 on search
+                                    }}
                                 />
                             </InputGroup>
                         </div>
                     </div>
 
-                    <Card className="border-0 shadow-sm flex-grow-1 overflow-hidden">
-                        <div className="overflow-auto h-100">
+                    <Card className="border-0 shadow-sm flex-grow-1">
+                        {/* ❌ REMOVED: overflow-auto & fixed height style from this div */}
+                        <div> 
                             <Table hover className="mb-0 align-middle table-borderless">
                                 <thead className="bg-light sticky-top" style={{zIndex: 1}}>
                                     <tr>
@@ -105,44 +169,65 @@ const AdminOrders = ({ showNotification }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredOrders.map(order => {
-                                        const orderTotals = calculateTotals(order.details);
-                                        return (
-                                            <tr 
-                                                key={order.id} 
-                                                onClick={() => setSelectedOrder(order)}
-                                                style={{ cursor: 'pointer', backgroundColor: selectedOrder?.id === order.id ? '#f0f9ff' : 'transparent' }}
-                                                className="border-bottom"
-                                            >
-                                                <td className="ps-4 py-3">
-                                                    <div className="d-flex flex-column">
-                                                        <span className="fw-bold text-dark">{order.id}</span>
-                                                        <small className="text-muted">{order.customerName}</small>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <Badge bg={getStatusVariant(order.status)} className="fw-normal rounded-pill px-2 d-inline-flex align-items-center">
-                                                        {order.status}
-                                                    </Badge>
-                                                </td>
-                                                <td className="text-end pe-4">
-                                                    {/* Display Formatted Total */}
-                                                    <div className="fw-bold text-dark">₱{formatCurrency(orderTotals.total)}</div>
-                                                    <small className="text-muted">{order.date}</small>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                    {/* ✅ Using currentOrders (the sliced data) */}
+                                    {currentOrders.length > 0 ? (
+                                        currentOrders.map(order => {
+                                            const orderTotals = calculateTotals(order.details);
+                                            return (
+                                                <tr 
+                                                    key={order.id} 
+                                                    onClick={() => setSelectedOrder(order)}
+                                                    style={{ cursor: 'pointer', backgroundColor: selectedOrder?.id === order.id ? '#f0f9ff' : 'transparent' }}
+                                                    className="border-bottom"
+                                                >
+                                                    <td className="ps-4 py-3">
+                                                        <div className="d-flex flex-column">
+                                                            <span className="fw-bold text-dark">{order.id}</span>
+                                                            <small className="text-muted">{order.customerName}</small>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <Badge bg={getStatusVariant(order.status)} className="fw-normal rounded-pill px-2 d-inline-flex align-items-center">
+                                                            {order.status}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="text-end pe-4">
+                                                        <div className="fw-bold text-dark">₱{formatCurrency(orderTotals.total)}</div>
+                                                        <small className="text-muted">{order.date}</small>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="3" className="text-center py-5 text-muted">
+                                                No orders found for the current search/filter.
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </Table>
                         </div>
+                        
+                        {/* ✅ PAGINATION UI: Visible only if there is more than one page */}
+                        {totalPages > 1 && (
+                            <Card.Footer className="bg-white border-top d-flex justify-content-between align-items-center py-3">
+                                <div className="small text-muted">
+                                    Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredOrders.length)} of {filteredOrders.length} orders
+                                </div>
+                                <Pagination size="sm" className="mb-0">
+                                    {renderPaginationItems()}
+                                </Pagination>
+                            </Card.Footer>
+                        )}
                     </Card>
                 </Col>
 
-                {/* --- RIGHT COLUMN: ORDER DETAILS --- */}
+                {/* --- RIGHT COLUMN: ORDER DETAILS (Unchanged) --- */}
                 {selectedOrder && (
                     <Col md={7} className="h-100 animate-slide-in-right">
                         <Card className="border-0 shadow-sm h-100 overflow-hidden">
+                            {/* ... (Order Details Content - Unchanged) ... */}
                             
                             <div className="p-4 border-bottom bg-light d-flex justify-content-between align-items-start">
                                 <div>
@@ -251,18 +336,15 @@ const AdminOrders = ({ showNotification }) => {
                                         <div style={{minWidth: '250px'}}>
                                             <div className="d-flex justify-content-between mb-2 small text-muted">
                                                 <span>Subtotal</span>
-                                                {/* 💡 Formatted Subtotal */}
                                                 <span>₱{formatCurrency(subtotal)}</span>
                                             </div>
                                             <div className="d-flex justify-content-between mb-2 small text-muted">
                                                 <span>Shipping</span>
-                                                {/* 💡 Formatted Shipping */}
                                                 <span>₱{formatCurrency(shipping)}</span>
                                             </div>
                                             <hr/>
                                             <div className="d-flex justify-content-between fw-bold text-dark fs-5">
                                                 <span>Total</span>
-                                                {/* 💡 Formatted Total */}
                                                 <span>₱{formatCurrency(total)}</span>
                                             </div>
                                         </div>
@@ -270,6 +352,7 @@ const AdminOrders = ({ showNotification }) => {
 
                                 </div>
                             </div>
+
                         </Card>
                     </Col>
                 )}

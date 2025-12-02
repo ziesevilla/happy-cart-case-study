@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'; 
 import { Table, Button, Form, Modal, Row, Col, InputGroup, Pagination, Card, Badge } from 'react-bootstrap';
-import { Edit2, Trash2, Plus, Search, Package, Image as ImageIcon, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, LayoutList, AlertTriangle } from 'lucide-react'; // 💡 Added AlertTriangle
+import { Edit2, Trash2, Plus, Search, Package, Image as ImageIcon, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, LayoutList, AlertTriangle } from 'lucide-react';
 import { useProducts } from '../../context/ProductContext'; 
 
 const AdminInventory = ({ showNotification }) => {
@@ -10,12 +10,13 @@ const AdminInventory = ({ showNotification }) => {
     const [viewMode, setViewMode] = useState('list'); 
     
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = viewMode === 'list' ? 8 : 12;
+    const itemsPerPage = viewMode === 'list' ? 8 : 12; 
+    const GRID_PAGES = ['Clothing', 'Shoes', 'Accessories'];
 
     // --- MODAL STATES ---
-    const [showModal, setShowModal] = useState(false); // Add/Edit Modal
-    const [showDeleteModal, setShowDeleteModal] = useState(false); // 💡 Delete Modal
-    const [itemToDelete, setItemToDelete] = useState(null); // 💡 Track item to delete
+    const [showModal, setShowModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
 
     const [isEditing, setIsEditing] = useState(false);
     const [currentId, setCurrentId] = useState(null);
@@ -24,8 +25,6 @@ const AdminInventory = ({ showNotification }) => {
     const [formData, setFormData] = useState(initialForm);
 
     const [sortConfig, setSortConfig] = useState({ key: 'id', direction: 'asc' }); 
-
-    const GRID_PAGES = ['Clothing', 'Shoes', 'Accessories'];
 
     useEffect(() => {
         setCurrentPage(1);
@@ -81,11 +80,13 @@ const AdminInventory = ({ showNotification }) => {
         return 0;
     });
 
+    // LIST VIEW PAGINATION LOGIC
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const listItems = sortedProducts.slice(indexOfFirstItem, indexOfLastItem);
     const listTotalPages = Math.ceil(sortedProducts.length / itemsPerPage);
 
+    // GRID VIEW PAGINATION LOGIC 
     const currentGridCategory = GRID_PAGES[currentPage - 1] || 'Clothing';
     const gridItems = sortedProducts.filter(p => p.category === currentGridCategory);
 
@@ -100,8 +101,66 @@ const AdminInventory = ({ showNotification }) => {
 
     const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const contentTop = document.querySelector('.animate-fade-in');
+        if (contentTop) {
+             contentTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     };
+    
+    // 💡 UPDATED: Pagination item renderer function
+    const renderPaginationItems = () => {
+        let items = [];
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        items.push(<Pagination.First key="first" onClick={() => handlePageChange(1)} disabled={currentPage === 1} />);
+        items.push(<Pagination.Prev key="prev" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} />);
+
+        if (startPage > 1) {
+            items.push(<Pagination.Ellipsis key="start-ellipsis" />);
+        }
+
+        for (let number = startPage; number <= endPage; number++) {
+            const displayLabel = viewMode === 'grid' ? GRID_PAGES[number - 1] : number;
+            
+            // ✅ FIX: Ensures category labels fit and display correctly
+            const itemStyle = viewMode === 'grid' ? { 
+                borderRadius: '50px', 
+                paddingLeft: '1rem', 
+                paddingRight: '1rem',
+                minWidth: 'auto', // Override default min-width
+                height: 'auto',   // Override default height
+            } : {};
+            
+            items.push(
+                <Pagination.Item 
+                    key={number} 
+                    active={number === currentPage} 
+                    onClick={() => handlePageChange(number)}
+                    style={itemStyle} 
+                >
+                    {displayLabel}
+                </Pagination.Item>
+            );
+        }
+
+        if (endPage < totalPages) {
+            items.push(<Pagination.Ellipsis key="end-ellipsis" />);
+        }
+        
+        items.push(<Pagination.Next key="next" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} />);
+        items.push(<Pagination.Last key="last" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} />);
+
+        return items;
+    };
+
 
     const handleOpenAdd = () => {
         setIsEditing(false);
@@ -116,13 +175,11 @@ const AdminInventory = ({ showNotification }) => {
         setShowModal(true);
     };
 
-    // 💡 UPDATED: Open Modal instead of Confirm
     const handleDeleteClick = (product) => {
         setItemToDelete(product);
         setShowDeleteModal(true);
     };
 
-    // 💡 NEW: Actual Delete Action
     const confirmDelete = () => {
         if (itemToDelete) {
             deleteProduct(itemToDelete.id);
@@ -156,7 +213,7 @@ const AdminInventory = ({ showNotification }) => {
     return (
         <div className="animate-fade-in">
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <div className="d-flex align-items-center mb-4">
+                <div className="d-flex align-items-center">
                     <div className="bg-white p-2 rounded-circle shadow-sm me-3 border">
                         <Package size={24} className="text-primary"/>
                     </div>
@@ -166,52 +223,47 @@ const AdminInventory = ({ showNotification }) => {
                     </div>
                 </div>
 
-                <div className="bg-white p-1 rounded-pill border d-flex">
-                    <Button 
-                    variant={viewMode === 'list' ? 'dark' : 'light'} 
-                    size="sm" 
-                    className="rounded-pill px-3 d-flex align-items-center gap-2"
-                    onClick={() => setViewMode('list')}
-                    >
-                        <LayoutList size={14}/> List
-                    </Button>
-                    <Button 
-                        variant={viewMode === 'grid' ? 'dark' : 'light'} 
+                <div className="d-flex gap-3">
+                    <div className="bg-white p-1 rounded-pill border d-flex">
+                        <Button 
+                        variant={viewMode === 'list' ? 'dark' : 'light'} 
                         size="sm" 
                         className="rounded-pill px-3 d-flex align-items-center gap-2"
-                        onClick={() => setViewMode('grid')}
-                    >
-                        <LayoutGrid size={14}/> Grid
+                        onClick={() => setViewMode('list')}
+                        >
+                            <LayoutList size={14}/> List
+                        </Button>
+                        <Button 
+                            variant={viewMode === 'grid' ? 'dark' : 'light'} 
+                            size="sm" 
+                            className="rounded-pill px-3 d-flex align-items-center gap-2"
+                            onClick={() => setViewMode('grid')}
+                        >
+                            <LayoutGrid size={14}/> Grid
+                        </Button>
+                    </div>
+
+                    <Button variant="primary" className="rounded-pill fw-bold px-4" onClick={handleOpenAdd}>
+                        <Plus size={18} className="me-2"/> Add Product
                     </Button>
-                </div>
 
-                
-                <Button variant="primary" className="rounded-pill fw-bold px-4" onClick={handleOpenAdd}>
-                    <Plus size={18} className="me-2"/> Add Product
-                </Button>
-
-                <div style={{ width: '300px'}}>
-                    <InputGroup size="sm" className="border rounded-pill bg-white overflow-hidden">
-                        <InputGroup.Text className="bg-white border-0 pe-0">
-                            <Search size={16} className="text-muted"/>
-                        </InputGroup.Text>
-                        <Form.Control 
-                            placeholder="Search products..." 
-                            className="border-0 shadow-none ps-2" // Remove border, focus shadow, and add padding left
-                            value={searchTerm}
-                            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                        />
-                    </InputGroup>
+                    <div style={{ width: '300px'}}>
+                        <InputGroup size="sm" className="border rounded-pill bg-white overflow-hidden">
+                            <InputGroup.Text className="bg-white border-0 pe-0">
+                                <Search size={16} className="text-muted"/>
+                            </InputGroup.Text>
+                            <Form.Control 
+                                placeholder="Search products..." 
+                                className="border-0 shadow-none ps-2"
+                                value={searchTerm}
+                                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                            />
+                        </InputGroup>
+                    </div>
                 </div>
             </div>
 
-            {viewMode === 'grid' && (
-                <div className="mb-4 d-flex align-items-center">
-                    <h4 className="fw-bold text-dark mb-0">Page {currentPage}: <span className="text-primary">{currentGridCategory}</span></h4>
-                    <Badge bg="light" text="dark" className="ms-3 border">{gridItems.length} items</Badge>
-                </div>
-            )}
-
+            {/* --- LIST VIEW --- */}
             {viewMode === 'list' ? (
                 <div className="bg-white rounded-4 shadow-sm overflow-hidden border mb-4">
                     <Table responsive hover className="mb-0 align-middle">
@@ -248,7 +300,6 @@ const AdminInventory = ({ showNotification }) => {
                                     </td>
                                     <td className="pe-4 text-end">
                                         <Button variant="light" size="sm" className="me-2 rounded-circle p-2" onClick={() => handleOpenEdit(p)}><Edit2 size={16} className="text-primary"/></Button>
-                                        {/* 💡 Pass Object to handleDeleteClick */}
                                         <Button variant="light" size="sm" className="rounded-circle p-2" onClick={() => handleDeleteClick(p)}><Trash2 size={16} className="text-danger"/></Button>
                                     </td>
                                 </tr>
@@ -257,9 +308,28 @@ const AdminInventory = ({ showNotification }) => {
                             )}
                         </tbody>
                     </Table>
+                    
+                    {/* PAGINATION FOOTER FOR LIST VIEW */}
+                    {listTotalPages > 1 && (
+                        <div className="bg-white border-top d-flex justify-content-between align-items-center py-3 px-4">
+                            <div className="small text-muted">
+                                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, sortedProducts.length)} of {sortedProducts.length} products
+                            </div>
+                            <Pagination size="sm" className="mb-0">
+                                {renderPaginationItems()}
+                            </Pagination>
+                        </div>
+                    )}
                 </div>
             ) : (
+            
+            /* --- GRID VIEW --- */
                 <div className="mb-4">
+                    <div className="mb-4 d-flex align-items-center">
+                        <h4 className="fw-bold text-dark mb-0">Category: <span className="text-primary">{currentGridCategory}</span></h4>
+                        <Badge bg="light" text="dark" className="ms-3 border">{gridItems.length} items</Badge>
+                    </div>
+
                     {Object.keys(groupedGridItems).length > 0 ? (
                         Object.keys(groupedGridItems).sort().map(subCat => (
                             <div key={subCat} className="mb-5">
@@ -282,7 +352,6 @@ const AdminInventory = ({ showNotification }) => {
                                                     </div>
                                                     <div className="position-absolute top-0 end-0 m-2 d-flex gap-2">
                                                         <Button variant="light" size="sm" className="rounded-circle shadow-sm" onClick={() => handleOpenEdit(p)}><Edit2 size={14}/></Button>
-                                                        {/* 💡 Pass Object to handleDeleteClick */}
                                                         <Button variant="danger" size="sm" className="rounded-circle shadow-sm" onClick={() => handleDeleteClick(p)}><Trash2 size={14}/></Button>
                                                     </div>
                                                 </div>
@@ -312,20 +381,16 @@ const AdminInventory = ({ showNotification }) => {
                 </div>
             )}
 
-            {/* PAGINATION */}
-            {totalPages > 1 && (
-                <div className="d-flex justify-content-center">
-                    <Pagination>
-                        <Pagination.Prev onClick={() => handlePageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} />
-                        {[...Array(totalPages)].map((_, idx) => (
-                            <Pagination.Item key={idx + 1} active={idx + 1 === currentPage} onClick={() => handlePageChange(idx + 1)}>{viewMode === 'grid' ? GRID_PAGES[idx] : idx + 1}</Pagination.Item>
-                        ))}
-                        <Pagination.Next onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} />
+            {/* PAGINATION UI - Used exclusively for Grid View */}
+            {totalPages > 1 && viewMode === 'grid' && (
+                <div className="d-flex justify-content-center mt-5">
+                    <Pagination size="sm">
+                        {renderPaginationItems()}
                     </Pagination>
                 </div>
             )}
 
-            {/* ADD/EDIT MODAL */}
+            {/* ADD/EDIT MODAL (Unchanged) */}
             <Modal show={showModal} onHide={() => setShowModal(false)} centered size="lg">
                 <Modal.Header closeButton className="border-0"><Modal.Title className="fw-bold">{isEditing ? 'Edit Product' : 'Add New Product'}</Modal.Title></Modal.Header>
                 <Modal.Body className="px-4 pb-4">
@@ -383,7 +448,7 @@ const AdminInventory = ({ showNotification }) => {
                 </Modal.Body>
             </Modal>
 
-            {/* 💡 NEW: DELETE CONFIRMATION MODAL */}
+            {/* DELETE CONFIRMATION MODAL (Unchanged) */}
             <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
                 <Modal.Header closeButton className="border-0">
                     <Modal.Title className="fw-bold text-danger">Confirm Deletion</Modal.Title>
@@ -394,7 +459,7 @@ const AdminInventory = ({ showNotification }) => {
                     </div>
                     <h5 className="fw-bold">Delete Product?</h5>
                     <p className="text-muted mb-0">
-                        Are you sure you want to delete <strong>{itemToDelete?.name}</strong>? 
+                        Are you sure you want to delete **{itemToDelete?.name}**? 
                         <br/>This action cannot be undone.
                     </p>
                 </Modal.Body>

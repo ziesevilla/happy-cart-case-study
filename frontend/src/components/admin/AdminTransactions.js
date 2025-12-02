@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Table, Button, Badge, Pagination, Row, Col, Card, InputGroup, Form } from 'react-bootstrap';
 import { RefreshCcw, XCircle, CheckCircle, Package, LayoutList, LayoutGrid, CreditCard, Banknote, Smartphone, Calendar, Hash, ArrowUpDown, ArrowUp, ArrowDown, Search, Layers } from 'lucide-react';
-import { useTransactions } from '../../context/TransactionContext'; 
+import { useTransactions } from '../../context/TransactionContext';
 
 const AdminTransactions = ({ showNotification }) => {
-    const { transactions, updateTransactionStatus } = useTransactions(); 
+    const { transactions, updateTransactionStatus } = useTransactions();
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [viewMode, setViewMode] = useState('list'); 
+    const [viewMode, setViewMode] = useState('list');
+    
+    // 💡 PAGINATION STATE & CONFIG
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = viewMode === 'list' ? 8 : 12;
 
@@ -15,7 +17,7 @@ const AdminTransactions = ({ showNotification }) => {
     const [groupBy, setGroupBy] = useState('method');
 
     // --- SORTING STATE ---
-    const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' }); 
+    const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
 
     const handleSort = (key) => {
         let direction = 'asc';
@@ -32,7 +34,7 @@ const AdminTransactions = ({ showNotification }) => {
     };
 
     // --- FILTER & SORT LOGIC ---
-    const filteredTransactions = transactions.filter(trx => 
+    const filteredTransactions = transactions.filter(trx =>
         trx.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         trx.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         trx.method.toLowerCase().includes(searchTerm.toLowerCase())
@@ -49,8 +51,8 @@ const AdminTransactions = ({ showNotification }) => {
         }
 
         if (sortConfig.key === 'date') {
-            return sortConfig.direction === 'asc' 
-                ? new Date(aValue) - new Date(bValue) 
+            return sortConfig.direction === 'asc'
+                ? new Date(aValue) - new Date(bValue)
                 : new Date(bValue) - new Date(aValue);
         }
 
@@ -65,15 +67,56 @@ const AdminTransactions = ({ showNotification }) => {
             showNotification("Refund processed successfully.", "info");
         }
     };
-
+    
+    // --- PAGINATION CALCULATIONS ---
+    const totalPages = Math.ceil(sortedTransactions.length / itemsPerPage);
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    
+    // The items currently visible
     const currentItems = sortedTransactions.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(sortedTransactions.length / itemsPerPage);
 
     const handlePageChange = (pageNumber) => {
+        if (pageNumber < 1 || pageNumber > totalPages) return;
         setCurrentPage(pageNumber);
     };
+    
+    // --- PAGINATION RENDERING HELPER ---
+    const renderPaginationItems = () => {
+        let items = [];
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        items.push(<Pagination.First key="first" onClick={() => handlePageChange(1)} disabled={currentPage === 1} />);
+        items.push(<Pagination.Prev key="prev" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} />);
+
+        if (startPage > 1) {
+            items.push(<Pagination.Ellipsis key="start-ellipsis" />);
+        }
+
+        for (let number = startPage; number <= endPage; number++) {
+            items.push(
+                <Pagination.Item key={number} active={number === currentPage} onClick={() => handlePageChange(number)}>
+                    {number}
+                </Pagination.Item>
+            );
+        }
+
+        if (endPage < totalPages) {
+            items.push(<Pagination.Ellipsis key="end-ellipsis" />);
+        }
+        
+        items.push(<Pagination.Next key="next" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} />);
+        items.push(<Pagination.Last key="last" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} />);
+
+        return items;
+    };
+    // --- END PAGINATION RENDERING HELPER ---
 
     // --- ICONS ---
     const getMethodIcon = (method) => {
@@ -100,8 +143,11 @@ const AdminTransactions = ({ showNotification }) => {
             return groups;
         }, {});
     };
+    
+    // Use the *full* sorted list for grid view grouping across pages, 
+    // or use currentItems if you want the grid view to also be paginated (which you don't)
+    const groupedGridItems = groupTransactions(sortedTransactions);
 
-    const groupedGridItems = groupTransactions(currentItems);
 
     return (
         <div className="animate-fade-in">
@@ -120,12 +166,17 @@ const AdminTransactions = ({ showNotification }) => {
                 <div className="d-flex gap-3 align-items-center">
                     {/* 💡 GROUPING SELECTOR (Only visible in Grid Mode) */}
                     {viewMode === 'grid' && (
-                        <InputGroup size="sm" style={{ width: '200px' }}>
-                            <InputGroup.Text className="bg-white"><Layers size={16} className="text-muted"/></InputGroup.Text>
+                        <InputGroup size="sm" className="border rounded-pill bg-white overflow-hidden">
+                            {/* InputGroup.Text (Icon): Remove right border */}
+                            <InputGroup.Text className="bg-white border-0 pe-0">
+                                <Layers size={16} className="text-muted"/> 
+                            </InputGroup.Text>
+                            
+                            {/* Form.Select (Dropdown): Remove left border */}
                             <Form.Select 
                                 value={groupBy} 
                                 onChange={(e) => setGroupBy(e.target.value)}
-                                className="shadow-none fw-bold text-muted"
+                                className="fw-bold border-start-0" 
                             >
                                 <option value="method">Group by Method</option>
                                 <option value="status">Group by Status</option>
@@ -160,7 +211,7 @@ const AdminTransactions = ({ showNotification }) => {
                         </InputGroup.Text>
                         <Form.Control 
                             placeholder="Search transactions..." 
-                            className="border-0 shadow-none ps-2" // Remove border, focus shadow, and add padding left
+                            className="border-0 shadow-none ps-2"
                             value={searchTerm}
                             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                         />
@@ -169,7 +220,8 @@ const AdminTransactions = ({ showNotification }) => {
             </div>
 
             {viewMode === 'list' ? (
-                <div className="bg-white rounded-4 shadow-sm overflow-hidden border mb-4">
+                // --- LIST VIEW ---
+                <Card className="bg-white rounded-4 shadow-sm overflow-hidden border mb-4">
                     <Table responsive hover className="mb-0 align-middle">
                         <thead className="bg-light">
                             <tr>
@@ -195,6 +247,7 @@ const AdminTransactions = ({ showNotification }) => {
                             </tr>
                         </thead>
                         <tbody>
+                            {/* Use currentItems for pagination */}
                             {currentItems.length > 0 ? currentItems.map(trx => (
                                 <tr key={trx.id}>
                                     <td className="ps-4 font-monospace small">{trx.id}</td>
@@ -235,9 +288,21 @@ const AdminTransactions = ({ showNotification }) => {
                             )}
                         </tbody>
                     </Table>
-                </div>
+
+                    {/* ✅ PAGINATION FOOTER FOR LIST VIEW */}
+                    {totalPages > 1 && viewMode === 'list' && (
+                        <Card.Footer className="bg-white border-top d-flex justify-content-between align-items-center py-3 px-4">
+                            <div className="small text-muted">
+                                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, sortedTransactions.length)} of {sortedTransactions.length} transactions
+                            </div>
+                            <Pagination size="sm" className="mb-0">
+                                {renderPaginationItems()}
+                            </Pagination>
+                        </Card.Footer>
+                    )}
+                </Card>
             ) : (
-                /* 💡 GRID VIEW - DYNAMICALLY GROUPED */
+                /* --- GRID VIEW --- */
                 <div className="mb-4">
                     {Object.keys(groupedGridItems).length > 0 ? (
                         Object.keys(groupedGridItems).sort().map(groupKey => (
@@ -246,7 +311,7 @@ const AdminTransactions = ({ showNotification }) => {
                                 <h5 className="fw-bold text-secondary text-uppercase mb-3 ps-2 border-start border-4 border-primary d-flex align-items-center gap-2">
                                     {/* Show specific icon based on grouping mode */}
                                     {groupBy === 'method' ? getMethodIcon(groupKey) : getStatusIcon(groupKey)}
-                                    {groupKey} 
+                                    {groupKey}
                                     <span className="text-muted small ms-2 fw-normal">({groupedGridItems[groupKey].length})</span>
                                 </h5>
                                 
@@ -308,24 +373,7 @@ const AdminTransactions = ({ showNotification }) => {
                 </div>
             )}
 
-            {/* PAGINATION */}
-            {totalPages > 1 && (
-                <div className="d-flex justify-content-center">
-                    <Pagination>
-                        <Pagination.Prev onClick={() => handlePageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} />
-                        {[...Array(totalPages)].map((_, idx) => (
-                            <Pagination.Item 
-                                key={idx + 1} 
-                                active={idx + 1 === currentPage} 
-                                onClick={() => handlePageChange(idx + 1)}
-                            >
-                                {idx + 1}
-                            </Pagination.Item>
-                        ))}
-                        <Pagination.Next onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} />
-                    </Pagination>
-                </div>
-            )}
+            {/* ❌ REMOVED: The redundant, unconditional pagination block previously here. */}
         </div>
     );
 };
