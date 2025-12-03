@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Container, Row, Col, Button, Toast, ToastContainer } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Button, Toast, ToastContainer, Spinner } from 'react-bootstrap'; // 💡 Added Spinner
 import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext'; 
-import { useReviews } from '../context/ReviewContext'; // 💡 1. Import Review Context
+import { useReviews } from '../context/ReviewContext'; 
 import { useNavigate } from 'react-router-dom';
 import ProfileSidebar from '../components/account/ProfileSidebar';
 import OrdersTab from '../components/account/OrdersTab';
@@ -11,33 +11,42 @@ import AdminDashboard from '../components/admin/AdminDashboard';
 import './styles/Account.css';
 
 const Account = () => {
-    const { user } = useAuth();
+    // 💡 FIX 1: Get 'loading' state from AuthContext
+    const { user, loading } = useAuth();
+    
     const { orders } = useOrders(); 
-    const { reviews } = useReviews(); // 💡 2. Get reviews
+    const { reviews } = useReviews(); 
 
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('orders'); 
     const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
 
-    if (!user) {
-        navigate('/login');
-        return null;
+    // 💡 FIX 2: Handle the Redirect Logic correctly
+    useEffect(() => {
+        // Only redirect if we are DONE loading and there is NO user
+        if (!loading && !user) {
+            navigate('/login');
+        }
+    }, [user, loading, navigate]);
+
+    // 💡 FIX 3: Show a Loading Spinner while checking the token
+    if (loading) {
+        return (
+            <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+                <Spinner animation="border" variant="primary" />
+            </div>
+        );
     }
 
+    // If not loading and no user, return null (waiting for redirect)
+    if (!user) return null;
+
     // --- CALCULATION LOGIC ---
-    
-    // 1. Get User Orders
     const userOrders = orders.filter(order => order.email === user.email);
     const orderCount = userOrders.length;
-
-    // 2. Calculate Total Spent
     const totalSpent = userOrders.reduce((acc, order) => acc + order.total, 0);
-
-    // 3. Calculate Reviews Written 
-    // (Matching by user name, as reviews usually store the name)
     const reviewCount = reviews.filter(r => r.user === user.name).length;
 
-    // 4. Calculate Loyalty Tier
     let memberTier = 'Bronze';
     if (totalSpent > 50000) memberTier = 'Platinum';
     else if (totalSpent > 20000) memberTier = 'Gold';
@@ -48,7 +57,7 @@ const Account = () => {
     };
 
     // --- ADMIN VIEW ---
-    if (user.role === 'admin') {
+    if (user.role && user.role.toLowerCase() === 'admin') {
         return <AdminDashboard />;
     }
 
@@ -59,7 +68,6 @@ const Account = () => {
                 <Row className="g-5">
                     {/* LEFT SIDEBAR */}
                     <Col lg={4}>
-                        {/* 💡 PASS ALL CALCULATED PROPS */}
                         <ProfileSidebar 
                             showNotification={showNotification} 
                             orderCount={orderCount} 

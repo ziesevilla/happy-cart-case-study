@@ -24,25 +24,25 @@ const Login = () => {
         setError('');
         setLoading(true);
 
-        // Simulate API delay
-        setTimeout(() => {
-            // 💡 FIX: Added 'id' property to match AddressContext data
-            if (email === "admin@example.com" && password === "password") {
-                // Admin is User ID 3 in your dummy data
-                login({ id: 3, name: "Admin User", email: email, role: "admin" }); 
+        try {
+            // 💡 FIX 1: Call API directly (No Timeout)
+            // 💡 FIX 2: Pass arguments separately (email, password)
+            const result = await login(email, password);
+
+            if (result.success) {
+                // Redirect on success (Admin check happens inside Account.js)
                 navigate('/account');
-            } 
-            else if (email === "user@example.com" && password === "password") {
-                // John Doe is User ID 1 in your dummy data
-                login({ id: 1, name: "John Doe", email: email, role: "customer" }); 
-                navigate('/account');
-            } 
-            else {
-                setError("Invalid credentials. Try user@example.com / password");
-                setLoading(false);
+            } else {
+                // Show error from Laravel
+                setError(result.message || "Invalid credentials.");
             }
-        }, 1500);
+        } catch (err) {
+            setError("Something went wrong. Please try again.");
+        }
+        
+        setLoading(false);
     };
+
     const handleResetPassword = (e) => {
         e.preventDefault();
         alert(`Password reset link sent to ${resetEmail}`);
