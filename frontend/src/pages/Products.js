@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Pagination } from 'react-bootstrap';
+import { Container, Row, Col, Form, Pagination, Spinner } from 'react-bootstrap';
 import { Search, SlidersHorizontal, X, Clock } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom'; 
 import ProductCard from '../components/ProductCard';
-import { useProducts } from '../context/ProductContext'; 
+import { useProducts } from '../context/ProductContext'; // 💡 Use Context
 import './styles/Products.css';
 
 const Products = () => {
-    const { products: ALL_PRODUCTS } = useProducts(); 
+    // 💡 1. Get products and loading state from Context
+    const { products: ALL_PRODUCTS, loading } = useProducts(); 
     
     const location = useLocation();
     const navigate = useNavigate();
@@ -19,7 +20,7 @@ const Products = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSubCategory, setSelectedSubCategory] = useState('All');
     const [sortBy, setSortBy] = useState('featured');
-    const [priceRange, setPriceRange] = useState(5000);
+    const [priceRange, setPriceRange] = useState(10000);
     
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 9; 
@@ -28,6 +29,15 @@ const Products = () => {
         setSelectedSubCategory('All');
         setCurrentPage(1); 
     }, [collectionFilter]);
+
+    // 💡 2. Show Loading Spinner
+    if (loading) {
+        return (
+            <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+                <Spinner animation="border" variant="primary" />
+            </div>
+        );
+    }
 
     // --- 7 DAY HELPER ---
     const isWithin7Days = (dateString) => {
@@ -50,12 +60,13 @@ const Products = () => {
 
     const targetCategories = getCategoriesInCollection(collectionFilter);
 
+    // 💡 3. Map unique sub-categories (Handle 'sub_category' from DB vs 'subCategory')
     const uniqueSubCategories = [...new Set(
         collectionFilter === 'All' 
-            ? ALL_PRODUCTS.map(p => p.subCategory).filter(Boolean)
+            ? ALL_PRODUCTS.map(p => p.sub_category || p.subCategory).filter(Boolean)
             : ALL_PRODUCTS
                 .filter(p => targetCategories.includes(p.category))
-                .map(p => p.subCategory)
+                .map(p => p.sub_category || p.subCategory)
                 .filter(Boolean)
     )].sort();
 
@@ -63,8 +74,9 @@ const Products = () => {
 
     // --- FILTER LOGIC ---
     const filteredProducts = ALL_PRODUCTS.filter(product => {
+        // Handle "New Arrivals" (based on dateAdded from DB)
         if (isNewArrivals) {
-            return isWithin7Days(product.dateAdded);
+            return isWithin7Days(product.dateAdded || product.created_at);
         }
 
         let matchesCollection = true;
@@ -73,16 +85,26 @@ const Products = () => {
         }
 
         const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesSubCategory = selectedSubCategory === 'All' || product.subCategory === selectedSubCategory;
-        const matchesPrice = product.price <= priceRange;
+        
+        // Handle sub-category mapping
+        const productSub = product.sub_category || product.subCategory;
+        const matchesSubCategory = selectedSubCategory === 'All' || productSub === selectedSubCategory;
+        
+        // Handle Price (Ensure number)
+        const productPrice = parseFloat(product.price);
+        const matchesPrice = productPrice <= priceRange;
 
         return matchesCollection && matchesSearch && matchesSubCategory && matchesPrice;
     }).sort((a, b) => {
         if (isNewArrivals) {
-            return new Date(b.dateAdded) - new Date(a.dateAdded);
+            return new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0);
         }
-        if (sortBy === 'price-low') return a.price - b.price;
-        if (sortBy === 'price-high') return b.price - a.price;
+        
+        const priceA = parseFloat(a.price);
+        const priceB = parseFloat(b.price);
+
+        if (sortBy === 'price-low') return priceA - priceB;
+        if (sortBy === 'price-high') return priceB - priceA;
         return 0; 
     });
 
@@ -101,37 +123,21 @@ const Products = () => {
     const clearFilters = () => {
         setSearchTerm('');
         setSelectedSubCategory('All');
-        setPriceRange(5000);
+        setPriceRange(10000);
         setCurrentPage(1);
         navigate('/products'); 
     };
 
-    // --- 💡 DYNAMIC GRID LOGIC ---
-    // Returns the number of columns per row (e.g., lg={3} means 3 items per row)
+    // --- DYNAMIC GRID LOGIC ---
     const getDynamicGridProps = () => {
         if (!isNewArrivals) return { xs: 1, md: 2, lg: 3 }; 
 
         const count = filteredProducts.length;
-
-        // 1 item: Centered single
         if (count === 1) return { xs: 1, md: 1, lg: 1 };
-        
-        // 2 items: Side by side
         if (count === 2) return { xs: 1, md: 2, lg: 2 };
-        
-        // 4 items: 2x2 Grid
         if (count === 4) return { xs: 2, md: 2, lg: 2 };
-
-        // 5, 6, 7 items: 3 columns 
-        // (5 = 3 top, 2 bottom centered)
-        // (6 = 3 top, 3 bottom)
-        // (7 = 3 top, 3 mid, 1 bottom centered)
         if (count >= 5 && count <= 7) return { xs: 2, md: 3, lg: 3 };
-
-        // 8 items: 4x2 Grid (4 columns)
         if (count === 8) return { xs: 2, md: 4, lg: 4 };
-
-        // 9+ items: Standard 4 columns
         return { xs: 2, md: 3, lg: 4 };
     };
 
@@ -263,14 +269,10 @@ const Products = () => {
                             </div>
                         ) : (
                             <>
-                                {/* 💡 1. SPREAD GRID PROPS: Applies cols like { xs:2, lg:3 }
-                                    💡 2. JUSTIFY-CONTENT-CENTER: This is the magic class.
-                                          If there are 7 items in a 3-col grid, the last row has 1 item.
-                                          This class pushes that 1 item to the middle.
-                                */}
                                 <Row {...gridProps} className="g-4 justify-content-center">
                                     {currentProducts.map((product) => (
                                         <Col key={product.id}>
+                                            {/* 💡 Pass product to card */}
                                             <ProductCard product={product} />
                                         </Col>
                                     ))}
