@@ -7,6 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\OrderController;
 
 // --- PUBLIC ROUTES (No Login Required) ---
 Route::post('/register', [AuthController::class, 'register']);
@@ -22,6 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // 1. Authentication & Profile
     Route::post('/logout', [AuthController::class, 'logout']);
+    
     
     Route::get('/user', function (Request $request) {
         return $request->user(); // Get current user info
@@ -44,6 +46,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/products/{id}', [ProductController::class, 'update']);
     Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
-
+    // 5. Review Management
     Route::post('/reviews', [ReviewController::class, 'store']);
+
+    // 6. Orders Management
+    Route::get('/orders', [OrderController::class, 'index']);     // History
+    Route::post('/orders', [OrderController::class, 'store']);    // Checkout
+    Route::put('/orders/{id}/cancel', [OrderController::class, 'cancel']); // Cancel
+    Route::put('/orders/{id}/status', [OrderController::class, 'updateStatus']);
 });
