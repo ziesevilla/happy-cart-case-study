@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Card, Button, Modal, Form, Row, Col } from 'react-bootstrap';
-// 💡 Added DollarSign, Star, Award to imports
+import { Card, Button, Modal, Form, Row, Col, Spinner } from 'react-bootstrap';
 import { Settings, LogOut, Camera, User, Package, Save, DollarSign, Star, Award } from 'lucide-react'; 
 import { useAuth } from '../../context/AuthContext';
+import api from '../../api/axios'; // 💡 1. Import API Bridge
 
 const ProfileSidebar = ({ 
     showNotification, 
@@ -11,15 +11,24 @@ const ProfileSidebar = ({
     reviewCount = 0, 
     memberTier = 'Bronze' 
 }) => {
+    // We use 'login' here simply to update the local User state after saving to DB
     const { user, login, logout } = useAuth();
-    const [profileImage, setProfileImage] = useState(null);
     
+    const [profileImage, setProfileImage] = useState(null);
+    const [loading, setLoading] = useState(false); // 💡 Loading state for saving
+
     // Modal States
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [showUpdateConfirmModal, setShowUpdateConfirmModal] = useState(false);
     
-    const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', dob: '', gender: '' });
+    const [profileData, setProfileData] = useState({ 
+        name: '', 
+        email: '', 
+        phone: '', 
+        dob: '', 
+        gender: '' 
+    });
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
@@ -27,36 +36,56 @@ const ProfileSidebar = ({
             const reader = new FileReader();
             reader.onloadend = () => {
                 setProfileImage(reader.result);
-                showNotification("Profile picture updated!");
+                // TODO: Upload image to Laravel Storage API here in future
+                showNotification("Profile picture preview updated!");
             };
             reader.readAsDataURL(file);
         }
     };
 
     const handleOpenEdit = () => {
+        // Pre-fill form with current user data (or empty strings if null)
         setProfileData({ 
-            name: user.name, email: user.email,
-            phone: user.phone || '0912 345 6789', 
-            dob: user.dob || '1995-08-15', gender: user.gender || 'Male'
+            name: user.name || '', 
+            email: user.email || '',
+            phone: user.phone || '', 
+            dob: user.dob || '', 
+            gender: user.gender || 'Male'
         });
         setShowProfileModal(true);
     };
 
     const handleSaveProfile = (e) => {
         e.preventDefault();
-        setShowUpdateConfirmModal(true);
+        setShowUpdateConfirmModal(true); // Ask for confirmation first
     };
 
-    const confirmUpdate = () => {
-        login({ ...user, ...profileData });
-        setShowUpdateConfirmModal(false);
-        setShowProfileModal(false);
-        showNotification("Profile updated successfully!");
+    // 💡 UPDATED: Connect to Backend API
+    const confirmUpdate = async () => {
+        setLoading(true);
+        try {
+            // 1. Send data to Laravel
+            const response = await api.put('/user/profile', profileData);
+
+            // 2. Update React Context with the fresh user data from DB
+            // (We re-use the login function to set the user state & localStorage)
+            login(response.data); 
+
+            setShowUpdateConfirmModal(false);
+            setShowProfileModal(false);
+            showNotification("Profile updated successfully!");
+        } catch (error) {
+            console.error("Profile update failed", error);
+            showNotification("Failed to update profile. Please try again.", "danger");
+        }
+        setLoading(false);
     };
 
     const handleLogout = () => {
         logout();
-        window.location.href = '/';
+        // Redirect is handled by AuthContext/Navbar logic usually, 
+        // but forcing a reload ensures a clean slate.
+        window.location.href = '/'; 
     };
 
     return (
@@ -65,7 +94,14 @@ const ProfileSidebar = ({
                 <div className="profile-header"></div>
                 <div className="profile-avatar-container">
                     <div className="profile-avatar">
-                        {profileImage ? <img src={profileImage} alt="Profile" /> : user.name.charAt(0).toUpperCase()}
+                        {/* Show uploaded preview OR user avatar OR default initial */}
+                        {profileImage ? (
+                            <img src={profileImage} alt="Profile" />
+                        ) : user.profile_image ? (
+                            <img src={user.profile_image} alt="Profile" />
+                        ) : (
+                            user.name.charAt(0).toUpperCase()
+                        )}
                     </div>
                     <label className="profile-upload-overlay">
                         <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
@@ -75,13 +111,10 @@ const ProfileSidebar = ({
                 <Card.Body className="pt-0 pb-4">
                     <h4 className="fw-bold mb-1">{user.name}</h4>
                     <p className="text-muted small mb-1">{user.email}</p>
-                    <p className="text-muted small mb-4">{user.phone || '0912 345 6789'}</p>
+                    <p className="text-muted small mb-4">{user.phone || 'No phone added'}</p>
                     <div className="d-grid gap-2 px-4">
                         <Button variant="outline-primary" size="sm" className="rounded-pill" onClick={handleOpenEdit}>
                             <Settings size={16} className="me-2"/> Edit Profile
-                        </Button>
-                        <Button variant="outline-danger" size="sm" className="rounded-pill" onClick={() => setShowLogoutModal(true)}>
-                            <LogOut size={16} className="me-2"/> Logout
                         </Button>
                     </div>
                 </Card.Body>
@@ -93,7 +126,11 @@ const ProfileSidebar = ({
                  {/* Member Since */}
                  <div className="d-flex align-items-center mb-3">
                     <div className="bg-light p-2 rounded-circle me-3"><User size={20} className="text-primary"/></div>
-                    <div><small className="d-block text-muted">Member Since</small><strong>October 2023</strong></div>
+                    <div>
+                        <small className="d-block text-muted">Member Since</small>
+                        {/* Format Date if it exists */}
+                        <strong>{user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</strong>
+                    </div>
                  </div>
 
                  {/* Order Count */}
@@ -137,7 +174,8 @@ const ProfileSidebar = ({
                         </Form.Group>
                         <Form.Group className="mb-3">
                             <Form.Label>Email Address</Form.Label>
-                            <Form.Control type="email" className="rounded-pill" value={profileData.email} onChange={(e) => setProfileData({...profileData, email: e.target.value})} required/>
+                            <Form.Control type="email" className="rounded-pill" value={profileData.email} disabled title="Email cannot be changed directly" />
+                            <Form.Text className="text-muted">Email cannot be changed.</Form.Text>
                         </Form.Group>
                         <Form.Group className="mb-3">
                             <Form.Label>Phone Number</Form.Label>
@@ -148,7 +186,7 @@ const ProfileSidebar = ({
                                 <Form.Group className="mb-4"><Form.Label>Date of Birth</Form.Label><Form.Control type="date" className="rounded-pill" value={profileData.dob} onChange={(e) => setProfileData({...profileData, dob: e.target.value})}/></Form.Group>
                             </Col>
                             <Col md={6}>
-                                <Form.Group className="mb-4"><Form.Label>Gender</Form.Label><Form.Select className="rounded-pill" value={profileData.gender} onChange={(e) => setProfileData({...profileData, gender: e.target.value})}><option>Male</option><option>Female</option><option>Other</option></Form.Select></Form.Group>
+                                <Form.Group className="mb-4"><Form.Label>Gender</Form.Label><Form.Select className="rounded-pill" value={profileData.gender} onChange={(e) => setProfileData({...profileData, gender: e.target.value})}><option value="">Select...</option><option>Male</option><option>Female</option><option>Other</option></Form.Select></Form.Group>
                             </Col>
                         </Row>
                         <div className="d-grid"><Button variant="primary" type="submit" className="rounded-pill fw-bold">Save Changes</Button></div>
@@ -165,7 +203,9 @@ const ProfileSidebar = ({
                     <h5 className="fw-bold mb-2">Update Profile?</h5>
                     <p className="text-muted small mb-4">Are you sure you want to save these changes to your profile?</p>
                     <div className="d-grid gap-2">
-                        <Button variant="primary" onClick={confirmUpdate} className="rounded-pill fw-bold">Yes, Update</Button>
+                        <Button variant="primary" onClick={confirmUpdate} className="rounded-pill fw-bold" disabled={loading}>
+                            {loading ? <Spinner animation="border" size="sm" /> : "Yes, Update"}
+                        </Button>
                         <Button variant="link" onClick={() => setShowUpdateConfirmModal(false)} className="text-muted text-decoration-none">Cancel</Button>
                     </div>
                 </Modal.Body>
