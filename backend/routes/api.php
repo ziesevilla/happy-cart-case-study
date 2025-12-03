@@ -5,10 +5,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AddressController;
+use App\Http\Controllers\ProductController; // 💡 1. Import ProductController
 
-// --- PUBLIC ROUTES ---
+// --- PUBLIC ROUTES (No Login Required) ---
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+// Shop Routes (Guests can view products)
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{id}', [ProductController::class, 'show']);
 
 // --- PROTECTED ROUTES (Requires Login) ---
 Route::middleware('auth:sanctum')->group(function () {
@@ -20,7 +25,6 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user(); // Get current user info
     });
 
-    // 💡 NEW: Update Profile (Self)
     Route::put('/user/profile', [UserController::class, 'updateProfile']);
 
     // 2. Admin User Management
@@ -31,4 +35,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/addresses', [AddressController::class, 'index']);
     Route::post('/addresses', [AddressController::class, 'store']);
     Route::delete('/addresses/{id}', [AddressController::class, 'destroy']);
+
+    // 4. Product Management (Admin Only)
+    // 💡 These routes handle Creating, Updating, and Deleting products
+    Route::post('/products', [ProductController::class, 'store']);
+    Route::put('/products/{id}', [ProductController::class, 'update']);
+    Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 });
