@@ -1,26 +1,32 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Container, Badge, Modal, Button } from 'react-bootstrap';
+import { Container, Badge, Modal, Button, Spinner } from 'react-bootstrap'; // 💡 Added Spinner
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { ShoppingBag, User, LogOut, ShoppingCart } from 'lucide-react';
 import './FootNav.css';
 
 const Navigation = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, loading: authLoading } = useAuth();
     const { getCartCount } = useCart();
     const navigate = useNavigate();
     const count = getCartCount();
     
-    // State for Logout Confirmation
+    // UI States
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false); // 💡 New state
 
     const handleLogoutClick = () => {
         setShowLogoutModal(true);
     };
 
-    const handleConfirmLogout = () => {
-        logout();
+    const handleConfirmLogout = async () => {
+        setIsLoggingOut(true); // Start loading
+        
+        // Add a small delay for better UX (optional), or just wait for logout
+        await logout(); 
+        
+        setIsLoggingOut(false); // Stop loading
         setShowLogoutModal(false);
         navigate('/');
     };
@@ -36,7 +42,7 @@ const Navigation = () => {
                         HAPPY CART
                     </Link>
 
-                    {/* CENTER: GENDER-NEUTRAL CATEGORIES */}
+                    {/* CENTER: CATEGORIES */}
                     <div className="nav-center-links d-none d-md-flex">
                         <Link to="/products?collection=New" className="nav-category-link">New Arrivals</Link>
                         <Link to="/products?collection=Clothing" className="nav-category-link">Clothing</Link>
@@ -45,18 +51,15 @@ const Navigation = () => {
                     </div>
 
                     {/* RIGHT: ACTIONS */}
-                    <div className="nav-actions">
-                        {user ? (
+                    <div className="nav-actions d-flex align-items-center">
+                        {authLoading ? (
+                            <div style={{ minWidth: '120px', height: '40px' }}></div>
+                        ) : user ? (
                             <>
                                 <Link to="/cart" className="nav-icon-btn position-relative me-2">
                                     <ShoppingCart size={24} />
                                     {count > 0 && (
-                                        <Badge 
-                                            bg="danger" 
-                                            pill 
-                                            className="position-absolute top-0 start-100 translate-middle border border-light rounded-circle"
-                                            style={{ fontSize: '0.6rem', padding: '0.35em 0.5em' }}
-                                        >
+                                        <Badge bg="danger" pill className="position-absolute top-0 start-100 translate-middle border border-light rounded-circle" style={{ fontSize: '0.6rem', padding: '0.35em 0.5em' }}>
                                             {count}
                                         </Badge>
                                     )}
@@ -64,7 +67,6 @@ const Navigation = () => {
                                 <Link to="/account" className="nav-icon-btn ms-2">
                                     <User size={24} />
                                 </Link>
-                                {/* Updated Logout Button to trigger Modal */}
                                 <button onClick={handleLogoutClick} className="nav-icon-btn ms-3 text-muted" title="Logout">
                                     <LogOut size={20} />
                                 </button>
@@ -72,7 +74,7 @@ const Navigation = () => {
                         ) : (
                             <>
                                 <Link to="/login">
-                                    <button className="btn-nav-auth btn-login">Login</button>
+                                    <button className="btn-nav-auth btn-login me-2">Login</button>
                                 </Link>
                                 <Link to="/register">
                                     <button className="btn-nav-auth btn-signup">Sign Up</button>
@@ -84,7 +86,7 @@ const Navigation = () => {
             </nav>
 
             {/* LOGOUT CONFIRMATION MODAL */}
-            <Modal show={showLogoutModal} onHide={() => setShowLogoutModal(false)} centered size="sm">
+            <Modal show={showLogoutModal} onHide={() => !isLoggingOut && setShowLogoutModal(false)} centered size="sm">
                 <Modal.Body className="text-center p-4">
                     <div className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{width:'60px', height:'60px'}}>
                         <LogOut size={24} className="text-danger" />
@@ -92,8 +94,27 @@ const Navigation = () => {
                     <h5 className="fw-bold mb-2">Log Out?</h5>
                     <p className="text-muted small mb-4">Are you sure you want to sign out of your account?</p>
                     <div className="d-grid gap-2">
-                        <Button variant="danger" onClick={handleConfirmLogout} className="rounded-pill fw-bold">Yes, Log Out</Button>
-                        <Button variant="link" onClick={() => setShowLogoutModal(false)} className="text-muted text-decoration-none">Cancel</Button>
+                        {/* 💡 FIX: Show Spinner inside the button */}
+                        <Button 
+                            variant="danger" 
+                            onClick={handleConfirmLogout} 
+                            className="rounded-pill fw-bold"
+                            disabled={isLoggingOut}
+                        >
+                            {isLoggingOut ? (
+                                <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2"/>Signing out...</>
+                            ) : (
+                                "Yes, Log Out"
+                            )}
+                        </Button>
+                        <Button 
+                            variant="link" 
+                            onClick={() => setShowLogoutModal(false)} 
+                            className="text-muted text-decoration-none"
+                            disabled={isLoggingOut}
+                        >
+                            Cancel
+                        </Button>
                     </div>
                 </Modal.Body>
             </Modal>

@@ -19,7 +19,7 @@ import AdminSettings from './AdminSettings';
 const AdminDashboard = () => {
     const { logout } = useAuth();
     const navigate = useNavigate();
-    
+    console.log("AdminDashboard is trying to render...");
     // 💡 CONSUME DATA FROM CONTEXTS
     const { orders } = useOrders();
     const { users } = useUsers();
