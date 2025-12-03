@@ -12,8 +12,6 @@ const OrdersTab = ({ showNotification }) => {
     const { orders: globalOrders, updateOrderStatus } = useOrders(); 
     
     // 💡 1. Destructure Review Helpers
-    // (Note: hasReviewed might rely on fetching data per product, which is tricky in a list view. 
-    // We can skip the check here and let the Modal handle the error if they try to review again).
     const { canUserReview } = useReviews(); 
     
     const navigate = useNavigate();
@@ -70,10 +68,8 @@ const OrdersTab = ({ showNotification }) => {
 
     const handleCancelClick = () => setShowCancelModal(true);
     
-    // 💡 3. Async Cancel Logic
+    // 💡 3. FIXED: Async Cancel Logic (Waits for DB)
     const handleConfirmCancel = async () => {
-        // Call API to update status
-        // Assuming updateOrderStatus handles the API PUT request
         await updateOrderStatus(selectedOrder.id, 'Cancelled');
         
         setShowCancelModal(false);
@@ -88,9 +84,9 @@ const OrdersTab = ({ showNotification }) => {
         setShowReturnModal(true);
     };
 
+    // 💡 4. FIXED: Async Return Logic
     const handleSubmitReturn = async (e) => {
         e.preventDefault();
-        // Call API to update status
         await updateOrderStatus(selectedOrder.id, 'Return Requested');
         
         setShowReturnModal(false);
@@ -104,10 +100,8 @@ const OrdersTab = ({ showNotification }) => {
         }));
     };
 
-    // 💡 4. Open Review Modal
+    // 💡 5. Open Review Modal
     const handleReviewClick = (item) => {
-        // Check locally first (optional)
-        // Ideally we just open the modal and let the API validate duplicate reviews
         setReviewProduct(item);
         setShowReviewModal(true);
     };
@@ -194,13 +188,13 @@ const OrdersTab = ({ showNotification }) => {
                         <div className="d-flex align-items-center gap-4 mb-3 mb-md-0">
                             <div className="bg-light p-3 rounded-3"><Package size={24} className="text-muted"/></div>
                             <div>
-                                <h6 className="fw-bold mb-1">Order #{order.id}</h6>
-                                <small className="text-muted">{order.date} • {order.itemsCount} Items</small>
+                                <h6 className="fw-bold mb-1">Order #{order.order_number || order.id}</h6>
+                                <small className="text-muted">{order.date_formatted || order.date} • {order.itemsCount || order.items_count} Items</small>
                             </div>
                         </div>
                         <div className="d-flex align-items-center gap-4">
                             <div className="text-end me-3">
-                                <div className="fw-bold">₱{order.total.toLocaleString()}</div>
+                                <div className="fw-bold">₱{parseFloat(order.total).toLocaleString()}</div>
                                 <span className={`status-badge ${getStatusClass(order.status)}`}>{order.status}</span>
                             </div>
                             <Button variant="outline-dark" size="sm" className="rounded-pill px-3" onClick={() => {setSelectedOrder(order); setShowOrderModal(true);}}>
@@ -221,7 +215,7 @@ const OrdersTab = ({ showNotification }) => {
             {/* ORDER DETAILS MODAL */}
             <Modal show={showOrderModal} onHide={() => setShowOrderModal(false)} centered size="lg">
                 <Modal.Header className="border-0 pb-0">
-                    <Modal.Title className="fw-bold">Order Details #{selectedOrder?.id}</Modal.Title>
+                    <Modal.Title className="fw-bold">Order Details #{selectedOrder?.order_number || selectedOrder?.id}</Modal.Title>
                     <button className="btn-close" onClick={() => setShowOrderModal(false)}></button>
                 </Modal.Header>
                 <Modal.Body className="pt-2">
@@ -249,7 +243,7 @@ const OrdersTab = ({ showNotification }) => {
                             <div className={`p-3 rounded-4 mb-4 d-flex justify-content-between align-items-center ${selectedOrder.status === 'Cancelled' ? 'bg-danger-subtle text-danger' : 'bg-light'}`}>
                                 <div>
                                     <small className="d-block opacity-75">Order Date</small>
-                                    <strong>{selectedOrder.date}</strong>
+                                    <strong>{selectedOrder.date_formatted || selectedOrder.date}</strong>
                                 </div>
                                 <div className="text-end">
                                     <small className="d-block opacity-75">Status</small>
@@ -261,20 +255,21 @@ const OrdersTab = ({ showNotification }) => {
 
                             <h6 className="fw-bold mb-3">Items Ordered</h6>
                             <div className="d-flex flex-column gap-3 mb-4">
-                                {selectedOrder.details.map((item, idx) => {
+                                {/* 💡 Handle both 'details' (legacy) and 'items' (API) structures */}
+                                {(selectedOrder.items || selectedOrder.details || []).map((item, idx) => {
                                     return (
                                         <div 
                                             key={idx} 
                                             className="d-flex align-items-center justify-content-between order-detail-item p-3 rounded-3"
-                                            onClick={() => navigate(`/products/${item.id}`)} 
+                                            onClick={() => navigate(`/products/${item.product_id || item.id}`)} 
                                             style={{ cursor: 'pointer' }} 
                                             title="View Product Details"
                                         >
                                             <div className="d-flex align-items-center gap-3">
-                                                <img src={item.image} alt={item.name} className="rounded-3" style={{width: '50px', height: '50px', objectFit: 'cover'}} />
+                                                <img src={item.image} alt={item.product_name || item.name} className="rounded-3" style={{width: '50px', height: '50px', objectFit: 'cover'}} />
                                                 <div>
-                                                    <h6 className="mb-0 fw-bold small">{item.name}</h6>
-                                                    <small className="text-muted">Qty: {item.qty}</small>
+                                                    <h6 className="mb-0 fw-bold small">{item.product_name || item.name}</h6>
+                                                    <small className="text-muted">Qty: {item.quantity || item.qty}</small>
                                                     
                                                     {/* 💡 REVIEW BUTTON: Only show if delivered */}
                                                     {selectedOrder.status === 'Delivered' && (
@@ -290,7 +285,7 @@ const OrdersTab = ({ showNotification }) => {
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="fw-bold">₱{item.price.toLocaleString()}</div>
+                                            <div className="fw-bold">₱{parseFloat(item.price).toLocaleString()}</div>
                                         </div>
                                     );
                                 })}
@@ -302,7 +297,7 @@ const OrdersTab = ({ showNotification }) => {
                                     {selectedOrder.status === 'Delivered' && <Button variant="outline-danger" size="sm" className="rounded-pill fw-bold" onClick={handleOpenReturn}><RotateCcw size={16} className="me-2" /> Return / Exchange</Button>}
                                 </div>
                                 <div className="text-end">
-                                    <span className="text-muted me-2">Total:</span><span className="fw-bold text-primary fs-5">₱{selectedOrder.total.toLocaleString()}</span>
+                                    <span className="text-muted me-2">Total:</span><span className="fw-bold text-primary fs-5">₱{parseFloat(selectedOrder.total).toLocaleString()}</span>
                                 </div>
                             </div>
                         </>
@@ -334,17 +329,17 @@ const OrdersTab = ({ showNotification }) => {
                     <Form onSubmit={handleSubmitReturn}>
                         <h6 className="fw-bold mb-3 small text-muted text-uppercase">1. Choose items to return</h6>
                         <div className="mb-4">
-                             {selectedOrder?.details.map((item) => (
+                             {(selectedOrder?.items || selectedOrder?.details || []).map((item) => (
                                 <div key={item.id} className={`d-flex align-items-center justify-content-between p-3 rounded-3 mb-2 border ${selectedReturnItems[item.id] ? 'border-primary bg-primary-subtle' : 'border-light bg-white'}`} style={{cursor: 'pointer', transition: 'all 0.2s'}} onClick={() => toggleReturnItem(item.id)}>
                                     <div className="d-flex align-items-center gap-3">
                                         <Form.Check type="checkbox" checked={!!selectedReturnItems[item.id]} onChange={() => {}} className="pointer-events-none"/>
-                                        <img src={item.image} alt={item.name} className="rounded-3" style={{width: '40px', height: '40px', objectFit: 'cover'}} />
-                                        <div><h6 className="mb-0 small fw-bold">{item.name}</h6></div>
+                                        <img src={item.image} alt={item.product_name || item.name} className="rounded-3" style={{width: '40px', height: '40px', objectFit: 'cover'}} />
+                                        <div><h6 className="mb-0 small fw-bold">{item.product_name || item.name}</h6></div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        {/* ... Reason, Desc, Proof inputs (Unchanged) ... */}
+                        {/* ... Reason inputs ... */}
                         <div className="d-grid"><Button variant="primary" type="submit" className="rounded-pill fw-bold">Submit Request</Button></div>
                     </Form>
                 </Modal.Body>

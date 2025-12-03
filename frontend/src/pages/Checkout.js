@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext'; 
 import { useOrders } from '../context/OrderContext';
 import { useAddress } from '../context/AddressContext';
-import { useProducts } from '../context/ProductContext'; // 💡 1. NEW IMPORT
+import { useProducts } from '../context/ProductContext'; 
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { CheckCircle, CreditCard, ShoppingBag, Smartphone, Banknote, ChevronDown, ChevronUp, ArrowRight, MapPin, Lock, Tag } from 'lucide-react';
 import './styles/Checkout.css';
@@ -15,7 +15,7 @@ const Checkout = () => {
     
     const { addOrder } = useOrders(); 
     const { getUserAddresses, addAddress } = useAddress();
-    const { updateStockAfterPurchase } = useProducts(); // 💡 2. GET THE FUNCTION
+    const { updateStockAfterPurchase } = useProducts(); 
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -23,7 +23,6 @@ const Checkout = () => {
     // --- GET ITEMS TO CHECKOUT ---
     const checkoutItems = location.state?.checkoutItems || cart;
     
-    // Recalculate totals
     const subtotal = checkoutItems.reduce((total, item) => total + (item.price * item.quantity), 0);
     const FREE_SHIPPING_THRESHOLD = 5000;
     const shippingCost = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 150;
@@ -36,7 +35,6 @@ const Checkout = () => {
         firstName: '', lastName: '', street: '', city: '', state: '', zip: '', phone: ''
     });
     
-    // LOCK STATE
     const [isSavedAddress, setIsSavedAddress] = useState(false);
     const [selectedAddressId, setSelectedAddressId] = useState('');
 
@@ -55,14 +53,13 @@ const Checkout = () => {
     const [newAddressLabel, setNewAddressLabel] = useState('Home');
     const [isCustomLabel, setIsCustomLabel] = useState(false);
 
-    // Auto-fill default address on load
     useEffect(() => {
         if (myAddresses.length > 0 && !selectedAddressId) {
             const defaultAddr = myAddresses.find(addr => addr.default);
             if (defaultAddr) {
                 setFormData({
-                    firstName: defaultAddr.firstName, 
-                    lastName: defaultAddr.lastName, 
+                    firstName: defaultAddr.firstName || defaultAddr.first_name, 
+                    lastName: defaultAddr.lastName || defaultAddr.last_name, 
                     street: defaultAddr.street, 
                     city: defaultAddr.city, 
                     state: 'Metro Manila', 
@@ -80,7 +77,6 @@ const Checkout = () => {
         return null;
     }
 
-    // Helpers
     const formatCardNumber = (val) => val.replace(/\s+/g, "").replace(/[^0-9]/gi, "").match(/\d{4,16}/g)?.[0]?.match(/.{1,4}/g)?.join(" ") || val;
     const formatExpiry = (val) => { const v = val.replace(/[^0-9]/gi, ""); return v.length >= 2 ? v.substring(0, 2) + '/' + v.substring(2, 4) : v; };
     
@@ -92,7 +88,6 @@ const Checkout = () => {
     const discountAmount = subtotal * discount;
     const total = subtotal + shippingCost - discountAmount;
 
-    // --- ADDRESS SELECTION LOGIC ---
     const handleAddressSelect = (e) => {
         const value = e.target.value;
         setSelectedAddressId(value);
@@ -106,8 +101,8 @@ const Checkout = () => {
         const addr = myAddresses.find(a => a.id === parseInt(value));
         if (addr) {
             setFormData({ 
-                firstName: addr.firstName, 
-                lastName: addr.lastName, 
+                firstName: addr.firstName || addr.first_name, 
+                lastName: addr.lastName || addr.last_name, 
                 street: addr.street, 
                 city: addr.city, 
                 state: 'Metro Manila', 
@@ -126,51 +121,46 @@ const Checkout = () => {
         else { setIsCustomLabel(false); setNewAddressLabel(val); }
     };
 
-    // --- PROCESS ORDER & SAVE ---
-    const processOrder = () => {
+    // 💡 1. UPDATED: Async Process Order
+    const processOrder = async () => {
         setLoading(true);
-        const newOrderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
         
-        // 1. Create the Order Object
-        const newOrder = {
-            id: newOrderId,
-            customerName: `${formData.firstName} ${formData.lastName}`,
-            email: user?.email,
-            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            itemsCount: checkoutItems.reduce((acc, item) => acc + item.quantity, 0),
-            total: total,
-            status: 'Placed', 
-            shippingAddress: { ...formData }, 
-            details: checkoutItems.map(item => ({
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                qty: item.quantity,
-                image: item.image || 'https://via.placeholder.com/100'
-            }))
+        // Prepare payload for Laravel API
+        const orderPayload = {
+            items: checkoutItems, // API expects 'items' array with 'id' and 'quantity'
+            shipping_address: formData,
+            total: total
         };
+        
+        // Call API
+        const result = await addOrder(orderPayload);
 
-        setTimeout(() => {
-            // 💡 3. UPDATE STOCK HERE
+        if (result.success) {
+            // Update Stock UI (Optional, Backend handles real stock)
             updateStockAfterPurchase(checkoutItems);
 
-            // 4. Save Order to Global State
-            addOrder(newOrder);
-
-            // 5. Clean up Cart
+            // Clean Cart
             const purchasedIds = checkoutItems.map(item => item.id);
             removeItems(purchasedIds);
             
-            // 6. Redirect
-            navigate('/confirmation', { state: { orderId: newOrderId, total: total } });
-            setLoading(false);
-        }, 2000);
+            // Redirect to Confirmation
+            navigate('/confirmation', { 
+                state: { 
+                    orderId: result.order.order_number, // Use real order number from DB
+                    total: total 
+                } 
+            });
+        } else {
+            alert("Checkout Failed: " + result.message);
+        }
+        
+        setLoading(false);
     };
 
     const handleFormSubmit = (e) => {
         e.preventDefault();
-        // If new address (not saved), check for duplicates or save
         if (!isSavedAddress) {
+            // Check duplicate logic locally if needed, or just ask to save
             const isDuplicate = myAddresses.some(addr => addr.street.toLowerCase() === formData.street.toLowerCase() && addr.zip === formData.zip);
             if (!isDuplicate && user) { setShowSaveModal(true); } else { processOrder(); }
         } else { 
@@ -178,8 +168,17 @@ const Checkout = () => {
         }
     };
 
-    const handleSaveAndContinue = () => {
-        if (user) addAddress(user.id, { label: newAddressLabel, ...formData });
+    const handleSaveAndContinue = async () => {
+        if (user) {
+            // 💡 Call Real Address API
+            await addAddress(user.id, { 
+                label: newAddressLabel, 
+                first_name: formData.firstName,
+                last_name: formData.lastName,
+                ...formData,
+                is_default: false
+            });
+        }
         setShowSaveModal(false);
         processOrder();
     };
@@ -217,7 +216,6 @@ const Checkout = () => {
                                     {isSavedAddress && <span className="badge bg-light text-muted border d-flex align-items-center"><Lock size={12} className="me-1"/> Locked</span>}
                                 </div>
                                 
-                                {/* ADDRESS SELECTOR (Only show if user has saved addresses) */}
                                 {myAddresses.length > 0 && (
                                     <div className="mb-4 p-3 bg-light rounded-3 border border-dashed border-secondary">
                                         <Form.Label className="small fw-bold text-muted d-flex align-items-center"><MapPin size={14} className="me-2"/> Quick Fill from Saved Address</Form.Label>
