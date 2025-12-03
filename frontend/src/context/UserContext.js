@@ -1,32 +1,61 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import api from '../api/axios'; // Import the bridge
+import { useAuth } from './AuthContext'; // Import Auth to track login state
 
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
-    const [users, setUsers] = useState(() => {
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    
+    // Get the current user to know WHEN to fetch
+    const { user: currentUser } = useAuth(); 
+
+    // Fetch users from Database
+    const fetchUsers = async () => {
+        setLoading(true);
         try {
-            const saved = localStorage.getItem('happyCart_users');
-            return saved ? JSON.parse(saved) : [
-                { id: 1, name: 'John Doe', email: 'user@example.com', role: 'Customer', status: 'Active', joined: '2023-10-12' },
-                { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'Customer', status: 'Active', joined: '2023-11-05' },
-                { id: 3, name: 'Admin User', email: 'admin@example.com', role: 'Admin', status: 'Active', joined: '2023-01-01' },
-                { id: 4, name: 'Suspended User', email: 'bad@example.com', role: 'Customer', status: 'Suspended', joined: '2023-09-15' },
-                { id: 5, name: 'Michael Scott', email: 'michael@dundermifflin.com', role: 'Customer', status: 'Active', joined: '2023-11-20' },
-                { id: 6, name: 'Dwight Schrute', email: 'dwight@dundermifflin.com', role: 'Customer', status: 'Active', joined: '2023-11-21' },
-            ];
-        } catch (error) { return []; }
-    });
+            // GET http://localhost/api/users
+            const response = await api.get('/users');
+            setUsers(response.data);
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            // If unauthorized (token expired), clear data
+            if (error.response?.status === 401) {
+                setUsers([]);
+            }
+        }
+        setLoading(false);
+    };
 
+    // Effect: Fetch when user logs in or token exists
     useEffect(() => {
-        localStorage.setItem('happyCart_users', JSON.stringify(users));
-    }, [users]);
+        const token = localStorage.getItem('AUTH_TOKEN');
+        
+        // Only fetch if we have a token AND we are logged in
+        if (token && currentUser) {
+            fetchUsers();
+        } else {
+            setUsers([]); // Clear list if logged out
+            setLoading(false);
+        }
+    }, [currentUser]); // 👈 Re-run when currentUser changes
 
-    const updateUserStatus = (id, newStatus) => {
+    // Update Status (Suspend/Activate)
+    const updateUserStatus = async (id, newStatus) => {
+        // Optimistic UI Update
         setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus } : u));
+
+        // API Call to save it
+        try {
+            await api.put(`/users/${id}`, { status: newStatus });
+        } catch (error) {
+            console.error("Failed to update status");
+        }
     };
 
     return (
-        <UserContext.Provider value={{ users, updateUserStatus }}>
+        <UserContext.Provider value={{ users, updateUserStatus, loading }}>
             {children}
         </UserContext.Provider>
     );
