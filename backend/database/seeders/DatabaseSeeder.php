@@ -16,9 +16,13 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'John Doe',
                 'email' => 'user@example.com',
-                'password' => Hash::make('password'), // password is 'password'
+                'password' => Hash::make('password'),
                 'role' => 'Customer',
                 'status' => 'Active',
+                // 💡 Added new profile fields
+                'phone' => '0912 345 6789',
+                'dob' => '1995-08-15',
+                'gender' => 'Male',
                 'created_at' => Carbon::now(),
             ],
             [
@@ -27,6 +31,9 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('admin123'),
                 'role' => 'Admin',
                 'status' => 'Active',
+                'phone' => '0918 123 4567',
+                'dob' => '1990-01-01',
+                'gender' => 'Other',
                 'created_at' => Carbon::now(),
             ],
             [
@@ -35,6 +42,9 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role' => 'Customer',
                 'status' => 'Active',
+                'phone' => '0999 999 9999',
+                'dob' => '1965-03-15',
+                'gender' => 'Male',
                 'created_at' => Carbon::now(),
             ]
         ]);

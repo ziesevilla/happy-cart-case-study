@@ -9,25 +9,25 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-public function up()
-{
-    Schema::create('addresses', function (Blueprint $table) {
-        $table->id();
-        // Link address to a user
-        $table->foreignId('user_id')->constrained()->onDelete('cascade');
-        
-        $table->string('label'); // e.g. "Home"
-        $table->string('first_name');
-        $table->string('last_name');
-        $table->string('street');
-        $table->string('city');
-        $table->string('zip');
-        $table->string('phone');
-        $table->boolean('is_default')->default(false);
-        
-        $table->timestamps();
-    });
-}
+    public function up()
+    {
+        Schema::create('addresses', function (Blueprint $table) {
+            $table->id();
+            // Link address to a user
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            
+            $table->string('label'); // e.g. "Home"
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->string('street');
+            $table->string('city');
+            $table->string('zip');
+            $table->string('phone');
+            $table->boolean('is_default')->default(false);
+            
+            $table->timestamps();
+        });
+    }
 
     /**
      * Reverse the migrations.
