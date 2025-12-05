@@ -15,12 +15,18 @@ export const UserProvider = ({ children }) => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            // GET http://localhost/api/users
             const response = await api.get('/users');
-            setUsers(response.data);
+            
+            // 💡 FIX: Laravel Pagination puts the array inside '.data'
+            // Check if response.data is an array (old way) or object (new way)
+            if (Array.isArray(response.data)) {
+                setUsers(response.data);
+            } else {
+                setUsers(response.data.data); // Extract array from paginator
+            }
+            
         } catch (error) {
             console.error("Error fetching users:", error);
-            // If unauthorized (token expired), clear data
             if (error.response?.status === 401) {
                 setUsers([]);
             }
