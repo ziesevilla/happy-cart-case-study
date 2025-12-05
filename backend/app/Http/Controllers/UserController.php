@@ -37,16 +37,34 @@ class UserController extends Controller
     }
 
     // PUT /user/profile (Self update)
+// PUT /user/profile
     public function updateProfile(Request $request)
     {
         $user = $request->user();
         
-        $data = $request->validate([
+        // 1. Validate (Allow images: jpg, png, etc., max 2MB)
+        $request->validate([
             'name' => 'required|string',
             'phone' => 'nullable|string',
             'dob' => 'nullable|date',
             'gender' => 'nullable|string',
+            'profile_image' => 'nullable|image|max:2048', // 👈 Validation for file
         ]);
+
+        $data = $request->only(['name', 'phone', 'dob', 'gender']);
+
+        // 2. Handle Image Upload
+        if ($request->hasFile('profile_image')) {
+            // Delete old image if it exists (Optional cleanup)
+            // if ($user->profile_image) { Storage::disk('public')->delete(str_replace('/storage/', '', $user->profile_image)); }
+
+            // Store new image in 'public/avatars' folder
+            $path = $request->file('profile_image')->store('avatars', 'public');
+            
+            // Save the public URL to the database
+            // (e.g., /storage/avatars/filename.jpg)
+            $data['profile_image'] = '/storage/' . $path;
+        }
 
         $user->update($data);
 
