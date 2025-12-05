@@ -27,7 +27,7 @@ class AuthController extends Controller
             'phone' => $fields['phone'] ?? null,
             'dob' => $fields['dob'] ?? null,
             'gender' => $fields['gender'] ?? null,
-            'role' => 'Customer', // Default role
+            'role' => 'Customer',
             'status' => 'Active'
         ]);
 
@@ -36,7 +36,7 @@ class AuthController extends Controller
         return response()->json(['user' => $user, 'token' => $token], 201);
     }
 
-    // 2. LOGIN
+    // 2. LOGIN (Optimized)
     public function login(Request $request)
     {
         $fields = $request->validate([
@@ -44,10 +44,20 @@ class AuthController extends Controller
             'password' => 'required|string'
         ]);
 
-        $user = User::where('email', $fields['email'])->first();
+        // ⚡ OPTIMIZATION: Select only what we need for auth logic & initial session state
+        // We skip heavy fields like bio, notes, or logs if they exist.
+        $user = User::select('id', 'name', 'email', 'password', 'role', 'status', 'profile_image')
+                    ->where('email', $fields['email'])
+                    ->first();
 
+        // Check User Existence & Password
         if (!$user || !Hash::check($fields['password'], $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
+        }
+        
+        // Check Status (Optional Security Enhancement)
+        if ($user->status === 'Suspended') {
+            return response()->json(['message' => 'Your account has been suspended.'], 403);
         }
 
         $token = $user->createToken('myapptoken')->plainTextToken;

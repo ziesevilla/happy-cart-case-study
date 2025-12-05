@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Address;
+use Illuminate\Support\Facades\DB; // 💡 Import DB Facade
 
 class AddressController extends Controller
 {
     // GET /api/addresses
     public function index(Request $request)
     {
-        // Return only the addresses belonging to the logged-in user
         return $request->user()->addresses;
     }
 
@@ -28,13 +28,19 @@ class AddressController extends Controller
             'is_default' => 'boolean'
         ]);
 
-        // If setting as default, remove default from others
-        if ($request->is_default) {
-            $request->user()->addresses()->update(['is_default' => false]);
-        }
+        // ⚡ OPTIMIZATION: Use a Transaction for safety
+        return DB::transaction(function () use ($request, $fields) {
+            
+            // Only unset the OLD default if the NEW one claims to be default
+            if ($request->is_default) {
+                $request->user()->addresses()
+                    ->where('is_default', true) // ⚡ Optimization: Only touch the one row that needs changing
+                    ->update(['is_default' => false]);
+            }
 
-        // Save new address
-        return $request->user()->addresses()->create($fields);
+            // Save new address
+            return $request->user()->addresses()->create($fields);
+        });
     }
 
     // DELETE /api/addresses/{id}

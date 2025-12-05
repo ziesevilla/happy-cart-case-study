@@ -7,20 +7,36 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    // GET /api/products (Public) - Show all
-    public function index()
+    // GET /api/products?search=denim
+    public function index(Request $request)
     {
-        // Return products sorted by newest first
-        return Product::orderBy('created_at', 'desc')->get();
+        // 1. Start building the query with optimizations (N+1 fixes)
+        $query = Product::withCount('reviews')
+                        ->withAvg('reviews', 'rating');
+
+        // 2. ⚡ OPTIMIZATION: Use Full-Text Search if 'search' param exists
+        if ($search = $request->input('search')) {
+            // This uses the specialized index we created.
+            // It is much faster than 'LIKE %...%' and sorts by relevance automatically.
+            $query->whereFullText(['name', 'description'], $search);
+        } else {
+            // If not searching, just show newest first
+            $query->orderBy('created_at', 'desc');
+        }
+
+        return $query->get();
     }
 
-    // GET /api/products/{id} (Public) - Show one details
+    // GET /api/products/{id} (Public)
     public function show($id)
     {
-        return Product::findOrFail($id);
+        return Product::with(['reviews.user'])
+            ->withCount('reviews')
+            ->withAvg('reviews', 'rating')
+            ->findOrFail($id);
     }
 
-    // POST /api/products (Admin Only) - Create
+    // POST /api/products (Admin Only)
     public function store(Request $request)
     {
         $fields = $request->validate([
@@ -36,7 +52,7 @@ class ProductController extends Controller
         return Product::create($fields);
     }
 
-    // PUT /api/products/{id} (Admin Only) - Update
+    // PUT /api/products/{id} (Admin Only)
     public function update(Request $request, $id)
     {
         $product = Product::findOrFail($id);
@@ -52,10 +68,11 @@ class ProductController extends Controller
         ]);
 
         $product->update($fields);
+        
         return $product;
     }
 
-    // DELETE /api/products/{id} (Admin Only) - Delete
+    // DELETE /api/products/{id} (Admin Only)
     public function destroy($id)
     {
         $product = Product::findOrFail($id);

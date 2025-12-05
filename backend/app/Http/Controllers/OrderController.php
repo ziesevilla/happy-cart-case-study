@@ -13,24 +13,21 @@ use Illuminate\Support\Str;
 class OrderController extends Controller
 {
     // GET /api/orders (History)
-// GET /api/orders
     public function index()
     {
         $user = Auth::user();
 
-        // 💡 FIX: Check Role
-        if ($user->role === 'Admin') {
-            // If Admin, show EVERYTHING (Sorted by newest)
-            return Order::with('items')
-                        ->orderBy('created_at', 'desc')
-                        ->get();
+        // ⚡ OPTIMIZATION: Eager Load 'items'
+        // This prevents running a separate SQL query for every order's items.
+        
+        $query = Order::with('items');
+
+        // If Customer, filter by their ID
+        if ($user->role !== 'Admin') {
+            $query->where('user_id', $user->id);
         }
 
-        // If Customer, show ONLY their orders
-        return Order::where('user_id', $user->id)
-                    ->with('items')
-                    ->orderBy('created_at', 'desc')
-                    ->get();
+        return $query->orderBy('created_at', 'desc')->get();
     }
 
     // POST /api/orders (Checkout)
@@ -42,12 +39,11 @@ class OrderController extends Controller
             'total' => 'required|numeric'
         ]);
 
-        // Use a Transaction: Either everything succeeds, or nothing happens.
-        // This prevents "half-created" orders if stock runs out midway.
+        // ⚡ TRANSACTION: Ensure DB integrity (All or Nothing)
         return DB::transaction(function () use ($request) {
             $user = Auth::user();
             
-            // 1. Create the Order Header
+            // 1. Create Order
             $order = Order::create([
                 'order_number' => 'ORD-' . strtoupper(Str::random(8)),
                 'user_id' => $user->id,
@@ -58,18 +54,18 @@ class OrderController extends Controller
                 'shipping_address' => $request->shipping_address
             ]);
 
-            // 2. Process Items & Deduct Stock
+            // 2. Process Items (Bulk Insertion would be faster, but we need stock checks)
             foreach ($request->items as $item) {
-                $product = Product::find($item['id']);
+                // ⚡ OPTIMIZATION: Use 'lockForUpdate' to prevent race conditions 
+                // if two people buy the last item at the exact same second.
+                $product = Product::where('id', $item['id'])->lockForUpdate()->first();
 
                 if (!$product || $product->stock < $item['quantity']) {
                     throw new \Exception("Product {$item['name']} is out of stock.");
                 }
 
-                // Deduct Stock
                 $product->decrement('stock', $item['quantity']);
 
-                // Save Order Item
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
@@ -87,14 +83,20 @@ class OrderController extends Controller
     // PUT /api/orders/{id}/cancel
     public function cancel($id)
     {
-        $order = Order::where('user_id', Auth::id())->findOrFail($id);
+        $user = Auth::user();
         
-        if ($order->status === 'Placed' || $order->status === 'Processing') {
+        // ⚡ OPTIMIZATION: FindOrFail handles the 404 check efficiently
+        $order = Order::where('id', $id)
+                      ->where('user_id', $user->id)
+                      ->firstOrFail();
+        
+        if (in_array($order->status, ['Placed', 'Processing'])) {
             $order->update(['status' => 'Cancelled']);
             
-            // Optional: Restore stock here if you want
+            // Restore Stock
             foreach ($order->items as $item) {
-                Product::find($item->product_id)->increment('stock', $item->quantity);
+                Product::where('id', $item->product_id)
+                       ->increment('stock', $item->quantity);
             }
             
             return $order;
@@ -110,9 +112,7 @@ class OrderController extends Controller
             'status' => 'required|string|in:Pending,Processing,Shipped,Delivered,Cancelled,Return Requested'
         ]);
 
-        // 💡 Find order regardless of user_id (because Admins can edit anyone's order)
         $order = Order::findOrFail($id);
-        
         $order->update(['status' => $request->status]);
 
         return $order;
