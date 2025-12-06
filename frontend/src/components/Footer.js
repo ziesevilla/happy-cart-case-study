@@ -5,9 +5,21 @@ import { Facebook, Instagram, Twitter, Youtube, Mail, MapPin, Phone, CreditCard,
 import { useAuth } from '../context/AuthContext'; 
 import './FootNav.css';
 
+/**
+ * Footer Component
+ * * A global site footer containing navigation, newsletter signup, and trust signals.
+ * * Adapts links based on the user's login status.
+ */
 const Footer = () => {
+    // Access global user state
     const { user } = useAuth(); 
 
+    /**
+     * UX Helper: Smart Redirection
+     * * If a user is logged in, send them to the protected route (path).
+     * * If they are a guest, send them to the login page first.
+     * * Usage: <Link to={getAuthLink('/account')}>
+     */
     const getAuthLink = (path) => {
         return user ? path : '/login';
     };
@@ -15,7 +27,10 @@ const Footer = () => {
     return (
         <footer className="custom-footer">
             <Container>
-                {/* 1. NEWSLETTER */}
+                
+                {/* ======================================================== */}
+                {/* 1. NEWSLETTER SECTION */}
+                {/* ======================================================== */}
                 <div className="footer-newsletter">
                     <h4 className="fw-bold mb-2">STAY IN THE LOOP</h4>
                     <p className="text-muted">Subscribe to get special offers, free giveaways, and exclusive deals.</p>
@@ -25,12 +40,16 @@ const Footer = () => {
                     </div>
                 </div>
 
-                {/* 2. LINKS GRID */}
+                {/* ======================================================== */}
+                {/* 2. MAIN NAVIGATION GRID */}
+                {/* ======================================================== */}
                 <div className="footer-grid">
+                    
+                    {/* Column 1: Shop Links */}
                     <div className="footer-col">
                         <h6>SHOP</h6>
                         <ul>
-                            {/* 💡 UPDATED LINKS HERE */}
+                            {/* Query Parameters: These links pre-filter the Product Page */}
                             <li><Link to="/products?collection=New">New Arrivals</Link></li>
                             <li><Link to="/products?collection=Clothing">Clothing</Link></li>
                             <li><Link to="/products?collection=Shoes">Shoes</Link></li>
@@ -38,6 +57,7 @@ const Footer = () => {
                         </ul>
                     </div>
 
+                    {/* Column 2: Service */}
                     <div className="footer-col">
                         <h6>CUSTOMER SERVICE</h6>
                         <ul>
@@ -48,6 +68,7 @@ const Footer = () => {
                         </ul>
                     </div>
 
+                    {/* Column 3: Corporate */}
                     <div className="footer-col">
                         <h6>COMPANY</h6>
                         <ul>
@@ -59,16 +80,21 @@ const Footer = () => {
                         </ul>
                     </div>
 
+                    {/* Column 4: Account (Dynamic) */}
                     <div className="footer-col">
                         <h6>MY ACCOUNT</h6>
                         <ul>
+                            {/* Uses the smart helper to protect these routes */}
                             <li><Link to={getAuthLink('/account')}>My Profile</Link></li>
                             <li><Link to={getAuthLink('/account')}>Order History</Link></li>
                             <li><Link to="/cart">My Shopping Bag</Link></li> 
+                            
+                            {/* Only show Login link if user is NOT logged in */}
                             {!user && <li><Link to="/login">Login / Register</Link></li>}
                         </ul>
                     </div>
 
+                    {/* Column 5: Contact Info */}
                     <div className="footer-col footer-contact-col">
                         <h6>CONTACT US</h6>
                         <div className="contact-item">
@@ -91,7 +117,9 @@ const Footer = () => {
                     </div>
                 </div>
 
-                {/* 3. BOTTOM BAR */}
+                {/* ======================================================== */}
+                {/* 3. BOTTOM BAR (Trust Signals) */}
+                {/* ======================================================== */}
                 <div className="footer-bottom">
                     <div className="d-flex flex-column gap-2">
                         <div className="payment-icons d-flex align-items-center gap-3">
@@ -105,6 +133,7 @@ const Footer = () => {
                     </div>
 
                     <div className="d-flex flex-column align-items-end gap-2">
+                        {/* Security Badges: Increases user trust during checkout */}
                         <div className="d-flex align-items-center gap-3 text-muted small">
                             <span className="d-flex align-items-center gap-1"><Lock size={14}/> Secure Payment</span>
                             <span className="d-flex align-items-center gap-1"><Lock size={14}/> SSL Encrypted</span>
