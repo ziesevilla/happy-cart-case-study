@@ -36,7 +36,7 @@ class ProductController extends Controller
             ->findOrFail($id);
     }
 
-    // POST /api/products (Admin Only)
+    // POST /api/products
     public function store(Request $request)
     {
         $fields = $request->validate([
@@ -46,13 +46,20 @@ class ProductController extends Controller
             'sub_category' => 'nullable|string',
             'description' => 'nullable|string',
             'stock' => 'required|integer',
-            'image' => 'nullable|string',
+            'image' => 'nullable|image|max:2048', // 💡 Validate as Image (2MB max)
         ]);
+
+        // 💡 Handle File Upload
+        if ($request->hasFile('image')) {
+            // Save to 'public/products' folder
+            $path = $request->file('image')->store('products', 'public');
+            $fields['image'] = '/storage/' . $path;
+        }
 
         return Product::create($fields);
     }
 
-    // PUT /api/products/{id} (Admin Only)
+    // PUT /api/products/{id}
     public function update(Request $request, $id)
     {
         $product = Product::findOrFail($id);
@@ -64,11 +71,17 @@ class ProductController extends Controller
             'sub_category' => 'nullable|string',
             'description' => 'nullable|string',
             'stock' => 'integer',
-            'image' => 'nullable|string',
+            'image' => 'nullable', // Allow string (URL) OR file (Upload)
         ]);
 
+        // 💡 Handle File Upload
+        if ($request->hasFile('image')) {
+            // Optional: Delete old image here if you want to save space
+            $path = $request->file('image')->store('products', 'public');
+            $fields['image'] = '/storage/' . $path;
+        }
+
         $product->update($fields);
-        
         return $product;
     }
 

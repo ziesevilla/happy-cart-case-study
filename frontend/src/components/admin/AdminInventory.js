@@ -13,20 +13,24 @@ const AdminInventory = ({ showNotification }) => {
     const itemsPerPage = viewMode === 'list' ? 8 : 12; 
     const GRID_PAGES = ['Clothing', 'Shoes', 'Accessories']; 
 
-    // --- MODAL STATES ---
+    // MODAL STATES
     const [showModal, setShowModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
 
-    // --- LOADING STATES FOR ACTIONS ---
-    const [isSubmitting, setIsSubmitting] = useState(false); // 💡 For Add/Edit
-    const [isDeleting, setIsDeleting] = useState(false);     // 💡 For Delete
+    // LOADING STATES
+    const [isSubmitting, setIsSubmitting] = useState(false); 
+    const [isDeleting, setIsDeleting] = useState(false);     
 
     const [isEditing, setIsEditing] = useState(false);
     const [currentId, setCurrentId] = useState(null);
     
-    const initialForm = { name: '', category: 'Clothing', sub_category: '', price: '', stock: '', description: '', image: '' };
+    const initialForm = { name: '', category: 'Clothing', sub_category: '', price: '', stock: '', description: '' };
     const [formData, setFormData] = useState(initialForm);
+
+    // 💡 NEW: File Upload State
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
 
     const [sortConfig, setSortConfig] = useState({ key: 'dateAdded', direction: 'desc' }); 
 
@@ -34,7 +38,6 @@ const AdminInventory = ({ showNotification }) => {
         setCurrentPage(1);
     }, [viewMode]);
 
-    // Show Global Spinner while fetching initial data
     if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center" style={{ height: '60vh' }}>
@@ -43,12 +46,10 @@ const AdminInventory = ({ showNotification }) => {
         );
     }
 
-    // --- SORTING LOGIC ---
+    // --- SORTING & FILTERING (Unchanged) ---
     const handleSort = (key) => {
         let direction = 'asc';
-        if (sortConfig.key === key && sortConfig.direction === 'asc') {
-            direction = 'desc';
-        }
+        if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
         setSortConfig({ key, direction });
     };
 
@@ -64,7 +65,6 @@ const AdminInventory = ({ showNotification }) => {
         return <span className="text-success fw-bold">{stock} in stock</span>;
     };
 
-    // --- FILTERING ---
     const filteredProducts = products.filter(p => 
         (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -73,29 +73,21 @@ const AdminInventory = ({ showNotification }) => {
 
     const sortedProducts = [...filteredProducts].sort((a, b) => {
         if (!sortConfig.key) return 0;
-        
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
 
         if (sortConfig.key === 'dateAdded') {
-            const dateA = new Date(aValue || 0);
-            const dateB = new Date(bValue || 0);
-            return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+            return sortConfig.direction === 'asc' ? new Date(aValue || 0) - new Date(bValue || 0) : new Date(bValue || 0) - new Date(aValue || 0);
         }
-
-        if (sortConfig.key === 'price' || sortConfig.key === 'id' || sortConfig.key === 'stock') {
+        if (['price', 'id', 'stock'].includes(sortConfig.key)) {
             return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
         }
-        
         const valA = String(aValue || '').toLowerCase();
         const valB = String(bValue || '').toLowerCase();
-        
-        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
+        return valA < valB ? (sortConfig.direction === 'asc' ? -1 : 1) : (valA > valB ? (sortConfig.direction === 'asc' ? 1 : -1) : 0);
     });
 
-    // PAGINATION LOGIC (List & Grid)
+    // --- PAGINATION (Unchanged) ---
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const listItems = sortedProducts.slice(indexOfFirstItem, indexOfLastItem);
@@ -103,7 +95,6 @@ const AdminInventory = ({ showNotification }) => {
 
     const currentGridCategory = GRID_PAGES[currentPage - 1] || 'Clothing';
     const gridItems = sortedProducts.filter(p => p.category === currentGridCategory);
-
     const groupedGridItems = gridItems.reduce((groups, item) => {
         const sub = item.sub_category || 'Other';
         if (!groups[sub]) groups[sub] = [];
@@ -113,7 +104,7 @@ const AdminInventory = ({ showNotification }) => {
 
     const totalPages = viewMode === 'list' ? listTotalPages : GRID_PAGES.length;
 
-    const handlePageChange = (pageNumber) => {
+     const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);
         const contentTop = document.querySelector('.animate-fade-in');
         if (contentTop) {
@@ -157,10 +148,14 @@ const AdminInventory = ({ showNotification }) => {
         return items;
     };
 
+
     // --- MODAL HANDLERS ---
     const handleOpenAdd = () => {
         setIsEditing(false);
         setFormData(initialForm);
+        // Clear file state
+        setSelectedFile(null);
+        setImagePreview(null);
         setShowModal(true);
     };
 
@@ -173,10 +168,21 @@ const AdminInventory = ({ showNotification }) => {
             sub_category: product.sub_category || '',
             price: product.price,
             stock: product.stock,
-            description: product.description || '',
-            image: product.image || ''
+            description: product.description || ''
         });
+        // Set preview to existing image URL
+        setImagePreview(product.image);
+        setSelectedFile(null);
         setShowModal(true);
+    };
+
+    // 💡 NEW: Handle File Selection
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedFile(file);
+            setImagePreview(URL.createObjectURL(file)); // Create local preview
+        }
     };
 
     const handleDeleteClick = (product) => {
@@ -184,12 +190,10 @@ const AdminInventory = ({ showNotification }) => {
         setShowDeleteModal(true);
     };
 
-    // 💡 UPDATED: DELETE with Spinner
     const confirmDelete = async () => {
         if (itemToDelete) {
-            setIsDeleting(true); // Start loading
+            setIsDeleting(true);
             const result = await deleteProduct(itemToDelete.id);
-            
             if (result.success) {
                 showNotification("Product deleted successfully", "secondary");
                 setShowDeleteModal(false);
@@ -197,45 +201,64 @@ const AdminInventory = ({ showNotification }) => {
             } else {
                 showNotification("Failed to delete product", "danger");
             }
-            setIsDeleting(false); // Stop loading
+            setIsDeleting(false);
         }
     };
 
-    // 💡 UPDATED: SUBMIT with Spinner
+    // 💡 UPDATED: Submit with FormData
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.name || !formData.price) return;
 
-        setIsSubmitting(true); // Start loading
+        setIsSubmitting(true);
 
-        const productData = {
-            ...formData,
-            price: parseFloat(formData.price),
-            stock: parseInt(formData.stock) || 0, 
-            image: formData.image || ''
-        };
+        // 1. Create FormData object
+        const data = new FormData();
+        data.append('name', formData.name);
+        data.append('category', formData.category);
+        data.append('sub_category', formData.sub_category);
+        data.append('price', formData.price);
+        data.append('stock', formData.stock);
+        data.append('description', formData.description);
+
+        // 2. Append File if selected
+        if (selectedFile) {
+            data.append('image', selectedFile);
+        }
 
         let result;
         if (isEditing) {
-            result = await updateProduct(currentId, productData);
+            // UpdateProduct in Context handles the _method: PUT logic
+            result = await updateProduct(currentId, data);
             if (result.success) showNotification("Product updated successfully!");
             else showNotification(result.message, "danger");
         } else {
-            result = await addProduct(productData);
+            result = await addProduct(data);
             if (result.success) showNotification("New product added to inventory!");
             else showNotification(result.message, "danger");
         }
 
-        setIsSubmitting(false); // Stop loading
+        setIsSubmitting(false);
         
-        // Only close modal if success
         if (result.success) {
             setShowModal(false);
         }
     };
+    
+    // Helper to render image correctly (Backend URL or Placeholder)
+    const renderImage = (imgUrl) => {
+        if (!imgUrl) return <ImageIcon size={20} className="text-muted"/>;
+        // If it's a full URL (http...) or a blob (local preview), use it.
+        // Otherwise, if it's a storage path (/storage/...), prepend backend URL.
+        const src = imgUrl.startsWith('http') || imgUrl.startsWith('blob') 
+            ? imgUrl 
+            : `http://localhost/storage/${imgUrl.replace('/storage/', '')}`; // Adjust port if needed
+        return <img src={src} alt="Product" style={{width: '100%', height: '100%', objectFit: 'cover'}} />;
+    };
 
     return (
         <div className="animate-fade-in">
+            {/* ... Header & View Switcher (Keep existing) ... */}
             {/* HEADER */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div className="d-flex align-items-center">
@@ -261,9 +284,10 @@ const AdminInventory = ({ showNotification }) => {
                     <Button variant="primary" className="rounded-pill fw-bold px-4" onClick={handleOpenAdd}>
                         <Plus size={18} className="me-2"/> Add Product
                     </Button>
-
+                    
+                    {/* Search Bar */}
                     <div style={{ width: '300px'}}>
-                        <InputGroup size="sm" className="border rounded-pill bg-white overflow-hidden">
+                         <InputGroup size="sm" className="border rounded-pill bg-white overflow-hidden">
                             <InputGroup.Text className="bg-white border-0 pe-0"><Search size={16} className="text-muted"/></InputGroup.Text>
                             <Form.Control placeholder="Search products..." className="border-0 shadow-none ps-2" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
                         </InputGroup>
@@ -277,13 +301,13 @@ const AdminInventory = ({ showNotification }) => {
                     <Table responsive hover className="mb-0 align-middle">
                         <thead className="bg-light">
                             <tr>
-                                <th className="ps-4 py-3 text-muted small text-uppercase pointer" style={{width: '80px'}} onClick={() => handleSort('id')}>ID {getSortIcon('id')}</th>
-                                <th className="py-3 text-muted small text-uppercase pointer" onClick={() => handleSort('name')}>Product {getSortIcon('name')}</th>
-                                <th className="py-3 text-muted small text-uppercase pointer" onClick={() => handleSort('category')}>Category {getSortIcon('category')}</th>
-                                <th className="py-3 text-muted small text-uppercase pointer" onClick={() => handleSort('sub_category')}>Sub-Cat {getSortIcon('sub_category')}</th>
-                                <th className="py-3 text-muted small text-uppercase pointer" onClick={() => handleSort('price')}>Price {getSortIcon('price')}</th>
-                                <th className="py-3 text-muted small text-uppercase pointer" onClick={() => handleSort('stock')}>Stock {getSortIcon('stock')}</th>
-                                <th className="py-3 text-muted small text-uppercase pointer" onClick={() => handleSort('dateAdded')}>Date Added {getSortIcon('dateAdded')}</th>
+                                <th className="ps-4 py-3 text-muted small text-uppercase">ID</th>
+                                <th className="py-3 text-muted small text-uppercase">Product</th>
+                                <th className="py-3 text-muted small text-uppercase">Category</th>
+                                <th className="py-3 text-muted small text-uppercase">Sub-Cat</th>
+                                <th className="py-3 text-muted small text-uppercase">Price</th>
+                                <th className="py-3 text-muted small text-uppercase">Stock</th>
+                                <th className="py-3 text-muted small text-uppercase">Date</th>
                                 <th className="pe-4 py-3 text-end text-muted small text-uppercase">Actions</th>
                             </tr>
                         </thead>
@@ -293,13 +317,14 @@ const AdminInventory = ({ showNotification }) => {
                                     <td className="ps-4 text-muted fw-bold small">#{p.id}</td>
                                     <td className="py-3">
                                         <div className="d-flex align-items-center gap-3">
-                                            <div className="rounded-3 overflow-hidden bg-light d-flex align-items-center justify-content-center" style={{width: '40px', height: '40px'}}>
-                                                {p.image ? <img src={p.image} alt={p.name} style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : <ImageIcon size={20} className="text-muted" />}
+                                            <div className="rounded-3 overflow-hidden bg-light d-flex align-items-center justify-content-center border" style={{width: '40px', height: '40px'}}>
+                                                {/* 💡 Use helper to render image */}
+                                                {renderImage(p.image)}
                                             </div>
                                             <div className="fw-bold text-dark">{p.name}</div>
                                         </div>
                                     </td>
-                                    <td><span className="badge bg-light text-dark border">{p.category}</span></td>
+                                    <td><Badge bg="light" text="dark" className="border fw-normal">{p.category}</Badge></td>
                                     <td><span className="text-muted small">{p.sub_category || '-'}</span></td>
                                     <td className="fw-bold text-primary">{p.formatted_price}</td>
                                     <td>{getStockBadge(p.stock)}</td>
@@ -314,15 +339,11 @@ const AdminInventory = ({ showNotification }) => {
                             )}
                         </tbody>
                     </Table>
-                    
-                    {listTotalPages > 1 && (
+                    {/* Pagination... */}
+                     {listTotalPages > 1 && (
                         <div className="bg-white border-top d-flex justify-content-between align-items-center py-3 px-4">
-                            <div className="small text-muted">
-                                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, sortedProducts.length)} of {sortedProducts.length} products
-                            </div>
-                            <Pagination size="sm" className="mb-0">
-                                {renderPaginationItems()}
-                            </Pagination>
+                             <div className="small text-muted">Page {currentPage} of {listTotalPages}</div>
+                             <Pagination size="sm" className="mb-0">{renderPaginationItems()}</Pagination>
                         </div>
                     )}
                 </div>
@@ -392,12 +413,13 @@ const AdminInventory = ({ showNotification }) => {
                 </div>
             )}
 
-            {/* ADD/EDIT MODAL WITH SPINNER */}
+
+
+            {/* ADD/EDIT MODAL WITH FILE UPLOAD */}
             <Modal show={showModal} onHide={() => !isSubmitting && setShowModal(false)} centered size="lg" backdrop="static">
                 <Modal.Header closeButton={!isSubmitting} className="border-0"><Modal.Title className="fw-bold">{isEditing ? 'Edit Product' : 'Add New Product'}</Modal.Title></Modal.Header>
                 <Modal.Body className="px-4 pb-4">
                     <Form onSubmit={handleSubmit}>
-                        {/* ... (Fields remain exactly the same as previous code) ... */}
                         <Row className="g-3">
                             <Col md={8}>
                                 <Form.Group className="mb-3">
@@ -433,12 +455,20 @@ const AdminInventory = ({ showNotification }) => {
                                     <Form.Control placeholder="e.g. Sneakers, Tops, Bags" value={formData.sub_category} onChange={(e) => setFormData({...formData, sub_category: e.target.value})} className="rounded-pill bg-light border-0" disabled={isSubmitting}/>
                                 </Form.Group>
                             </Col>
+                            
+                            {/* 💡 NEW: File Input */}
                             <Col xs={12}>
                                 <Form.Group className="mb-3">
-                                    <Form.Label className="small fw-bold text-muted">IMAGE URL</Form.Label>
-                                    <Form.Control placeholder="https://..." value={formData.image} onChange={(e) => setFormData({...formData, image: e.target.value})} className="rounded-pill bg-light border-0" disabled={isSubmitting}/>
+                                    <Form.Label className="small fw-bold text-muted">PRODUCT IMAGE</Form.Label>
+                                    <div className="d-flex align-items-center gap-3">
+                                        <div className="border rounded-3 d-flex align-items-center justify-content-center bg-light" style={{width: '60px', height: '60px', overflow:'hidden'}}>
+                                            {imagePreview ? <img src={imagePreview} alt="Preview" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <ImageIcon size={24} className="text-muted"/>}
+                                        </div>
+                                        <Form.Control type="file" accept="image/*" onChange={handleFileChange} className="rounded-pill bg-light border-0" disabled={isSubmitting}/>
+                                    </div>
                                 </Form.Group>
                             </Col>
+
                             <Col xs={12}>
                                 <Form.Group className="mb-4">
                                     <Form.Label className="small fw-bold text-muted">DESCRIPTION</Form.Label>
@@ -455,29 +485,17 @@ const AdminInventory = ({ showNotification }) => {
                 </Modal.Body>
             </Modal>
 
-            {/* DELETE CONFIRMATION MODAL WITH SPINNER */}
+            {/* DELETE MODAL (Unchanged) */}
             <Modal show={showDeleteModal} onHide={() => !isDeleting && setShowDeleteModal(false)} centered>
-                <Modal.Header closeButton={!isDeleting} className="border-0">
-                    <Modal.Title className="fw-bold text-danger">Confirm Deletion</Modal.Title>
-                </Modal.Header>
-                <Modal.Body className="text-center py-4">
-                    <div className="bg-danger-subtle text-danger p-3 rounded-circle d-inline-flex mb-3">
-                        <AlertTriangle size={32} />
-                    </div>
+                <Modal.Body className="text-center p-4">
+                    <div className="bg-danger-subtle text-danger p-3 rounded-circle d-inline-flex mb-3"><AlertTriangle size={32} /></div>
                     <h5 className="fw-bold">Delete Product?</h5>
-                    <p className="text-muted mb-0">
-                        Are you sure you want to delete <strong>{itemToDelete?.name}</strong>? 
-                        <br/>This action cannot be undone.
-                    </p>
+                    <p className="text-muted mb-4">Are you sure you want to delete <strong>{itemToDelete?.name}</strong>?</p>
+                    <div className="d-flex justify-content-center gap-2">
+                        <Button variant="light" className="rounded-pill px-4" onClick={() => setShowDeleteModal(false)} disabled={isDeleting}>Cancel</Button>
+                        <Button variant="danger" className="rounded-pill px-4 fw-bold" onClick={confirmDelete} disabled={isDeleting}>{isDeleting ? <Spinner size="sm"/> : 'Delete'}</Button>
+                    </div>
                 </Modal.Body>
-                <Modal.Footer className="border-0 justify-content-center pb-4">
-                    <Button variant="light" className="rounded-pill px-4" onClick={() => setShowDeleteModal(false)} disabled={isDeleting}>
-                        Cancel
-                    </Button>
-                    <Button variant="danger" className="rounded-pill px-4 fw-bold" onClick={confirmDelete} disabled={isDeleting}>
-                        {isDeleting ? <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2"/>Deleting...</> : 'Delete Product'}
-                    </Button>
-                </Modal.Footer>
             </Modal>
         </div>
     );

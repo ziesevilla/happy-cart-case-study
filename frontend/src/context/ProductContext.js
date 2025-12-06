@@ -25,28 +25,44 @@ export const ProductProvider = ({ children }) => {
         fetchProducts();
     }, []);
 
-    // 2. Add Product (Admin)
-    const addProduct = async (newProductData) => {
+    // 2. Add Product (Handles JSON or FormData)
+    const addProduct = async (productData) => {
         try {
-            // POST http://localhost/api/products
-            const response = await api.post('/products', newProductData);
+            let response;
+            // Check if we are sending a File (FormData)
+            if (productData instanceof FormData) {
+                response = await api.post('/products', productData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                // Standard JSON (for text-only updates)
+                response = await api.post('/products', productData);
+            }
             
-            // Add the new product from DB (which has the real ID) to our state
             setProducts(prev => [response.data, ...prev]);
             return { success: true };
         } catch (error) {
             console.error("Failed to add product:", error);
-            return { success: false, message: error.response?.data?.message || "Failed to add product" };
+            return { success: false, message: error.response?.data?.message || "Failed to add" };
         }
     };
 
-    // 3. Update Product (Admin)
+    // 3. Update Product (Handles File Uploads via Spoofing)
     const updateProduct = async (id, updatedData) => {
         try {
-            // PUT http://localhost/api/products/{id}
-            const response = await api.put(`/products/${id}`, updatedData);
+            let response;
             
-            // Update local state
+            if (updatedData instanceof FormData) {
+                // 💡 METHOD SPOOFING: Laravel requires POST for file updates
+                updatedData.append('_method', 'PUT'); 
+                response = await api.post(`/products/${id}`, updatedData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                // Standard JSON Update
+                response = await api.put(`/products/${id}`, updatedData);
+            }
+            
             setProducts(prev => prev.map(p => p.id === id ? response.data : p));
             return { success: true };
         } catch (error) {
