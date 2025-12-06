@@ -1,39 +1,51 @@
 import React, { useState, useEffect } from 'react'; 
 import { Table, Button, Form, Modal, Row, Col, InputGroup, Pagination, Card, Badge, Spinner } from 'react-bootstrap';
-import { Edit2, Trash2, Plus, Search, Package, Image as ImageIcon, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, LayoutList, AlertTriangle, UploadCloud, Filter } from 'lucide-react';
+import { Edit2, Trash2, Plus, Search, Package, Image as ImageIcon, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, LayoutList, AlertTriangle } from 'lucide-react';
 import { useProducts } from '../../context/ProductContext'; 
 
+/**
+ * AdminInventory Component (Full Version)
+ * * Manages the product catalog.
+ * * Features: List/Grid toggle, Client-side Sorting/Filtering, Image Uploads, Complex Pagination.
+ */
 const AdminInventory = ({ showNotification }) => {
+    // Access global product state & actions
     const { products, addProduct, updateProduct, deleteProduct, loading } = useProducts();
     
+    // =================================================================
+    // 1. UI STATE
+    // =================================================================
     const [searchTerm, setSearchTerm] = useState('');
-    const [viewMode, setViewMode] = useState('list'); 
+    const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
     
+    // Pagination Config
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = viewMode === 'list' ? 8 : 12; 
-    const GRID_PAGES = ['Clothing', 'Shoes', 'Accessories']; 
+    const GRID_PAGES = ['Clothing', 'Shoes', 'Accessories']; // Custom pagination for Grid View
 
-    // MODAL STATES
+    // Modals
     const [showModal, setShowModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
 
-    // LOADING STATES
+    // Processing States
     const [isSubmitting, setIsSubmitting] = useState(false); 
     const [isDeleting, setIsDeleting] = useState(false);     
 
+    // Form State
     const [isEditing, setIsEditing] = useState(false);
     const [currentId, setCurrentId] = useState(null);
-    
     const initialForm = { name: '', category: 'Clothing', sub_category: '', price: '', stock: '', description: '' };
     const [formData, setFormData] = useState(initialForm);
 
-    // 💡 NEW: File Upload State
+    // File Upload State
     const [selectedFile, setSelectedFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
 
+    // Sorting State
     const [sortConfig, setSortConfig] = useState({ key: 'dateAdded', direction: 'desc' }); 
 
+    // Reset pagination when switching views
     useEffect(() => {
         setCurrentPage(1);
     }, [viewMode]);
@@ -46,7 +58,11 @@ const AdminInventory = ({ showNotification }) => {
         );
     }
 
-    // --- SORTING & FILTERING (Unchanged) ---
+    // =================================================================
+    // 2. DATA PROCESSING (Sort & Filter)
+    // =================================================================
+
+    // Handle column header click
     const handleSort = (key) => {
         let direction = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
@@ -59,42 +75,46 @@ const AdminInventory = ({ showNotification }) => {
         return <ArrowDown size={14} className="text-primary ms-1" />;
     };
 
-    const getStockBadge = (stock) => {
-        if (stock === 0) return <Badge bg="danger">Out of Stock</Badge>;
-        if (stock < 10) return <Badge bg="warning" text="dark">Low Stock ({stock})</Badge>;
-        return <span className="text-success fw-bold">{stock} in stock</span>;
-    };
-
+    // Filter by Search Term
     const filteredProducts = products.filter(p => 
         (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.sub_category && p.sub_category.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
+    // Apply Sorting Logic
     const sortedProducts = [...filteredProducts].sort((a, b) => {
         if (!sortConfig.key) return 0;
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
 
+        // Date Sort
         if (sortConfig.key === 'dateAdded') {
-            return sortConfig.direction === 'asc' ? new Date(aValue || 0) - new Date(bValue || 0) : new Date(bValue || 0) - new Date(aValue || 0);
+            return sortConfig.direction === 'asc' 
+                ? new Date(aValue || 0) - new Date(bValue || 0) 
+                : new Date(bValue || 0) - new Date(aValue || 0);
         }
+        // Numeric Sort
         if (['price', 'id', 'stock'].includes(sortConfig.key)) {
             return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
         }
+        // String Sort
         const valA = String(aValue || '').toLowerCase();
         const valB = String(bValue || '').toLowerCase();
         return valA < valB ? (sortConfig.direction === 'asc' ? -1 : 1) : (valA > valB ? (sortConfig.direction === 'asc' ? 1 : -1) : 0);
     });
 
-    // --- PAGINATION (Unchanged) ---
+    // Apply Pagination Slice
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const listItems = sortedProducts.slice(indexOfFirstItem, indexOfLastItem);
     const listTotalPages = Math.ceil(sortedProducts.length / itemsPerPage);
 
+    // Grid View Logic (Grouped by Category)
     const currentGridCategory = GRID_PAGES[currentPage - 1] || 'Clothing';
     const gridItems = sortedProducts.filter(p => p.category === currentGridCategory);
+    
+    // Grouping Logic: { "Sneakers": [...], "Sandals": [...] }
     const groupedGridItems = gridItems.reduce((groups, item) => {
         const sub = item.sub_category || 'Other';
         if (!groups[sub]) groups[sub] = [];
@@ -106,6 +126,7 @@ const AdminInventory = ({ showNotification }) => {
 
      const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);
+        // Smooth scroll to top of list
         const contentTop = document.querySelector('.animate-fade-in');
         if (contentTop) {
              contentTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -114,6 +135,7 @@ const AdminInventory = ({ showNotification }) => {
         }
     };
     
+    // Complex Pagination Logic (First, Prev, 1, 2, ..., Last, Next)
     const renderPaginationItems = () => {
         let items = [];
         const maxVisiblePages = 5;
@@ -149,11 +171,13 @@ const AdminInventory = ({ showNotification }) => {
     };
 
 
-    // --- MODAL HANDLERS ---
+    // =================================================================
+    // 3. FORM & FILE HANDLERS
+    // =================================================================
+
     const handleOpenAdd = () => {
         setIsEditing(false);
         setFormData(initialForm);
-        // Clear file state
         setSelectedFile(null);
         setImagePreview(null);
         setShowModal(true);
@@ -170,18 +194,17 @@ const AdminInventory = ({ showNotification }) => {
             stock: product.stock,
             description: product.description || ''
         });
-        // Set preview to existing image URL
         setImagePreview(product.image);
         setSelectedFile(null);
         setShowModal(true);
     };
 
-    // 💡 NEW: Handle File Selection
+    // Handle Local Image Selection
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
             setSelectedFile(file);
-            setImagePreview(URL.createObjectURL(file)); // Create local preview
+            setImagePreview(URL.createObjectURL(file)); // Blob Preview
         }
     };
 
@@ -205,14 +228,13 @@ const AdminInventory = ({ showNotification }) => {
         }
     };
 
-    // 💡 UPDATED: Submit with FormData
+    // Submit Form with File Upload (FormData)
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.name || !formData.price) return;
 
         setIsSubmitting(true);
 
-        // 1. Create FormData object
         const data = new FormData();
         data.append('name', formData.name);
         data.append('category', formData.category);
@@ -221,14 +243,12 @@ const AdminInventory = ({ showNotification }) => {
         data.append('stock', formData.stock);
         data.append('description', formData.description);
 
-        // 2. Append File if selected
         if (selectedFile) {
             data.append('image', selectedFile);
         }
 
         let result;
         if (isEditing) {
-            // UpdateProduct in Context handles the _method: PUT logic
             result = await updateProduct(currentId, data);
             if (result.success) showNotification("Product updated successfully!");
             else showNotification(result.message, "danger");
@@ -245,20 +265,23 @@ const AdminInventory = ({ showNotification }) => {
         }
     };
     
-    // Helper to render image correctly (Backend URL or Placeholder)
+    // Helper to render image correctly
     const renderImage = (imgUrl) => {
         if (!imgUrl) return <ImageIcon size={20} className="text-muted"/>;
-        // If it's a full URL (http...) or a blob (local preview), use it.
-        // Otherwise, if it's a storage path (/storage/...), prepend backend URL.
         const src = imgUrl.startsWith('http') || imgUrl.startsWith('blob') 
             ? imgUrl 
-            : `http://localhost/storage/${imgUrl.replace('/storage/', '')}`; // Adjust port if needed
+            : `http://localhost/storage/${imgUrl.replace('/storage/', '')}`; 
         return <img src={src} alt="Product" style={{width: '100%', height: '100%', objectFit: 'cover'}} />;
+    };
+
+    const getStockBadge = (stock) => {
+        if (stock === 0) return <Badge bg="danger">Out of Stock</Badge>;
+        if (stock < 10) return <Badge bg="warning" text="dark">Low Stock ({stock})</Badge>;
+        return <span className="text-success fw-bold">{stock} in stock</span>;
     };
 
     return (
         <div className="animate-fade-in">
-            {/* ... Header & View Switcher (Keep existing) ... */}
             {/* HEADER */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div className="d-flex align-items-center">
@@ -285,7 +308,6 @@ const AdminInventory = ({ showNotification }) => {
                         <Plus size={18} className="me-2"/> Add Product
                     </Button>
                     
-                    {/* Search Bar */}
                     <div style={{ width: '300px'}}>
                          <InputGroup size="sm" className="border rounded-pill bg-white overflow-hidden">
                             <InputGroup.Text className="bg-white border-0 pe-0"><Search size={16} className="text-muted"/></InputGroup.Text>
@@ -302,11 +324,11 @@ const AdminInventory = ({ showNotification }) => {
                         <thead className="bg-light">
                             <tr>
                                 <th className="ps-4 py-3 text-muted small text-uppercase">ID</th>
-                                <th className="py-3 text-muted small text-uppercase">Product</th>
-                                <th className="py-3 text-muted small text-uppercase">Category</th>
+                                <th className="py-3 text-muted small text-uppercase" onClick={() => handleSort('name')} style={{cursor:'pointer'}}>Product {getSortIcon('name')}</th>
+                                <th className="py-3 text-muted small text-uppercase" onClick={() => handleSort('category')} style={{cursor:'pointer'}}>Category {getSortIcon('category')}</th>
                                 <th className="py-3 text-muted small text-uppercase">Sub-Cat</th>
-                                <th className="py-3 text-muted small text-uppercase">Price</th>
-                                <th className="py-3 text-muted small text-uppercase">Stock</th>
+                                <th className="py-3 text-muted small text-uppercase" onClick={() => handleSort('price')} style={{cursor:'pointer'}}>Price {getSortIcon('price')}</th>
+                                <th className="py-3 text-muted small text-uppercase" onClick={() => handleSort('stock')} style={{cursor:'pointer'}}>Stock {getSortIcon('stock')}</th>
                                 <th className="py-3 text-muted small text-uppercase">Date</th>
                                 <th className="pe-4 py-3 text-end text-muted small text-uppercase">Actions</th>
                             </tr>
@@ -318,7 +340,6 @@ const AdminInventory = ({ showNotification }) => {
                                     <td className="py-3">
                                         <div className="d-flex align-items-center gap-3">
                                             <div className="rounded-3 overflow-hidden bg-light d-flex align-items-center justify-content-center border" style={{width: '40px', height: '40px'}}>
-                                                {/* 💡 Use helper to render image */}
                                                 {renderImage(p.image)}
                                             </div>
                                             <div className="fw-bold text-dark">{p.name}</div>
@@ -339,7 +360,6 @@ const AdminInventory = ({ showNotification }) => {
                             )}
                         </tbody>
                     </Table>
-                    {/* Pagination... */}
                      {listTotalPages > 1 && (
                         <div className="bg-white border-top d-flex justify-content-between align-items-center py-3 px-4">
                              <div className="small text-muted">Page {currentPage} of {listTotalPages}</div>
@@ -405,6 +425,7 @@ const AdminInventory = ({ showNotification }) => {
                 </div>
             )}
 
+            {/* Pagination Controls for Grid View */}
             {totalPages > 1 && viewMode === 'grid' && (
                 <div className="d-flex justify-content-center mt-5">
                     <Pagination size="sm">
@@ -412,8 +433,6 @@ const AdminInventory = ({ showNotification }) => {
                     </Pagination>
                 </div>
             )}
-
-
 
             {/* ADD/EDIT MODAL WITH FILE UPLOAD */}
             <Modal show={showModal} onHide={() => !isSubmitting && setShowModal(false)} centered size="lg" backdrop="static">
@@ -456,7 +475,7 @@ const AdminInventory = ({ showNotification }) => {
                                 </Form.Group>
                             </Col>
                             
-                            {/* 💡 NEW: File Input */}
+                            {/* IMAGE UPLOAD INPUT */}
                             <Col xs={12}>
                                 <Form.Group className="mb-3">
                                     <Form.Label className="small fw-bold text-muted">PRODUCT IMAGE</Form.Label>
@@ -485,7 +504,7 @@ const AdminInventory = ({ showNotification }) => {
                 </Modal.Body>
             </Modal>
 
-            {/* DELETE MODAL (Unchanged) */}
+            {/* DELETE MODAL */}
             <Modal show={showDeleteModal} onHide={() => !isDeleting && setShowDeleteModal(false)} centered>
                 <Modal.Body className="text-center p-4">
                     <div className="bg-danger-subtle text-danger p-3 rounded-circle d-inline-flex mb-3"><AlertTriangle size={32} /></div>

@@ -4,8 +4,14 @@ import { Plus, X, Save, RefreshCw, ShieldAlert, Settings as SettingsIcon, Tag, T
 import { useProducts } from '../../context/ProductContext'; 
 import { useSettings } from '../../context/SettingsContext'; 
 
+/**
+ * AdminSettings Component
+ * * Allows configuration of global application variables.
+ * * Features: Store Info editing, Category Management, System Toggles, and Factory Reset.
+ */
 const AdminSettings = ({ showNotification }) => {
-    const { resetData } = useProducts(); 
+    // 1. Access Global Contexts
+    const { resetData } = useProducts(); // Used for "Factory Reset"
     
     const { 
         categories, 
@@ -18,14 +24,22 @@ const AdminSettings = ({ showNotification }) => {
         updateStoreInfo 
     } = useSettings();
 
+    // 2. Local State (The Buffer)
+    // We use local state for the form inputs to prevent excessive global re-renders.
+    // The global 'storeInfo' is only updated when the user clicks "Save".
     const [newCategory, setNewCategory] = useState('');
     const [localStoreInfo, setLocalStoreInfo] = useState(storeInfo);
 
+    // Sync: If global storeInfo changes (e.g., after a reset), update our local buffer.
     useEffect(() => {
         setLocalStoreInfo(storeInfo);
     }, [storeInfo]);
 
     // --- HANDLERS ---
+
+    /**
+     * Add a new product category.
+     */
     const handleAddCategory = (e) => {
         e.preventDefault();
         if (newCategory.trim()) {
@@ -46,22 +60,31 @@ const AdminSettings = ({ showNotification }) => {
         }
     };
 
+    /**
+     * Commit changes from Local Buffer -> Global Context
+     */
     const handleSaveStoreInfo = (e) => {
         e.preventDefault();
         updateStoreInfo(localStoreInfo);
         showNotification("Store settings saved successfully!");
     };
 
+    /**
+     * Factory Reset
+     * * Wipes all data to restore the demo state.
+     * * Critical action requiring confirmation.
+     */
     const handleSystemReset = () => {
         if (window.confirm("CRITICAL WARNING: This will wipe ALL data (Products, Orders, Settings). Are you sure?")) {
-            resetData(); 
-            resetSettings(); 
+            resetData();     // Reset Products
+            resetSettings(); // Reset Configs
             showNotification("System reset to factory defaults.", "danger");
         }
     };
 
     return (
         <div className="animate-fade-in">
+            {/* Header */}
             <div className="d-flex align-items-center mb-4">
                 <div className="bg-white p-2 rounded-circle shadow-sm me-3 border">
                     <SettingsIcon size={24} className="text-primary"/>
@@ -74,8 +97,12 @@ const AdminSettings = ({ showNotification }) => {
             
             <Row className="g-4">
                 
-                {/* 💡 1. GENERAL STORE SETTINGS */}
+                {/* ======================================================== */}
+                {/* LEFT COLUMN: STORE INFO & CATEGORIES */}
+                {/* ======================================================== */}
                 <Col md={8}>
+                    
+                    {/* 1. GENERAL STORE SETTINGS FORM */}
                     <Card className="border-0 shadow-sm rounded-4 mb-4">
                         <Card.Body className="p-4">
                             <div className="d-flex align-items-center mb-4">
@@ -88,7 +115,6 @@ const AdminSettings = ({ showNotification }) => {
                                     <Col md={6}>
                                         <Form.Group>
                                             <Form.Label className="small fw-bold text-muted">STORE NAME</Form.Label>
-                                            {/* 💡 UNIFIED PILL STYLE */}
                                             <InputGroup className="border rounded-pill overflow-hidden bg-light">
                                                 <InputGroup.Text className="bg-transparent border-0 pe-0 text-muted">
                                                     <Store size={18}/>
@@ -104,7 +130,6 @@ const AdminSettings = ({ showNotification }) => {
                                     <Col md={6}>
                                         <Form.Group>
                                             <Form.Label className="small fw-bold text-muted">SUPPORT EMAIL</Form.Label>
-                                            {/* 💡 UNIFIED PILL STYLE */}
                                             <InputGroup className="border rounded-pill overflow-hidden bg-light">
                                                 <InputGroup.Text className="bg-transparent border-0 pe-0 text-muted">
                                                     <Mail size={18}/>
@@ -122,7 +147,7 @@ const AdminSettings = ({ showNotification }) => {
                         </Card.Body>
                     </Card>
 
-                    {/* 💡 2. SHIPPING & FINANCIALS */}
+                    {/* 2. SHIPPING & FINANCIALS FORM */}
                     <Card className="border-0 shadow-sm rounded-4 mb-4">
                         <Card.Body className="p-4">
                             <div className="d-flex align-items-center mb-4">
@@ -134,7 +159,6 @@ const AdminSettings = ({ showNotification }) => {
                                 <Col md={4}>
                                     <Form.Group>
                                         <Form.Label className="small fw-bold text-muted">SHIPPING FEE</Form.Label>
-                                        {/* 💡 UNIFIED PILL STYLE */}
                                         <InputGroup className="border rounded-pill overflow-hidden bg-light">
                                             <InputGroup.Text className="bg-transparent border-0 pe-2 text-muted fw-bold">₱</InputGroup.Text>
                                             <Form.Control 
@@ -149,7 +173,6 @@ const AdminSettings = ({ showNotification }) => {
                                 <Col md={4}>
                                     <Form.Group>
                                         <Form.Label className="small fw-bold text-muted">FREE SHIPPING AT</Form.Label>
-                                        {/* 💡 UNIFIED PILL STYLE */}
                                         <InputGroup className="border rounded-pill overflow-hidden bg-light">
                                             <InputGroup.Text className="bg-transparent border-0 pe-2 text-muted fw-bold">₱</InputGroup.Text>
                                             <Form.Control 
@@ -164,7 +187,6 @@ const AdminSettings = ({ showNotification }) => {
                                 <Col md={4}>
                                     <Form.Group>
                                         <Form.Label className="small fw-bold text-muted">TAX RATE</Form.Label>
-                                        {/* 💡 UNIFIED PILL STYLE */}
                                         <InputGroup className="border rounded-pill overflow-hidden bg-light">
                                             <InputGroup.Text className="bg-transparent border-0 pe-2 text-muted fw-bold">%</InputGroup.Text>
                                             <Form.Control 
@@ -217,15 +239,19 @@ const AdminSettings = ({ showNotification }) => {
                     </Card>
                 </Col>
 
-                {/* RIGHT COLUMN (Remains same structure, just ensuring consistency) */}
+                {/* ======================================================== */}
+                {/* RIGHT COLUMN: TOGGLES & ACTIONS */}
+                {/* ======================================================== */}
                 <Col md={4}>
+                    
+                    {/* SYSTEM TOGGLES (Feature Flags) */}
                     <Card className="border-0 shadow-sm rounded-4 mb-4">
                         <Card.Body className="p-4">
                             <div className="d-flex align-items-center mb-4">
                                 <ToggleLeft size={20} className="text-primary me-2" />
                                 <h5 className="fw-bold mb-0">System Toggles</h5>
                             </div>
-                            {/* Toggles remain as Form.Check, no input group needed here */}
+                            
                             <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-3 border-dashed">
                                 <div>
                                     <div className="fw-bold">Maintenance</div>
@@ -250,6 +276,7 @@ const AdminSettings = ({ showNotification }) => {
                         </Card.Body>
                     </Card>
 
+                    {/* NOTIFICATIONS (Visual Only) */}
                     <Card className="border-0 shadow-sm rounded-4 mb-4">
                         <Card.Body className="p-4">
                             <div className="d-flex align-items-center mb-4">
@@ -262,6 +289,7 @@ const AdminSettings = ({ showNotification }) => {
                         </Card.Body>
                     </Card>
 
+                    {/* DANGER ZONE (Factory Reset) */}
                     <Card className="border-danger shadow-sm rounded-4 bg-white">
                         <Card.Body className="p-4">
                             <div className="d-flex align-items-center gap-2 text-danger mb-3">

@@ -1,30 +1,39 @@
 import React, { useState } from 'react';
 import { Table, Button, Form, InputGroup, Row, Col, Card, Badge, Dropdown, Pagination } from 'react-bootstrap'; 
-import { Search, ShoppingBag, User, MapPin, Calendar, X, MoreVertical, Truck, CheckCircle, XCircle, Clock} from 'lucide-react';
+import { Search, ShoppingBag, User, MapPin, Calendar, X, Truck, CheckCircle, XCircle, Clock} from 'lucide-react';
 import { useOrders } from '../../context/OrderContext';
-import { useProducts } from '../../context/ProductContext'; 
 
+/**
+ * AdminOrders Component
+ * * Manages the fulfillment process.
+ * * Layout: Split view (List on left, Details on right).
+ * * Features: Status Updates, Search, Pagination, Financial Summaries.
+ */
 const AdminOrders = ({ showNotification }) => {
+    // Access global order state
     const { orders, updateOrderStatus } = useOrders();
-    // Note: We don't necessarily need 'products' if the order items have everything
     
+    // UI State
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedOrder, setSelectedOrder] = useState(null); 
     
-    // PAGINATION STATE
+    // Pagination Config
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 7; 
     
-    // 💡 FIX 1: Sort safely
+    // 1. Sort Orders (Newest First)
+    // We create a copy [...orders] to avoid mutating the context state directly.
     const sortedOrders = [...(orders || [])].sort((a, b) => 
         new Date(b.created_at || b.date) - new Date(a.created_at || a.date)
     ); 
 
+    // 2. Filter by Search Term
     const filteredOrders = sortedOrders.filter(order => 
         (order.order_number || order.id).toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
         (order.customerName || order.customer_name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // 3. Paginate Results
     const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -33,9 +42,11 @@ const AdminOrders = ({ showNotification }) => {
     const paginate = (pageNumber) => {
         if (pageNumber < 1 || pageNumber > totalPages) return;
         setCurrentPage(pageNumber);
+        // Deselect order when changing pages to avoid confusion
         setSelectedOrder(null); 
     };
 
+    // Helper: Color-code statuses
     const getStatusVariant = (status) => {
         switch(status) {
             case 'Delivered': return 'success';
@@ -47,6 +58,7 @@ const AdminOrders = ({ showNotification }) => {
         }
     };
 
+    // Helper: Icons for statuses
     const getStatusIcon = (status) => {
         switch(status) {
             case 'Delivered': return <CheckCircle size={16} className="me-1"/>;
@@ -56,33 +68,37 @@ const AdminOrders = ({ showNotification }) => {
         }
     };
 
+    /**
+     * Handle Status Change
+     * * Updates the backend via Context and provides immediate feedback.
+     */
     const handleStatusUpdate = async (newStatus) => {
         if (!selectedOrder) return;
         
-        // 💡 FIX 2: Async update
+        // Call Context Action
         await updateOrderStatus(selectedOrder.id, newStatus);
         
-        // Update local selection to reflect change immediately
+        // Optimistic UI Update: Update the local 'selectedOrder' object 
+        // so the badge changes color instantly without needing a re-fetch.
         setSelectedOrder(prev => ({...prev, status: newStatus}));
+        
         showNotification(`Order updated to ${newStatus}`);
     };
 
-    // 💡 FIX 3: Map 'items' vs 'details'
+    // Helper: Normalize item structure (Backend sometimes sends 'items', sometimes 'details')
     const getOrderItems = (order) => order.items || order.details || [];
 
-    // Helper to calculate totals (if not provided by backend)
+    // Helper: Calculate totals dynamically if missing
     const calculateTotals = (items) => {
         if (!items) return { subtotal: 0, shipping: 0, total: 0 };
         const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
-        // Assuming logic: Free > 5000
         const shipping = subtotal >= 5000 ? 0 : 150;
         const total = subtotal + shipping;
         return { subtotal, shipping, total };
     };
 
-    // Helper: Get safe values for selected order
+    // Derived State for the "Right Panel"
     const activeItems = selectedOrder ? getOrderItems(selectedOrder) : [];
-    // Use API total if available, else calculate
     const displayTotal = selectedOrder 
         ? (parseFloat(selectedOrder.total) || calculateTotals(activeItems).total) 
         : 0;
@@ -94,6 +110,7 @@ const AdminOrders = ({ showNotification }) => {
         });
     };
     
+    // Pagination UI
     const renderPaginationItems = () => {
         let items = [];
         const maxVisiblePages = 5;
@@ -128,8 +145,14 @@ const AdminOrders = ({ showNotification }) => {
     return (
         <div className="animate-fade-in h-100">
             <Row className="h-100 g-4">
+                
+                {/* ======================================================== */}
+                {/* LEFT COLUMN: ORDER LIST */}
+                {/* ======================================================== */}
+                {/* Responsive Logic: On mobile, hide this column if an order is selected */}
                 <Col md={selectedOrder ? 5 : 12} className={`d-flex flex-column ${selectedOrder ? 'd-none d-md-flex' : ''}`}>
                     
+                    {/* Header & Search */}
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <div className="d-flex align-items-center mb-4">
                             <div className="bg-white p-2 rounded-circle shadow-sm me-3 border">
@@ -158,6 +181,7 @@ const AdminOrders = ({ showNotification }) => {
                         </div>
                     </div>
 
+                    {/* Table Container */}
                     <Card className="border-0 shadow-sm flex-grow-1">
                         <div> 
                             <Table hover className="mb-0 align-middle table-borderless">
@@ -174,6 +198,7 @@ const AdminOrders = ({ showNotification }) => {
                                             <tr 
                                                 key={order.id} 
                                                 onClick={() => setSelectedOrder(order)}
+                                                // Highlight selected row
                                                 style={{ cursor: 'pointer', backgroundColor: selectedOrder?.id === order.id ? '#f0f9ff' : 'transparent' }}
                                                 className="border-bottom"
                                             >
@@ -205,6 +230,7 @@ const AdminOrders = ({ showNotification }) => {
                             </Table>
                         </div>
                         
+                        {/* Pagination Footer */}
                         {totalPages > 1 && (
                             <Card.Footer className="bg-white border-top d-flex justify-content-between align-items-center py-3">
                                 <div className="small text-muted">
@@ -218,10 +244,14 @@ const AdminOrders = ({ showNotification }) => {
                     </Card>
                 </Col>
 
-                {/* --- RIGHT COLUMN: ORDER DETAILS --- */}
+                {/* ======================================================== */}
+                {/* RIGHT COLUMN: ORDER DETAILS PANEL */}
+                {/* ======================================================== */}
+                {/* Only rendered when an order is selected */}
                 {selectedOrder && (
                     <Col md={7} className="h-100 animate-slide-in-right">
                         <Card className="border-0 shadow-sm h-100 overflow-hidden">
+                            {/* Header: Title & Status Actions */}
                             <div className="p-4 border-bottom bg-light d-flex justify-content-between align-items-start">
                                 <div>
                                     <div className="d-flex align-items-center gap-2 mb-1">
@@ -254,8 +284,10 @@ const AdminOrders = ({ showNotification }) => {
                                 </div>
                             </div>
 
+                            {/* Scrollable Body */}
                             <div className="overflow-auto p-0 flex-grow-1 bg-white">
                                 <div className="p-4">
+                                    {/* Customer & Address Info */}
                                     <Row className="g-4 mb-4">
                                         <Col md={6}>
                                             <div className="p-3 border rounded-3 h-100">
@@ -268,7 +300,6 @@ const AdminOrders = ({ showNotification }) => {
                                             <div className="p-3 border rounded-3 h-100">
                                                 <h6 className="fw-bold text-muted small mb-3 text-uppercase"><MapPin size={14} className="me-1 mb-1"/> Shipping Address</h6>
                                                 <div className="small text-dark">
-                                                    {/* Handle address structure from DB or mock */}
                                                     {selectedOrder.shippingAddress?.street || selectedOrder.shipping_address?.street}<br/>
                                                     {selectedOrder.shippingAddress?.city || selectedOrder.shipping_address?.city}, {selectedOrder.shippingAddress?.zip || selectedOrder.shipping_address?.zip}<br/>
                                                     Philippines
@@ -277,6 +308,7 @@ const AdminOrders = ({ showNotification }) => {
                                         </Col>
                                     </Row>
 
+                                    {/* Line Items Table */}
                                     <h6 className="fw-bold text-muted small mb-3 text-uppercase"><ShoppingBag size={14} className="me-1 mb-1"/> Items ({activeItems.length})</h6>
                                     <div className="border rounded-3 overflow-hidden mb-4">
                                         <Table className="mb-0 align-middle">
@@ -313,6 +345,7 @@ const AdminOrders = ({ showNotification }) => {
                                         </Table>
                                     </div>
 
+                                    {/* Financial Summary */}
                                     <div className="d-flex justify-content-end">
                                         <div style={{minWidth: '250px'}}>
                                             <div className="d-flex justify-content-between mb-2 small text-muted">
@@ -333,7 +366,6 @@ const AdminOrders = ({ showNotification }) => {
 
                                 </div>
                             </div>
-
                         </Card>
                     </Col>
                 )}

@@ -6,27 +6,40 @@ import { useOrders } from '../../context/OrderContext';
 import { useTransactions } from '../../context/TransactionContext';
 import { useAddress } from '../../context/AddressContext'; 
 
+/**
+ * AdminUsers Component
+ * * A comprehensive dashboard view for managing customer accounts.
+ * * Features: User list with search & pagination, detailed profile view (Orders/Transactions/Address),
+ * * and administrative actions (Suspend/Activate, Password Reset).
+ */
 const AdminUsers = ({ showNotification }) => {
+    // --- CONTEXT HOOKS ---
+    // Fetch global state for users, orders, transactions, and addresses
     const { users, updateUserStatus, loading } = useUsers();
     const { orders } = useOrders();
     const { transactions } = useTransactions();
     const { getUserAddresses } = useAddress(); 
 
+    // --- LOCAL STATE MANAGEMENT ---
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedUser, setSelectedUser] = useState(null); 
-    const [activeDetailTab, setActiveDetailTab] = useState('history'); 
+    const [selectedUser, setSelectedUser] = useState(null); // Stores the full object of the currently viewed user
+    const [activeDetailTab, setActiveDetailTab] = useState('history'); // Controls the Tabs in the detail view
 
     // PAGINATION STATE
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 8; 
 
     // MODAL STATES
+    // State for the "Suspend/Activate" confirmation modal
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [userToToggle, setUserToToggle] = useState(null);
+    
+    // State for the "Reset Password" modal
     const [showResetModal, setShowResetModal] = useState(false);
     const [userToReset, setUserToReset] = useState(null);
     const [isResetting, setIsResetting] = useState(false);
 
+    // Early return for loading state to prevent rendering empty tables
     if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center" style={{ height: '60vh' }}>
@@ -36,29 +49,35 @@ const AdminUsers = ({ showNotification }) => {
     }
 
     // --- FILTERING ---
+    // Filters users based on name or email (case-insensitive)
     const filteredUsers = users.filter(u => 
         (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     // --- PAGINATION LOGIC ---
+    // Calculate indices to slice the filtered user array
     const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
 
+    // Handles page switching and resets selected user view
     const handlePageChange = (pageNumber) => {
         if (pageNumber < 1 || pageNumber > totalPages) return;
         setCurrentPage(pageNumber);
         setSelectedUser(null);
     };
 
+    // --- PAGINATION RENDERING HELPER ---
+    // Generates the array of pagination items (Numbers, Ellipsis, Prev/Next buttons)
     const renderPaginationItems = () => {
         let items = [];
         const maxVisiblePages = 5;
         let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
         let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
         
+        // Adjust startPage if we are near the end
         if (endPage - startPage + 1 < maxVisiblePages) {
             startPage = Math.max(1, endPage - maxVisiblePages + 1);
         }
@@ -84,37 +103,48 @@ const AdminUsers = ({ showNotification }) => {
         return items;
     };
 
-    // --- DATA LOGIC ---
+    // --- DATA AGGREGATION FOR SELECTED USER ---
+    // Only runs when a user is selected to populate the detail tabs
+    
+    // 1. Filter and sort orders for the selected user
     const userOrders = selectedUser 
         ? orders.filter(o => o.email === selectedUser.email).sort((a,b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date))
         : [];
 
+    // 2. Filter transactions linked to those orders
     const userOrderIds = userOrders.map(o => o.id);
     const userTransactions = selectedUser 
         ? transactions.filter(t => userOrderIds.includes(t.orderId))
         : [];
 
+    // 3. Calculate total lifetime spend (excluding cancelled/refunded)
     const totalSpent = userOrders
         .filter(o => !['Cancelled', 'Refunded'].includes(o.status))
         .reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
 
+    // 4. Fetch addresses using the context helper
     const userAddresses = selectedUser ? getUserAddresses(selectedUser.id) : [];
+
+    // --- ACTION HANDLERS ---
 
     const handleExportUser = () => {
         if (!selectedUser) return;
         showNotification("Download started...", "info");
     };
 
+    // Prepares the user for status toggling (Suspend/Activate)
     const handleStatusToggle = (user) => {
         setUserToToggle(user);
         setShowConfirmModal(true);
     };
 
+    // Executes the status update via Context
     const confirmAction = () => {
         if (!userToToggle) return;
         const newStatus = userToToggle.status === 'Active' ? 'Suspended' : 'Active';
         updateUserStatus(userToToggle.id, newStatus);
         
+        // Update local selected state if the modified user is currently being viewed
         if (selectedUser && selectedUser.id === userToToggle.id) {
             setSelectedUser({ ...userToToggle, status: newStatus });
         }
@@ -124,12 +154,14 @@ const AdminUsers = ({ showNotification }) => {
         setUserToToggle(null);
     };
 
+    // Prepares user for password reset
     const handleResetPassword = () => {
         if (!selectedUser) return;
         setUserToReset(selectedUser);
         setShowResetModal(true);
     };
 
+    // Simulates an API call for password reset
     const confirmReset = () => {
         setIsResetting(true);
         setTimeout(() => {
@@ -145,6 +177,7 @@ const AdminUsers = ({ showNotification }) => {
             <Row className="h-100 g-4">
                 
                 {/* LEFT COLUMN: USER LIST */}
+                {/* On mobile: Hides this column if a user is selected to show details instead */}
                 <Col md={selectedUser ? 5 : 12} className={`d-flex flex-column ${selectedUser ? 'd-none d-md-flex' : ''}`}>
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <div className="d-flex align-items-center mb-4">
@@ -161,6 +194,7 @@ const AdminUsers = ({ showNotification }) => {
                                 <InputGroup.Text className="bg-white border-0 pe-0">
                                     <Search size={16} className="text-muted"/>
                                 </InputGroup.Text>
+                                {/* Search Input: Resets to page 1 on change */}
                                 <Form.Control 
                                     placeholder="Search customer..." 
                                     className="border-0 shadow-none ps-2" 
@@ -195,6 +229,7 @@ const AdminUsers = ({ showNotification }) => {
                                             >
                                                 <td className="ps-4 py-3">
                                                     <div className="d-flex align-items-center gap-3">
+                                                        {/* Avatar Initials */}
                                                         <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{width: '35px', height: '35px', fontSize: '0.9rem'}}>
                                                             {(user.name || '?').charAt(0)}
                                                         </div>
@@ -220,6 +255,8 @@ const AdminUsers = ({ showNotification }) => {
                                 </tbody>
                             </Table>
                         </div>
+                        
+                        {/* Pagination Footer */}
                         {totalPages > 1 && (
                             <Card.Footer className="bg-white border-top d-flex justify-content-between align-items-center py-3 px-4">
                                 <div className="small text-muted">
@@ -234,9 +271,11 @@ const AdminUsers = ({ showNotification }) => {
                 </Col>
 
                 {/* RIGHT COLUMN: PROFILE DETAILS */}
+                {/* Shows detailed view when a user is selected */}
                 {selectedUser && (
                     <Col md={7} className="h-100 animate-slide-in-right">
                         <Card className="border-0 shadow-sm h-100 overflow-hidden">
+                            {/* Profile Header Section */}
                             <div className="p-4 border-bottom bg-light">
                                 <div className="d-flex justify-content-between align-items-start mb-3">
                                     <div className="d-flex align-items-center gap-3">
@@ -261,11 +300,13 @@ const AdminUsers = ({ showNotification }) => {
                                             </div>
                                         </div>
                                     </div>
+                                    {/* Close Button for Details View */}
                                     <Button variant="light" size="sm" className="rounded-circle p-2" onClick={() => setSelectedUser(null)}>
                                         <X size={20} />
                                     </Button>
                                 </div>
 
+                                {/* Stats Summary */}
                                 <Row className="g-3 mt-2">
                                     <Col xs={6}>
                                         <div className="bg-white p-3 rounded-3 border">
@@ -281,6 +322,7 @@ const AdminUsers = ({ showNotification }) => {
                                     </Col>
                                 </Row>
 
+                                {/* User Action Buttons */}
                                 <div className="mt-4 d-flex flex-wrap gap-2">
                                     <Button 
                                         variant={selectedUser.status === 'Active' ? 'outline-danger' : 'outline-success'} 
@@ -299,6 +341,7 @@ const AdminUsers = ({ showNotification }) => {
                                 </div>
                             </div>
 
+                            {/* Detail Tabs (History, Transactions, Addresses) */}
                             <div className="flex-grow-1 overflow-hidden d-flex flex-column">
                                 <Tab.Container activeKey={activeDetailTab} onSelect={(k) => setActiveDetailTab(k)}>
                                     <div className="px-4 pt-3 border-bottom">
@@ -406,6 +449,8 @@ const AdminUsers = ({ showNotification }) => {
             </Row>
 
             {/* ... MODALS (Keep unchanged) ... */}
+            
+            {/* Status Confirmation Modal (Suspend/Activate) */}
             <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
                 <Modal.Header closeButton className="border-0">
                     <Modal.Title className="fw-bold text-dark">
@@ -430,6 +475,7 @@ const AdminUsers = ({ showNotification }) => {
                 </Modal.Footer>
             </Modal>
 
+            {/* Password Reset Modal */}
             <Modal show={showResetModal} onHide={() => !isResetting && setShowResetModal(false)} centered>
                 <Modal.Header closeButton={!isResetting} className="border-0"><Modal.Title className="fw-bold text-dark">Reset Password</Modal.Title></Modal.Header>
                 <Modal.Body className="text-center py-4">
