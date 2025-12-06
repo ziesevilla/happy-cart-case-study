@@ -1,3 +1,7 @@
+/* src/styles/ProductDetail.css */
+
+/* --- 1. PRODUCT DETAIL IMAGE --- */
+
 /* Default (Mobile): Square aspect ratio or shorter height */
 .product-detail-img {
     height: 400px; /* Good for mobile scrolling */
@@ -12,6 +16,8 @@
         height: 700px; /* Tall editorial look */
     }
 }
+
+/* --- 2. HOVER EFFECTS --- */
 
 /* Hover effect for the image container */
 .product-image-container:hover .product-detail-img {

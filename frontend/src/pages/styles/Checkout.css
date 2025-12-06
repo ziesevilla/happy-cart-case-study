@@ -1,10 +1,15 @@
+/* src/styles/Checkout.css */
+
+/* --- 1. PAGE WRAPPER --- */
+
 /* Wrapper */
 .checkout-page {
     background-color: var(--bg-white);
     min-height: 100vh;
 }
 
-/* --- BREADCRUMBS --- */
+/* --- 2. BREADCRUMBS --- */ */
+
 .checkout-breadcrumbs {
     display: flex;
     align-items: center;
@@ -29,7 +34,7 @@
     color: #e2e8f0;
 }
 
-/* --- SECTION HEADERS --- */
+/* --- 3. SECTION HEADERS --- */
 .section-title {
     font-family: 'Poppins', sans-serif;
     font-weight: 700;
@@ -52,7 +57,7 @@
     margin-right: 10px;
 }
 
-/* --- FORM INPUTS --- */
+/* --- 4. FORM INPUTS --- */
 .checkout-input {
     height: 50px;
     border-radius: 12px;
@@ -77,7 +82,7 @@
     letter-spacing: 0.5px;
 }
 
-/* --- PAYMENT OPTIONS --- */
+/* --- 5. PAYMENT OPTIONS --- */
 .payment-option-card {
     border: 1px solid #e2e8f0;
     border-radius: 12px;
@@ -98,7 +103,7 @@
     box-shadow: 0 0 0 2px rgba(255, 107, 139, 0.2);
 }
 
-/* --- SUMMARY SIDEBAR --- */
+/* --- 6. SUMMARY SIDEBAR --- */
 .checkout-summary {
     background: #fff;
     border-radius: 20px;
@@ -142,6 +147,8 @@
     padding-top: 1rem;
     border-top: 2px dashed #e2e8f0;
 }
+
+/* --- 7. MOBILE TOGGLE FOR ORDER SUMMARY --- */
 
 /* Mobile Toggle for Order Summary */
 .mobile-summary-toggle {

@@ -1,4 +1,7 @@
-/* Section 1: Promo Bar */
+/* src/styles/Home.css */
+
+/* --- 1. PROMO BAR --- */
+
 .promo-bar {
     background-color: var(--secondary-color); /* Dark Slate */
     color: white;
@@ -12,7 +15,8 @@
     animation: fadeUp 0.5s ease-in-out;
 }
 
-/* Section 2: Hero Banner */
+/* --- 2. HERO BANNER --- */
+
 .hero-section {
     height: 85vh; /* Almost full height */
     background-size: cover;
@@ -32,7 +36,8 @@
     text-align: center;
 }
 
-/* Section 3: Featured 2x2 Grid */
+/* --- 3. FEATURED 2X2 GRID --- */
+
 .featured-grid {
     display: grid;
     grid-template-columns: 1fr 1fr; /* 2 columns */
@@ -89,7 +94,8 @@
     transform: translateY(0);
 }
 
-/* Section 4: Infinite Category Carousel */
+/* --- 4. INFINITE CATEGORY CAROUSEL --- */
+
 .category-marquee-wrapper {
     overflow: hidden;
     white-space: nowrap;
@@ -160,7 +166,8 @@
     100% { transform: translateX(calc(-280px * 6)); }
 }
 
-/* Section 5: Reviews */
+/* --- 5. REVIEWS --- */
+
 .review-card {
     background: white;
     padding: 2rem;

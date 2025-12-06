@@ -1,10 +1,15 @@
+/* src/styles/Products.css */
+
+/* --- 1. PAGE WRAPPER --- */
+
 /* Page Wrapper */
 .products-page {
     background-color: var(--bg-white);
     min-height: 100vh;
 }
 
-/* --- NEW HERO BANNER --- */
+/* --- 2. HERO BANNER --- */
+
 .products-hero {
     height: 45vh;
     background-size: cover;
@@ -34,7 +39,8 @@
     animation: fadeIn 0.8s ease-out;
 }
 
-/* --- STICKY SIDEBAR --- */
+/* --- 3. STICKY SIDEBAR --- */
+
 .filter-sidebar {
     background: #fff;
     border-right: 1px solid #f0f0f0;
@@ -78,7 +84,8 @@
     padding-left: 5px;
 }
 
-/* --- STICKY SEARCH BAR --- */
+/* --- 4. STICKY SEARCH BAR --- */
+
 .sticky-search-bar {
     position: sticky;
     top: 80px; /* Stick below the main Navbar */
@@ -125,7 +132,8 @@
     background-color: #fff;
 }
 
-/* Responsive adjustments */
+/* --- 5. RESPONSIVE ADJUSTMENTS --- */
+
 @media (max-width: 768px) {
     .filter-sidebar {
         border-right: none;

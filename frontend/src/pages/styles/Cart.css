@@ -1,10 +1,15 @@
+/* src/styles/Cart.css */
+
+/* --- 1. PAGE WRAPPER --- */
+
 /* Wrapper */
 .cart-page {
     background-color: var(--bg-soft);
     min-height: 100vh;
 }
 
-/* --- FREE SHIPPING BAR --- */
+/* --- 2. FREE SHIPPING BAR --- */ */
+
 .free-shipping-container {
     background: white;
     border-radius: 12px;
@@ -29,7 +34,7 @@
     transition: width 0.5s ease-out;
 }
 
-/* --- CART TABLE --- */
+/* --- 3. CART TABLE --- */
 .cart-table {
     background: white;
     border-radius: 20px;
@@ -96,7 +101,7 @@
     background: transparent;
 }
 
-/* --- ORDER SUMMARY CARD --- */
+/* --- 4. ORDER SUMMARY CARD --- */
 .summary-card {
     background: white;
     border-radius: 20px;
@@ -124,13 +129,15 @@
     color: var(--text-dark);
 }
 
+/* --- 5. EMPTY STATE --- */
+
 /* Empty State */
 .cart-empty {
     text-align: center;
     padding: 5rem 1rem;
 }
 
-/* --- RESPONSIVE CART (Mobile Card View) --- */
+/* --- 6. RESPONSIVE CART (Mobile Card View) --- */
 @media (max-width: 992px) {
     /* Hide Table Headers */
     .cart-table thead {
