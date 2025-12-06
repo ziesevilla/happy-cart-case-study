@@ -1,13 +1,27 @@
+/* src/index.css */
+
+/**
+ * GLOBAL BASELINE STYLES
+ * This file sets up the foundation for the entire application,
+ * primarily defining font stacks and text rendering defaults.
+ */
+
 body {
+  /* Resets default browser margin for full-screen layout */
   margin: 0;
+  
+  /* Defines a font stack prioritizing system fonts for native performance and look. */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
+  
+  /* Enhances text rendering quality (antialiasing) for macOS and general browsers */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
+  /* Specifies a font stack for displaying code snippets (monospaced fonts) */
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
