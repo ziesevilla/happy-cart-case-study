@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import { Modal, Form, Button } from 'react-bootstrap';
 import { Star } from 'lucide-react';
 import { useReviews } from '../context/ReviewContext';
+// 💡 Import the AI Component
+import SentimentAnalysis from './SentimentAnalysis';
 
 /**
  * ReviewModal Component
  * * A popup form allowing users to rate and review a specific product.
  * * Interact with ReviewContext to save data to the backend.
- * * @param {boolean} show - Controls visibility
- * @param {function} onHide - Function to close the modal
- * @param {object} product - The product being reviewed (name, image, id)
- * @param {function} showNotification - Global toast helper for success messages
+ * * Now features AI Sentiment Analysis 🧠
  */
 const ReviewModal = ({ show, onHide, product, showNotification }) => {
     // Access the 'addReview' action from our Context
@@ -101,6 +100,11 @@ const ReviewModal = ({ show, onHide, product, showNotification }) => {
                             className="bg-light border-0 rounded-4 p-3"
                             required
                         />
+
+                        {/* 💡 AI SENTIMENT ANALYSIS COMPONENT */}
+                        {/* Passes the typed comment to the AI analyzer in real-time */}
+                        <SentimentAnalysis text={comment} />
+
                     </Form.Group>
 
                     <div className="d-grid">

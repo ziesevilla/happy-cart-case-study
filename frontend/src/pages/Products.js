@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Pagination, Spinner } from 'react-bootstrap';
-import { Search, SlidersHorizontal, X, Clock } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Clock, Mic } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom'; 
 import ProductCard from '../components/ProductCard';
-import { useProducts } from '../context/ProductContext'; // 💡 Use Context
+import { useProducts } from '../context/ProductContext';
+import useVoiceInput from '../hooks/useVoiceInput';
 import './styles/Products.css';
 
 /**
  * Products Component
- * * The central catalog page handling product listings.
- * * Features: Advanced Filtering (Category, Price, Sub-category), 
- * * Sorting, Search, and Pagination.
+ * Now features AI-powered Voice Search 
  */
 const Products = () => {
-    // 💡 1. Get products and loading state from Context
-    // We use the global context to ensure we have the latest data across the app
     const { products: ALL_PRODUCTS, loading } = useProducts(); 
     
     // --- ROUTING HOOKS ---
     const location = useLocation();
     const navigate = useNavigate();
     
-    // Parse query parameters to determine current collection (e.g., ?collection=Shoes)
     const queryParams = new URLSearchParams(location.search);
     const collectionFilter = queryParams.get('collection') || 'All'; 
     const isNewArrivals = collectionFilter === 'New'; 
@@ -36,14 +32,23 @@ const Products = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 9; 
 
-    // Reset filters and page number when the main collection changes (e.g. Navigating from Men -> Women)
+    // --- VOICE SEARCH INTEGRATION ---
+    const { text: voiceText, isListening, startListening, hasSupport } = useVoiceInput();
+
+    // When the hook returns text, we update the search term automatically
+    useEffect(() => {
+        if (voiceText) {
+            setSearchTerm(voiceText);
+            setCurrentPage(1); // Reset to page 1 on new search
+        }
+    }, [voiceText]);
+
+    // Reset filters when collection changes
     useEffect(() => {
         setSelectedSubCategory('All');
         setCurrentPage(1); 
     }, [collectionFilter]);
 
-    // 💡 2. Show Loading Spinner
-    // Prevents rendering empty grids while data fetches from API
     if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
@@ -53,8 +58,6 @@ const Products = () => {
     }
 
     // --- HELPER FUNCTIONS ---
-
-    // Utility: Determines if a product counts as a "New Arrival" (added within 7 days)
     const isWithin7Days = (dateString) => {
         if (!dateString) return false;
         const productDate = new Date(dateString);
@@ -64,7 +67,6 @@ const Products = () => {
         return diffDays <= 7;
     };
 
-    // Maps the URL 'collection' param to specific database Category names
     const getCategoriesInCollection = (collection) => {
         switch(collection) {
             case 'Clothing': return ['Clothing']; 
@@ -76,8 +78,6 @@ const Products = () => {
 
     const targetCategories = getCategoriesInCollection(collectionFilter);
 
-    // 💡 3. Map unique sub-categories (Handle 'sub_category' from DB vs 'subCategory')
-    // Dynamically generates the sidebar filter options based on the currently displayed collection
     const uniqueSubCategories = [...new Set(
         collectionFilter === 'All' 
             ? ALL_PRODUCTS.map(p => p.sub_category || p.subCategory).filter(Boolean)
@@ -90,34 +90,25 @@ const Products = () => {
     const sidebarFilters = ['All', ...uniqueSubCategories];
 
     // --- CORE FILTERING LOGIC ---
-    
-    // Step 1: Filter the master list based on all active criteria
     const filteredProducts = ALL_PRODUCTS.filter(product => {
-        // Handle "New Arrivals" (based on dateAdded from DB)
         if (isNewArrivals) {
             return isWithin7Days(product.dateAdded || product.created_at);
         }
 
-        // Filter by Main Category (e.g., Shoes)
         let matchesCollection = true;
         if (collectionFilter !== 'All') {
             matchesCollection = targetCategories.includes(product.category);
         }
 
-        // Filter by Search Input
         const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        // Handle sub-category mapping (normalize keys)
         const productSub = product.sub_category || product.subCategory;
         const matchesSubCategory = selectedSubCategory === 'All' || productSub === selectedSubCategory;
         
-        // Handle Price (Ensure number)
         const productPrice = parseFloat(product.price);
         const matchesPrice = productPrice <= priceRange;
 
         return matchesCollection && matchesSearch && matchesSubCategory && matchesPrice;
     }).sort((a, b) => {
-        // Step 2: Sort the filtered results
         if (isNewArrivals) {
             return new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0);
         }
@@ -127,13 +118,12 @@ const Products = () => {
 
         if (sortBy === 'price-low') return priceA - priceB;
         if (sortBy === 'price-high') return priceB - priceA;
-        return 0; // Default 'featured' order
+        return 0; 
     });
 
-    // --- PAGINATION LOGIC ---
-    // Slices the filtered and sorted array to display only the current page's items
+    // --- PAGINATION ---
     const currentProducts = isNewArrivals 
-        ? filteredProducts // Show all new arrivals without pagination
+        ? filteredProducts 
         : filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
         
     const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
@@ -143,7 +133,6 @@ const Products = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' }); 
     };
 
-    // Resets all local state filters to defaults
     const clearFilters = () => {
         setSearchTerm('');
         setSelectedSubCategory('All');
@@ -152,11 +141,8 @@ const Products = () => {
         navigate('/products'); 
     };
 
-    // --- DYNAMIC GRID LAYOUT ---
-    // Adjusts column width based on the number of items found to prevent huge cards when few results exist
     const getDynamicGridProps = () => {
         if (!isNewArrivals) return { xs: 1, md: 2, lg: 3 }; 
-
         const count = filteredProducts.length;
         if (count === 1) return { xs: 1, md: 1, lg: 1 };
         if (count === 2) return { xs: 1, md: 2, lg: 2 };
@@ -168,7 +154,6 @@ const Products = () => {
 
     const gridProps = getDynamicGridProps();
 
-    // Selects the Hero Banner image based on the active collection
     const getBannerImage = () => {
         if (isNewArrivals) return 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2070&auto=format&fit=crop'; 
         switch(collectionFilter) {
@@ -198,7 +183,7 @@ const Products = () => {
 
             <Container className="pb-5">
                 <Row>
-                    {/* --- SIDEBAR FILTERS (Hidden on 'New Arrivals') --- */}
+                    {/* --- SIDEBAR FILTERS --- */}
                     {!isNewArrivals && (
                         <Col md={3} className="mb-4">
                             <div className="filter-sidebar">
@@ -209,7 +194,6 @@ const Products = () => {
                                     </div>
                                 </div>
                                 
-                                {/* Sub-Category Filter */}
                                 <div className="filter-group mb-4">
                                     <h5>TYPE</h5> 
                                     <div className="d-flex flex-column gap-2">
@@ -225,7 +209,6 @@ const Products = () => {
                                     </div>
                                 </div>
 
-                                {/* Price Range Filter */}
                                 <div className="filter-group">
                                     <h5>PRICE RANGE</h5>
                                     <div className="d-flex justify-content-between align-items-center mb-2">
@@ -252,18 +235,43 @@ const Products = () => {
                     {/* --- MAIN PRODUCT GRID AREA --- */}
                     <Col md={isNewArrivals ? 12 : 9}>
                         
-                        {/* Top Control Bar (Search & Sort) - Hidden on New Arrivals */}
+                        {/* Top Control Bar (Search & Sort) */}
                         {!isNewArrivals && (
                             <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 sticky-search-bar mb-4">
-                                <div className="search-wrapper w-100" style={{ maxWidth: '400px' }}>
-                                    <Search className="search-icon" size={18} />
+                                
+                                {/* 💡 MODIFIED SEARCH WRAPPER FOR VOICE INPUT */}
+                                <div className="search-wrapper w-100 position-relative d-flex align-items-center" style={{ maxWidth: '400px' }}>
+                                    
+                                    {/* Search Icon (Left) */}
+                                    <Search className="search-icon text-muted" size={18} style={{ left: '15px', position: 'absolute', zIndex: 5 }} />
+                                    
                                     <Form.Control 
                                         type="text"
-                                        placeholder="Search for items..." 
-                                        className="search-input rounded-pill"
+                                        placeholder={isListening ? "Listening... Speak now 🎙️" : "Search for items..."} 
+                                        className={`search-input rounded-pill ps-5 ${hasSupport ? 'pe-5' : ''}`} // Add padding-right if Mic exists
                                         value={searchTerm}
                                         onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                                        style={isListening ? { borderColor: '#dc3545', boxShadow: '0 0 0 0.25rem rgba(220, 53, 69, 0.25)' } : {}}
                                     />
+
+                                    {/* 💡 Microphone Button (Right) */}
+                                    {hasSupport && (
+                                        <button 
+                                            className="btn btn-link position-absolute end-0 text-muted p-0 me-3"
+                                            style={{ zIndex: 10, textDecoration: 'none' }}
+                                            onClick={startListening}
+                                            disabled={isListening}
+                                            title="Search by Voice"
+                                        >
+                                            {isListening ? (
+                                                <div className="spinner-grow text-danger" style={{width: '1rem', height: '1rem'}} role="status">
+                                                    <span className="visually-hidden">Listening...</span>
+                                                </div>
+                                            ) : (
+                                                <Mic size={18} className="text-secondary hover-primary" />
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
                                 
                                 <Form.Select 
@@ -306,7 +314,6 @@ const Products = () => {
                                 <Row {...gridProps} className="g-4 justify-content-center">
                                     {currentProducts.map((product) => (
                                         <Col key={product.id}>
-                                            {/* 💡 Pass product to card */}
                                             <ProductCard product={product} />
                                         </Col>
                                     ))}

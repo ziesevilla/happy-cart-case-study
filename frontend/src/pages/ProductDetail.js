@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Button, Toast, ToastContainer, Spinner, Badge, Modal, Form } from 'react-bootstrap';
-import { ArrowLeft, Star, ShoppingBag, CreditCard, Check, Heart, Box, Plus, Minus, MessageSquare } from 'lucide-react'; 
+import { Container, Row, Col, Button, Toast, ToastContainer, Spinner, Modal } from 'react-bootstrap';
+// 💡 Removed 'MessageSquare' and 'Form' as they are no longer needed
+import { ArrowLeft, Star, ShoppingBag, CreditCard, Check, Heart, Box, Plus, Minus } from 'lucide-react'; 
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useReviews } from '../context/ReviewContext';
@@ -13,8 +14,7 @@ import './styles/ProductDetail.css';
 /**
  * ProductDetail Component
  * * The main page for viewing a single product's information.
- * * Features: Image Gallery, Stock Status, Cart Actions, and Reviews.
- * * Handles both adding to cart and direct "Buy Now" flow.
+ * * Features: Image Gallery, Stock Status, Cart Actions, and Review Display.
  */
 const ProductDetail = () => {
     // --- HOOKS ---
@@ -26,31 +26,21 @@ const ProductDetail = () => {
     const { addToCart } = useCart();
     const { user } = useAuth();
     
-    // 💡 1. Get Review Helpers from Context
-    // Allows interaction with the review system (Read/Write/Like)
-    const { getProductReviews, reviews, getAverageRating, toggleLike, addReview } = useReviews();
+    // 💡 We only need read-only access to reviews here now
+    const { getProductReviews, reviews, getAverageRating, toggleLike } = useReviews();
 
     // --- LOCAL STATE ---
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
 
     // Cart & Checkout Action States
-    const [isAdded, setIsAdded] = useState(false); // Controls "Added" button feedback
-    const [isBuying, setIsBuying] = useState(false); // Controls "Buy Now" spinner
+    const [isAdded, setIsAdded] = useState(false); 
+    const [isBuying, setIsBuying] = useState(false); 
     const [showToast, setShowToast] = useState(false);
     const [showBuyModal, setShowBuyModal] = useState(false);
     const [buyQuantity, setBuyQuantity] = useState(1);
 
-    // 💡 2. REVIEW MODAL STATES
-    const [showReviewModal, setShowReviewModal] = useState(false);
-    const [reviewRating, setReviewRating] = useState(5);
-    const [reviewComment, setReviewComment] = useState('');
-    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-
     // --- DATA FETCHING ---
-    // Strategies:
-    // 1. Try to find the product in the global 'ALL_PRODUCTS' context (Fastest).
-    // 2. Fallback to API call if not found (e.g., direct link sharing).
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
@@ -124,7 +114,7 @@ const ProductDetail = () => {
         addToCart(product);
         setIsAdded(true);
         setShowToast(true);
-        setTimeout(() => setIsAdded(false), 2000); // Reset button state
+        setTimeout(() => setIsAdded(false), 2000); 
     };
 
     const handleBuyNowClick = () => {
@@ -142,16 +132,14 @@ const ProductDetail = () => {
         setIsBuying(true);
         const itemToCheckout = { ...product, quantity: buyQuantity };
         
-        // Simulate processing delay for better UX
         setTimeout(() => {
             setIsBuying(false);
             setShowBuyModal(false);
-            // Pass specific item to checkout (bypassing full cart)
             navigate('/checkout', { state: { checkoutItems: [itemToCheckout] } });
         }, 800);
     };
 
-    // --- REVIEW ACTIONS ---
+    // --- REVIEW ACTIONS (Like Only) ---
 
     const handleLikeReview = (reviewId) => {
         if (!user) {
@@ -159,34 +147,6 @@ const ProductDetail = () => {
             return;
         }
         toggleLike(reviewId);
-    };
-
-    // 💡 3. REVIEW HANDLERS
-    const handleOpenReview = () => {
-        if (!user) {
-            if(window.confirm("You need to login to write a review. Go to login page?")) {
-                navigate('/login');
-            }
-            return;
-        }
-        setReviewRating(5);
-        setReviewComment('');
-        setShowReviewModal(true);
-    };
-
-    const handleSubmitReview = async (e) => {
-        e.preventDefault();
-        setIsSubmittingReview(true);
-
-        const result = await addReview(product.id, reviewRating, reviewComment);
-
-        if (result.success) {
-            setShowReviewModal(false);
-            // Optional: Show success toast
-        } else {
-            alert(result.message); // Show error (e.g., "Already reviewed")
-        }
-        setIsSubmittingReview(false);
     };
 
     // Quantity Controls for Buy Now Modal
@@ -282,10 +242,7 @@ const ProductDetail = () => {
                 <div className="mt-5 pt-5 border-top">
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <h3 className="fw-bold mb-0">CUSTOMER REVIEWS ({productReviews.length})</h3>
-                        {/* 💡 4. Write Review Button */}
-                        <Button variant="outline-dark" className="rounded-pill fw-bold" onClick={handleOpenReview}>
-                            <MessageSquare size={18} className="me-2"/> Write a Review
-                        </Button>
+                        {/* 💡 WRITE REVIEW BUTTON REMOVED FROM HERE */}
                     </div>
 
                     {productReviews.length > 0 ? (
@@ -332,7 +289,7 @@ const ProductDetail = () => {
                     ) : (
                         <div className="text-center py-5 bg-light rounded-4">
                             <Star size={48} className="text-muted opacity-25 mb-3" />
-                            <p className="text-muted mb-0">No reviews yet. Be the first to share your thoughts!</p>
+                            <p className="text-muted mb-0">No reviews yet.</p>
                         </div>
                     )}
                 </div>
@@ -383,48 +340,6 @@ const ProductDetail = () => {
                             {isBuying ? <Spinner size="sm" animation="border"/> : <>Checkout <CreditCard size={16} className="ms-2"/></>}
                         </Button>
                     </Modal.Footer>
-                </Modal>
-
-                {/* --- WRITE REVIEW MODAL --- */}
-                <Modal show={showReviewModal} onHide={() => setShowReviewModal(false)} centered>
-                    <Modal.Header closeButton className="border-0"><Modal.Title className="fw-bold">Write a Review</Modal.Title></Modal.Header>
-                    <Modal.Body className="p-4">
-                        <Form onSubmit={handleSubmitReview}>
-                            <div className="mb-4 text-center">
-                                <Form.Label className="fw-bold d-block">Rate this product</Form.Label>
-                                <div className="d-flex justify-content-center gap-2">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <Star 
-                                            key={star} 
-                                            size={32} 
-                                            className="cursor-pointer transition-all"
-                                            style={{ cursor: 'pointer' }}
-                                            fill={star <= reviewRating ? "#f59e0b" : "none"} 
-                                            color={star <= reviewRating ? "#f59e0b" : "#cbd5e1"} 
-                                            onClick={() => setReviewRating(star)}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                            <Form.Group className="mb-4">
-                                <Form.Label className="fw-bold">Your Review</Form.Label>
-                                <Form.Control 
-                                    as="textarea" 
-                                    rows={4} 
-                                    placeholder="What did you like or dislike?"
-                                    value={reviewComment}
-                                    onChange={(e) => setReviewComment(e.target.value)}
-                                    required
-                                    className="rounded-4 bg-light border-0"
-                                />
-                            </Form.Group>
-                            <div className="d-grid">
-                                <Button type="submit" variant="primary" className="rounded-pill fw-bold" disabled={isSubmittingReview}>
-                                    {isSubmittingReview ? <><Spinner as="span" animation="border" size="sm" className="me-2"/>Submitting...</> : "Submit Review"}
-                                </Button>
-                            </div>
-                        </Form>
-                    </Modal.Body>
                 </Modal>
 
             </Container>

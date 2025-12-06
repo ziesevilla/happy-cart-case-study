@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'; 
 import { Table, Button, Form, Modal, Row, Col, InputGroup, Pagination, Card, Badge, Spinner } from 'react-bootstrap';
-import { Edit2, Trash2, Plus, Search, Package, Image as ImageIcon, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, LayoutList, AlertTriangle } from 'lucide-react';
+// 💡 Added 'Sparkles' for the AI button
+import { Edit2, Trash2, Plus, Search, Package, Image as ImageIcon, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, LayoutList, AlertTriangle, Sparkles } from 'lucide-react';
 import { useProducts } from '../../context/ProductContext'; 
+// 💡 Import API to talk to Laravel
+import api from '../../api/axios';
 
 /**
- * AdminInventory Component (Full Version)
- * * Manages the product catalog.
- * * Features: List/Grid toggle, Client-side Sorting/Filtering, Image Uploads, Complex Pagination.
+ * AdminInventory Component (AI-Enhanced Version)
+ * * Features: AI Image-to-Text Description Generation 🧠
  */
 const AdminInventory = ({ showNotification }) => {
     // Access global product state & actions
@@ -21,7 +23,7 @@ const AdminInventory = ({ showNotification }) => {
     // Pagination Config
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = viewMode === 'list' ? 8 : 12; 
-    const GRID_PAGES = ['Clothing', 'Shoes', 'Accessories']; // Custom pagination for Grid View
+    const GRID_PAGES = ['Clothing', 'Shoes', 'Accessories']; 
 
     // Modals
     const [showModal, setShowModal] = useState(false);
@@ -31,6 +33,9 @@ const AdminInventory = ({ showNotification }) => {
     // Processing States
     const [isSubmitting, setIsSubmitting] = useState(false); 
     const [isDeleting, setIsDeleting] = useState(false);     
+    
+    // 💡 AI State
+    const [isGenerating, setIsGenerating] = useState(false);
 
     // Form State
     const [isEditing, setIsEditing] = useState(false);
@@ -62,7 +67,6 @@ const AdminInventory = ({ showNotification }) => {
     // 2. DATA PROCESSING (Sort & Filter)
     // =================================================================
 
-    // Handle column header click
     const handleSort = (key) => {
         let direction = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
@@ -75,46 +79,38 @@ const AdminInventory = ({ showNotification }) => {
         return <ArrowDown size={14} className="text-primary ms-1" />;
     };
 
-    // Filter by Search Term
     const filteredProducts = products.filter(p => 
         (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.sub_category && p.sub_category.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    // Apply Sorting Logic
     const sortedProducts = [...filteredProducts].sort((a, b) => {
         if (!sortConfig.key) return 0;
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
 
-        // Date Sort
         if (sortConfig.key === 'dateAdded') {
             return sortConfig.direction === 'asc' 
                 ? new Date(aValue || 0) - new Date(bValue || 0) 
                 : new Date(bValue || 0) - new Date(aValue || 0);
         }
-        // Numeric Sort
         if (['price', 'id', 'stock'].includes(sortConfig.key)) {
             return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
         }
-        // String Sort
         const valA = String(aValue || '').toLowerCase();
         const valB = String(bValue || '').toLowerCase();
         return valA < valB ? (sortConfig.direction === 'asc' ? -1 : 1) : (valA > valB ? (sortConfig.direction === 'asc' ? 1 : -1) : 0);
     });
 
-    // Apply Pagination Slice
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const listItems = sortedProducts.slice(indexOfFirstItem, indexOfLastItem);
     const listTotalPages = Math.ceil(sortedProducts.length / itemsPerPage);
 
-    // Grid View Logic (Grouped by Category)
     const currentGridCategory = GRID_PAGES[currentPage - 1] || 'Clothing';
     const gridItems = sortedProducts.filter(p => p.category === currentGridCategory);
     
-    // Grouping Logic: { "Sneakers": [...], "Sandals": [...] }
     const groupedGridItems = gridItems.reduce((groups, item) => {
         const sub = item.sub_category || 'Other';
         if (!groups[sub]) groups[sub] = [];
@@ -126,7 +122,6 @@ const AdminInventory = ({ showNotification }) => {
 
      const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);
-        // Smooth scroll to top of list
         const contentTop = document.querySelector('.animate-fade-in');
         if (contentTop) {
              contentTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -135,7 +130,6 @@ const AdminInventory = ({ showNotification }) => {
         }
     };
     
-    // Complex Pagination Logic (First, Prev, 1, 2, ..., Last, Next)
     const renderPaginationItems = () => {
         let items = [];
         const maxVisiblePages = 5;
@@ -199,12 +193,11 @@ const AdminInventory = ({ showNotification }) => {
         setShowModal(true);
     };
 
-    // Handle Local Image Selection
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
             setSelectedFile(file);
-            setImagePreview(URL.createObjectURL(file)); // Blob Preview
+            setImagePreview(URL.createObjectURL(file)); 
         }
     };
 
@@ -228,7 +221,6 @@ const AdminInventory = ({ showNotification }) => {
         }
     };
 
-    // Submit Form with File Upload (FormData)
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.name || !formData.price) return;
@@ -265,7 +257,55 @@ const AdminInventory = ({ showNotification }) => {
         }
     };
     
-    // Helper to render image correctly
+    // =================================================================
+    // 💡 4. AI DESCRIPTION GENERATOR LOGIC
+    // =================================================================
+
+    // Helper: Turn File into Base64 string so the API can read it
+    const convertToBase64 = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = (error) => reject(error);
+        });
+    };
+
+    const handleGenerateDescription = async () => {
+        // Validation: Must select an image first
+        if (!selectedFile) {
+            showNotification("Please upload an image first so AI can see it!", "warning");
+            return;
+        }
+
+        setIsGenerating(true);
+        try {
+            // 1. Process Image
+            const base64Image = await convertToBase64(selectedFile);
+            
+            // 2. Call Laravel Backend
+            const response = await api.post('/ai/generate', {
+                image: base64Image,
+                name: formData.name || "This Product"
+            });
+
+            // 3. Update State
+            setFormData(prev => ({
+                ...prev,
+                description: response.data.description
+            }));
+            
+            showNotification("AI Description Generated! ✨", "success");
+        } catch (error) {
+            console.error("AI Error:", error);
+            showNotification("AI failed to generate. Check your API key or image size.", "danger");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    // =================================================================
+
     const renderImage = (imgUrl) => {
         if (!imgUrl) return <ImageIcon size={20} className="text-muted"/>;
         const src = imgUrl.startsWith('http') || imgUrl.startsWith('blob') 
@@ -488,9 +528,28 @@ const AdminInventory = ({ showNotification }) => {
                                 </Form.Group>
                             </Col>
 
+                            {/* 💡 DESCRIPTION FIELD + AI BUTTON */}
                             <Col xs={12}>
                                 <Form.Group className="mb-4">
-                                    <Form.Label className="small fw-bold text-muted">DESCRIPTION</Form.Label>
+                                    <div className="d-flex justify-content-between align-items-center mb-1">
+                                        <Form.Label className="small fw-bold text-muted mb-0">DESCRIPTION</Form.Label>
+                                        
+                                        {/* AI BUTTON */}
+                                        <Button 
+                                            variant="outline-primary" 
+                                            size="sm" 
+                                            className="rounded-pill d-flex align-items-center gap-2"
+                                            style={{fontSize: '0.75rem', fontWeight: 'bold'}}
+                                            onClick={handleGenerateDescription}
+                                            disabled={isGenerating || isSubmitting}
+                                        >
+                                            {isGenerating ? (
+                                                <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true"/> Writing...</>
+                                            ) : (
+                                                <><Sparkles size={14}/> Auto-Write with AI</>
+                                            )}
+                                        </Button>
+                                    </div>
                                     <Form.Control as="textarea" rows={3} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="rounded-4 bg-light border-0" disabled={isSubmitting}/>
                                 </Form.Group>
                             </Col>
