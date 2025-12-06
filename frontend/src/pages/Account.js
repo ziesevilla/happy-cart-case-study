@@ -10,20 +10,33 @@ import AddressTab from '../components/account/AddressTab';
 import AdminDashboard from '../components/admin/AdminDashboard'; 
 import './styles/Account.css';
 
+/**
+ * Account Component
+ * * The central hub for user profile management.
+ * * Functionality: 
+ * 1. Protects the route (Redirects if not logged in).
+ * 2. Aggregates user stats (Orders, Spend, Reviews).
+ * 3. Switches view based on Role (Admin vs. Customer).
+ */
 const Account = () => {
-    // 💡 FIX 1: Get 'loading' state from AuthContext
+    // --- CONTEXT HOOKS ---
+    // 💡 FIX 1: Get 'loading' state from AuthContext to prevent premature redirects
     const { user, loading } = useAuth();
     
+    // Fetch global data to calculate personal stats
     const { orders } = useOrders(); 
     const { reviews } = useReviews(); 
 
+    // --- LOCAL STATE ---
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('orders'); 
+    const [activeTab, setActiveTab] = useState('orders'); // Toggles between Order History and Address Book
     const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
 
+    // --- AUTHENTICATION PROTECTION ---
     // 💡 FIX 2: Handle the Redirect Logic correctly
     useEffect(() => {
         // Only redirect if we are DONE loading and there is NO user
+        // This prevents kicking the user out while the token is still being verified
         if (!loading && !user) {
             navigate('/login');
         }
@@ -38,25 +51,29 @@ const Account = () => {
         );
     }
 
-    // If not loading and no user, return null (waiting for redirect)
+    // If not loading and no user, return null (waiting for redirect effect to trigger)
     if (!user) return null;
 
-    // --- CALCULATION LOGIC ---
+    // --- DATA AGGREGATION & LOGIC ---
+    // Calculate stats specifically for the logged-in user
     const userOrders = orders.filter(order => order.email === user.email);
     const orderCount = userOrders.length;
     const totalSpent = userOrders.reduce((acc, order) => acc + order.total, 0);
     const reviewCount = reviews.filter(r => r.user === user.name).length;
 
+    // Determine Loyalty Tier based on lifetime spend
     let memberTier = 'Bronze';
     if (totalSpent > 50000) memberTier = 'Platinum';
     else if (totalSpent > 20000) memberTier = 'Gold';
     else if (totalSpent > 5000) memberTier = 'Silver';
 
+    // Notification helper
     const showNotification = (message, variant = 'success') => {
         setToast({ show: true, message, variant });
     };
 
     // --- ADMIN VIEW ---
+    // If the user has an 'admin' role, render the Dashboard instead of the standard profile
     if (user.role && user.role.toLowerCase() === 'admin') {
         return <AdminDashboard />;
     }
@@ -66,7 +83,8 @@ const Account = () => {
         <div className="account-page py-5">
             <Container>
                 <Row className="g-5">
-                    {/* LEFT SIDEBAR */}
+                    
+                    {/* LEFT SIDEBAR: User Profile & Stats */}
                     <Col lg={4}>
                         <ProfileSidebar 
                             showNotification={showNotification} 
@@ -77,8 +95,9 @@ const Account = () => {
                         />
                     </Col>
 
-                    {/* RIGHT CONTENT */}
+                    {/* RIGHT CONTENT: Tabs for Orders & Addresses */}
                     <Col lg={8}>
+                        {/* Tab Navigation Buttons */}
                         <div className="d-flex gap-3 mb-4 border-bottom pb-3">
                             <Button 
                                 className={`rounded-pill px-4 fw-bold ${activeTab === 'orders' ? 'tab-active' : 'tab-inactive'}`}
@@ -94,6 +113,7 @@ const Account = () => {
                             </Button>
                         </div>
 
+                        {/* Conditional Rendering of Tab Content */}
                         {activeTab === 'orders' ? (
                             <OrdersTab showNotification={showNotification} />
                         ) : (
@@ -102,6 +122,7 @@ const Account = () => {
                     </Col>
                 </Row>
 
+                {/* Global Toast Notification for Account Page */}
                 <ToastContainer className="toast-container">
                     <Toast onClose={() => setToast({...toast, show: false})} show={toast.show} delay={3000} autohide bg={toast.variant}>
                         <Toast.Body className="text-white fw-bold">{toast.message}</Toast.Body>

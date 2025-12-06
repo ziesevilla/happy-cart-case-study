@@ -1,5 +1,4 @@
 import React from 'react';
-// Removed Form, InputGroup (was only used for TrackOrder)
 import { Container, Accordion, Row, Col, Card, Badge, Button, Alert } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -10,7 +9,11 @@ import {
 
 // --- HELPER COMPONENTS ---
 
-// Navigation links to jump between info pages
+/**
+ * InfoNavigation Component
+ * * A sub-navigation bar displayed at the top of all informational pages.
+ * * Uses 'useLocation' to determine the active tab and style it accordingly.
+ */
 const InfoNavigation = () => {
     const location = useLocation();
     
@@ -44,12 +47,22 @@ const InfoNavigation = () => {
     );
 };
 
-// Consistent Layout Wrapper
+/**
+ * InfoPageLayout Component (Wrapper)
+ * * A Higher-Order Component (HOC) pattern used to ensure consistent spacing, 
+ * * typography, and footer structure across all static pages.
+ * @param {string} title - The main heading of the page
+ * @param {Icon} icon - Lucide icon component to display
+ * @param {string} lastUpdated - Optional date string for legal pages
+ * @param {ReactNode} children - The unique content of the specific page
+ */
 const InfoPageLayout = ({ title, icon: Icon, children, lastUpdated }) => (
     <div className="min-vh-100 bg-white py-5 animate-fade-in">
         <Container style={{ maxWidth: '900px' }}>
+            {/* Render the sub-navigation menu */}
             <InfoNavigation />
             
+            {/* Shared Header Section */}
             <div className="text-center mb-5">
                 <div className="d-inline-flex align-items-center justify-content-center p-3 bg-primary-subtle rounded-circle mb-3 text-primary">
                     {Icon && <Icon size={32} />}
@@ -59,11 +72,12 @@ const InfoPageLayout = ({ title, icon: Icon, children, lastUpdated }) => (
                 <div className="mx-auto mt-3" style={{ width: '60px', height: '4px', background: 'linear-gradient(to right, #ff9a9e, #ff6b8b)' }}></div>
             </div>
 
+            {/* Page Specific Content */}
             <div style={{ fontSize: '1.05rem', color: '#4a5568', lineHeight: '1.8' }}>
                 {children}
             </div>
 
-            {/* Global Contact Footer */}
+            {/* Global Contact Footer - Appears on every info page */}
             <div className="mt-5 pt-5 border-top text-center">
                 <h5 className="fw-bold">Still have questions?</h5>
                 <p className="text-muted mb-3">We're happy to help! Our team replies within 24 hours.</p>
@@ -86,6 +100,7 @@ export const About = () => (
             </p>
         </div>
 
+        {/* Mission Statement Grid */}
         <Row className="g-4 mb-5">
             <Col md={6}>
                 <div className="p-4 bg-light rounded-4 h-100">
@@ -106,6 +121,7 @@ export const About = () => (
             </Col>
         </Row>
 
+        {/* Core Values Section */}
         <h4 className="fw-bold mb-4 text-center">Our Core Values</h4>
         <Row className="g-4">
             {[
@@ -203,6 +219,7 @@ export const Shipping = () => (
         <h4 className="fw-bold mb-4">Shipping Rates</h4>
         <div className="card border-0 shadow-sm overflow-hidden mb-5 rounded-4">
             <div className="table-responsive">
+                {/* Shipping Rate Table */}
                 <table className="table table-hover mb-0" style={{ verticalAlign: 'middle' }}>
                     <thead className="bg-light">
                         <tr>
@@ -342,6 +359,7 @@ export const HelpCenter = () => (
             Have a question? We're here to help! Browse our frequently asked questions below.
         </p>
 
+        {/* FAQ Accordion */}
         <Accordion defaultActiveKey="0" className="custom-accordion">
             <Accordion.Item eventKey="0" className="border-0 mb-3 shadow-sm rounded-4 overflow-hidden">
                 <Accordion.Header><Globe size={20} className="me-2 text-primary"/> How do I track my order?</Accordion.Header>

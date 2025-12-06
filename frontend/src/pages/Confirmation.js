@@ -4,12 +4,20 @@ import { Link, useLocation } from 'react-router-dom';
 import { Check, ShoppingBag, ArrowRight, FileText } from 'lucide-react';
 import './styles/Confirmation.css';
 
+/**
+ * Confirmation Component
+ * * The post-purchase success page.
+ * * Displays order reference, total amount, and next steps.
+ * * Retrieves order details from React Router's location state passed from Checkout.
+ */
 const Confirmation = () => {
     const location = useLocation();
-    // Get Order ID passed from Checkout, or generate a fallback
+    
+    // --- DATA RETRIEVAL ---
+    // Get Order ID passed from Checkout, or generate a fallback for demo resilience
     const orderId = location.state?.orderId || `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
     
-    // Note: In a real app, you'd fetch the actual order details here using the ID
+    // Note: In a real app, you'd fetch the actual order details here using the ID if state is missing
     const total = location.state?.total || 0;
 
     return (
@@ -28,7 +36,7 @@ const Confirmation = () => {
                         We've sent a confirmation email to your inbox.
                     </p>
 
-                    {/* Order Details Box */}
+                    {/* Order Details Summary Box */}
                     <div className="order-details-box">
                         <div className="d-flex align-items-center justify-content-between mb-3">
                             <span className="text-uppercase small fw-bold text-muted">Order Reference</span>
@@ -47,6 +55,7 @@ const Confirmation = () => {
                             <span>Credit Card</span>
                         </div>
                         
+                        {/* Only show Total if valid value exists */}
                         {total > 0 && (
                             <div className="order-details-row total">
                                 <span>Total Amount</span>
@@ -68,7 +77,7 @@ const Confirmation = () => {
                         
                         <Button 
                             as={Link} 
-                            to="/products?collection=New" /* 💡 CHANGED LINK HERE */
+                            to="/products?collection=New" /* 💡 CHANGED LINK HERE: Directs to New Arrivals */
                             variant="primary" 
                             className="rounded-pill py-3 fw-bold shadow-sm"
                         >

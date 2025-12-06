@@ -5,9 +5,18 @@ import { useAuth } from '../context/AuthContext';
 import { ArrowRight, Eye, EyeOff, Facebook, Chrome } from 'lucide-react';
 import './styles/Auth.css';
 
+/**
+ * Login Component
+ * * Handles user authentication via Email/Password.
+ * * Features: Password visibility toggle, Error handling, and Forgot Password modal.
+ * * Layout: Split screen (Image on left, Form on right).
+ */
 const Login = () => {
+    // --- LOCAL STATE MANAGEMENT ---
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    
+    // UI States: Toggle password visibility and loading spinner
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -16,9 +25,11 @@ const Login = () => {
     const [showResetModal, setShowResetModal] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
     
-    const { login } = useAuth(); 
-    const navigate = useNavigate(); 
+    // --- HOOKS ---
+    const { login } = useAuth(); // Access global auth methods
+    const navigate = useNavigate(); // For redirection after success
 
+    // --- FORM SUBMISSION HANDLER ---
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -27,13 +38,14 @@ const Login = () => {
         try {
             // 💡 FIX 1: Call API directly (No Timeout)
             // 💡 FIX 2: Pass arguments separately (email, password)
+            // Attempts to log the user in via the AuthContext provider
             const result = await login(email, password);
 
             if (result.success) {
                 // Redirect on success (Admin check happens inside Account.js)
                 navigate('/account');
             } else {
-                // Show error from Laravel
+                // Show error from Laravel (or generic fallback)
                 setError(result.message || "Invalid credentials.");
             }
         } catch (err) {
@@ -43,8 +55,10 @@ const Login = () => {
         setLoading(false);
     };
 
+    // --- FORGOT PASSWORD HANDLER ---
     const handleResetPassword = (e) => {
         e.preventDefault();
+        // Simulation of reset flow
         alert(`Password reset link sent to ${resetEmail}`);
         setShowResetModal(false);
         setResetEmail('');
@@ -53,7 +67,9 @@ const Login = () => {
     return (
         <div className="auth-page">
             <Row className="g-0">
-                {/* LEFT: Editorial Image */}
+                
+                {/* --- LEFT COLUMN: EDITORIAL IMAGE --- */}
+                {/* Hidden on mobile (d-none), visible on medium screens and up (d-md-block) */}
                 <Col md={6} className="d-none d-md-block">
                     <div 
                         className="auth-image-side"
@@ -66,7 +82,7 @@ const Login = () => {
                     </div>
                 </Col>
 
-                {/* RIGHT: Login Form */}
+                {/* --- RIGHT COLUMN: LOGIN FORM --- */}
                 <Col md={6} className="auth-form-side">
                     <div className="auth-container">
                         <Link to="/" className="auth-brand">HAPPY CART</Link>
@@ -76,10 +92,14 @@ const Login = () => {
                             <p className="auth-subtitle">Please enter your details to sign in.</p>
                         </div>
 
+                        {/* Error Feedback Alert */}
                         {error && <Alert variant="danger" className="rounded-3 border-0 shadow-sm mb-4">{error}</Alert>}
                         
                         <Form onSubmit={handleSubmit}>
+                            {/* Input Group Container */}
                             <div className="p-4 rounded-4 mb-4" style={{ backgroundColor: '#fff5f7' }}>
+                                
+                                {/* Email Input */}
                                 <FloatingLabel controlId="floatingInput" label="Email Address" className="mb-3">
                                     <Form.Control 
                                         type="email" 
@@ -91,6 +111,7 @@ const Login = () => {
                                     />
                                 </FloatingLabel>
 
+                                {/* Password Input with Visibility Toggle */}
                                 <div className="position-relative">
                                     <FloatingLabel controlId="floatingPassword" label="Password">
                                         <Form.Control 
@@ -102,6 +123,8 @@ const Login = () => {
                                             required 
                                         />
                                     </FloatingLabel>
+                                    
+                                    {/* Toggle Eye Icon Button */}
                                     <button
                                         type="button"
                                         className="btn border-0 p-0 position-absolute top-50 end-0 translate-middle-y me-3 text-muted"
@@ -113,6 +136,7 @@ const Login = () => {
                                 </div>
                             </div>
 
+                            {/* Additional Actions (Remember Me / Forgot Password) */}
                             <div className="d-flex justify-content-between align-items-center mb-4">
                                 <Form.Check 
                                     type="checkbox" 
@@ -129,6 +153,7 @@ const Login = () => {
                                 </span>
                             </div>
 
+                            {/* Submit Button */}
                             <Button 
                                 variant="primary" 
                                 type="submit" 
@@ -138,7 +163,7 @@ const Login = () => {
                                 {loading ? 'Signing In...' : <>Sign In <ArrowRight size={18} className="ms-2" /></>}
                             </Button>
 
-                            {/* SOCIAL LOGIN */}
+                            {/* SOCIAL LOGIN (Cosmetic Only) */}
                             <div className="d-flex gap-3 mb-4">
                                 <Button variant="outline-light" className="btn-social w-100">
                                     <Chrome size={18} className="me-2 text-danger" /> Google
@@ -157,7 +182,7 @@ const Login = () => {
                 </Col>
             </Row>
 
-            {/* FORGOT PASSWORD MODAL */}
+            {/* --- FORGOT PASSWORD MODAL --- */}
             <Modal show={showResetModal} onHide={() => setShowResetModal(false)} centered>
                 <Modal.Header closeButton className="border-0 pb-0">
                     <Modal.Title className="fw-bold">Reset Password</Modal.Title>

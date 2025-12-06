@@ -6,31 +6,44 @@ import ProductCard from '../components/ProductCard';
 import { useProducts } from '../context/ProductContext'; // 💡 Use Context
 import './styles/Products.css';
 
+/**
+ * Products Component
+ * * The central catalog page handling product listings.
+ * * Features: Advanced Filtering (Category, Price, Sub-category), 
+ * * Sorting, Search, and Pagination.
+ */
 const Products = () => {
     // 💡 1. Get products and loading state from Context
+    // We use the global context to ensure we have the latest data across the app
     const { products: ALL_PRODUCTS, loading } = useProducts(); 
     
+    // --- ROUTING HOOKS ---
     const location = useLocation();
     const navigate = useNavigate();
+    
+    // Parse query parameters to determine current collection (e.g., ?collection=Shoes)
     const queryParams = new URLSearchParams(location.search);
     const collectionFilter = queryParams.get('collection') || 'All'; 
     const isNewArrivals = collectionFilter === 'New'; 
 
-    // --- STATES ---
+    // --- LOCAL STATE MANAGEMENT ---
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSubCategory, setSelectedSubCategory] = useState('All');
     const [sortBy, setSortBy] = useState('featured');
     const [priceRange, setPriceRange] = useState(10000);
     
+    // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 9; 
 
+    // Reset filters and page number when the main collection changes (e.g. Navigating from Men -> Women)
     useEffect(() => {
         setSelectedSubCategory('All');
         setCurrentPage(1); 
     }, [collectionFilter]);
 
     // 💡 2. Show Loading Spinner
+    // Prevents rendering empty grids while data fetches from API
     if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
@@ -39,7 +52,9 @@ const Products = () => {
         );
     }
 
-    // --- 7 DAY HELPER ---
+    // --- HELPER FUNCTIONS ---
+
+    // Utility: Determines if a product counts as a "New Arrival" (added within 7 days)
     const isWithin7Days = (dateString) => {
         if (!dateString) return false;
         const productDate = new Date(dateString);
@@ -49,6 +64,7 @@ const Products = () => {
         return diffDays <= 7;
     };
 
+    // Maps the URL 'collection' param to specific database Category names
     const getCategoriesInCollection = (collection) => {
         switch(collection) {
             case 'Clothing': return ['Clothing']; 
@@ -61,6 +77,7 @@ const Products = () => {
     const targetCategories = getCategoriesInCollection(collectionFilter);
 
     // 💡 3. Map unique sub-categories (Handle 'sub_category' from DB vs 'subCategory')
+    // Dynamically generates the sidebar filter options based on the currently displayed collection
     const uniqueSubCategories = [...new Set(
         collectionFilter === 'All' 
             ? ALL_PRODUCTS.map(p => p.sub_category || p.subCategory).filter(Boolean)
@@ -72,21 +89,25 @@ const Products = () => {
 
     const sidebarFilters = ['All', ...uniqueSubCategories];
 
-    // --- FILTER LOGIC ---
+    // --- CORE FILTERING LOGIC ---
+    
+    // Step 1: Filter the master list based on all active criteria
     const filteredProducts = ALL_PRODUCTS.filter(product => {
         // Handle "New Arrivals" (based on dateAdded from DB)
         if (isNewArrivals) {
             return isWithin7Days(product.dateAdded || product.created_at);
         }
 
+        // Filter by Main Category (e.g., Shoes)
         let matchesCollection = true;
         if (collectionFilter !== 'All') {
             matchesCollection = targetCategories.includes(product.category);
         }
 
+        // Filter by Search Input
         const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
         
-        // Handle sub-category mapping
+        // Handle sub-category mapping (normalize keys)
         const productSub = product.sub_category || product.subCategory;
         const matchesSubCategory = selectedSubCategory === 'All' || productSub === selectedSubCategory;
         
@@ -96,6 +117,7 @@ const Products = () => {
 
         return matchesCollection && matchesSearch && matchesSubCategory && matchesPrice;
     }).sort((a, b) => {
+        // Step 2: Sort the filtered results
         if (isNewArrivals) {
             return new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0);
         }
@@ -105,12 +127,13 @@ const Products = () => {
 
         if (sortBy === 'price-low') return priceA - priceB;
         if (sortBy === 'price-high') return priceB - priceA;
-        return 0; 
+        return 0; // Default 'featured' order
     });
 
     // --- PAGINATION LOGIC ---
+    // Slices the filtered and sorted array to display only the current page's items
     const currentProducts = isNewArrivals 
-        ? filteredProducts 
+        ? filteredProducts // Show all new arrivals without pagination
         : filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
         
     const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
@@ -120,6 +143,7 @@ const Products = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' }); 
     };
 
+    // Resets all local state filters to defaults
     const clearFilters = () => {
         setSearchTerm('');
         setSelectedSubCategory('All');
@@ -128,7 +152,8 @@ const Products = () => {
         navigate('/products'); 
     };
 
-    // --- DYNAMIC GRID LOGIC ---
+    // --- DYNAMIC GRID LAYOUT ---
+    // Adjusts column width based on the number of items found to prevent huge cards when few results exist
     const getDynamicGridProps = () => {
         if (!isNewArrivals) return { xs: 1, md: 2, lg: 3 }; 
 
@@ -143,6 +168,7 @@ const Products = () => {
 
     const gridProps = getDynamicGridProps();
 
+    // Selects the Hero Banner image based on the active collection
     const getBannerImage = () => {
         if (isNewArrivals) return 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2070&auto=format&fit=crop'; 
         switch(collectionFilter) {
@@ -155,6 +181,7 @@ const Products = () => {
 
     return (
         <div className="products-page animate-fade-in">
+            {/* --- HERO SECTION --- */}
             <div 
                 className="products-hero" 
                 style={{ backgroundImage: `url(${getBannerImage()})` }}
@@ -171,6 +198,7 @@ const Products = () => {
 
             <Container className="pb-5">
                 <Row>
+                    {/* --- SIDEBAR FILTERS (Hidden on 'New Arrivals') --- */}
                     {!isNewArrivals && (
                         <Col md={3} className="mb-4">
                             <div className="filter-sidebar">
@@ -181,6 +209,7 @@ const Products = () => {
                                     </div>
                                 </div>
                                 
+                                {/* Sub-Category Filter */}
                                 <div className="filter-group mb-4">
                                     <h5>TYPE</h5> 
                                     <div className="d-flex flex-column gap-2">
@@ -196,6 +225,7 @@ const Products = () => {
                                     </div>
                                 </div>
 
+                                {/* Price Range Filter */}
                                 <div className="filter-group">
                                     <h5>PRICE RANGE</h5>
                                     <div className="d-flex justify-content-between align-items-center mb-2">
@@ -219,8 +249,10 @@ const Products = () => {
                         </Col>
                     )}
 
+                    {/* --- MAIN PRODUCT GRID AREA --- */}
                     <Col md={isNewArrivals ? 12 : 9}>
                         
+                        {/* Top Control Bar (Search & Sort) - Hidden on New Arrivals */}
                         {!isNewArrivals && (
                             <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 sticky-search-bar mb-4">
                                 <div className="search-wrapper w-100" style={{ maxWidth: '400px' }}>
@@ -246,6 +278,7 @@ const Products = () => {
                             </div>
                         )}
 
+                        {/* New Arrivals Info Banner */}
                         {isNewArrivals && (
                             <div className="d-flex align-items-center mb-4 text-muted justify-content-center">
                                 <Clock size={20} className="me-2 text-primary" />
@@ -253,6 +286,7 @@ const Products = () => {
                             </div>
                         )}
 
+                        {/* Empty State vs Product Grid */}
                         {filteredProducts.length === 0 ? (
                             <div className="text-center py-5">
                                 <h4 className="text-muted">
@@ -278,6 +312,7 @@ const Products = () => {
                                     ))}
                                 </Row>
 
+                                {/* Pagination Controls */}
                                 {!isNewArrivals && totalPages > 1 && (
                                     <div className="d-flex justify-content-center mt-5">
                                         <Pagination>

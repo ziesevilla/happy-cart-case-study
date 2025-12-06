@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext'; 
 import './styles/Home.css';
 
-// ... (Keep PROMOS, HERO_SLIDES, FEATURED_GRID consts as they are) ...
+// --- CONSTANTS & STATIC DATA ---
 const PROMOS = [
     "✨ NEW SEASON: Shop the Spring/Summer '24 Collection",
     "🚚 Free Express Shipping on orders over $100",
@@ -39,16 +39,25 @@ const FEATURED_GRID = [
     { id: 4, title: "ACCESSORIES", image: "https://images.unsplash.com/photo-1576053139778-7e32f2ae3cfd?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Accessories" },
 ];
 
+/**
+ * Home Component
+ * * The landing page of the application.
+ * * Aggregates data from ProductContext (for categories), ReviewContext (for social proof), and AuthContext.
+ */
 const Home = () => {
+    // --- CONTEXT HOOKS ---
     const { products } = useProducts(); 
     const { reviews, toggleLike } = useReviews(); 
     const { user } = useAuth();
     const navigate = useNavigate();
     
+    // --- LOCAL STATE ---
     const [promoIndex, setPromoIndex] = useState(0);
     const [heroIndex, setHeroIndex] = useState(0);
 
-    // --- 💡 MODIFIED: EXTRACT SUB-CATS WITH MAIN CATEGORY ---
+    // --- 💡 DATA LOGIC: DYNAMIC CATEGORY EXTRACTION ---
+    // Instead of hardcoding categories, we extract unique sub-categories from the product list.
+    // We also capture the 'mainCategory' to ensure the "Shop Now" link filters correctly.
     const dynamicCategories = useMemo(() => {
         const subCatMap = new Map();
 
@@ -56,7 +65,7 @@ const Home = () => {
             if (product.subCategory && !subCatMap.has(product.subCategory)) {
                 subCatMap.set(product.subCategory, {
                     name: product.subCategory,
-                    mainCategory: product.category, // 💡 Capture the Main Category
+                    mainCategory: product.category, // Capture parent category for filtering
                     img: product.image 
                 });
             }
@@ -65,23 +74,31 @@ const Home = () => {
         return Array.from(subCatMap.values());
     }, [products]);
 
+    // --- 💡 DATA LOGIC: TOP REVIEWS ---
+    // Filters for 5-star reviews only, sorts by popularity (likes), limits to 6 items.
     const topReviews = reviews
         .filter(r => r.rating === 5) 
         .sort((a, b) => (b.likes || 0) - (a.likes || 0)) 
         .slice(0, 6); 
 
+    // --- EFFECTS: ANIMATIONS ---
+    
+    // Rotate Top Promo Bar every 4 seconds
     useEffect(() => {
         const interval = setInterval(() => setPromoIndex((prev) => (prev + 1) % PROMOS.length), 4000);
         return () => clearInterval(interval);
     }, []);
 
+    // Rotate Hero Slide every 5 seconds
     useEffect(() => {
         const interval = setInterval(() => setHeroIndex((prev) => (prev + 1) % HERO_SLIDES.length), 5000);
         return () => clearInterval(interval);
     }, []);
 
+    // --- HANDLERS ---
+    
     const handleLike = (e, reviewId) => {
-        e.stopPropagation(); 
+        e.stopPropagation(); // Prevent clicking the card (navigation) when just liking
         if (!user) {
             alert("Please login to like reviews!");
             return;
@@ -89,16 +106,20 @@ const Home = () => {
         toggleLike(reviewId);
     };
 
+    // Construct the marquee list (duplicated 4x for smooth infinite scroll)
     const marqueeList = dynamicCategories.length > 0 
         ? [...dynamicCategories, ...dynamicCategories, ...dynamicCategories, ...dynamicCategories]
         : [];
 
     return (
         <div className="home-page animate-fade-in">
+            
+            {/* SECTION 1: TOP PROMO BAR */}
             <div className="promo-bar d-flex justify-content-center align-items-center w-100 m-0 p-0">
                 <div key={promoIndex} className="promo-slide fw-bold">{PROMOS[promoIndex]}</div>
             </div>
 
+            {/* SECTION 2: HERO CAROUSEL */}
             <div className="hero-section d-flex align-items-center justify-content-center text-white w-100 m-0" style={{ backgroundImage: `url(${HERO_SLIDES[heroIndex].image})` }}>
                 <div className="hero-overlay">
                     <div className="text-center animate-fade-in" key={heroIndex}>
@@ -108,6 +129,7 @@ const Home = () => {
                 </div>
             </div>
 
+            {/* SECTION 3: FEATURED GRID (TRENDING NOW) */}
             <div className="w-100 m-0 bg-white py-5">
                 <div className="text-start pb-4" style={{ paddingLeft: '10%' }}><h1 className="mb-0 fw-bold">TRENDING NOW</h1></div>
                 <div className="position-relative">
@@ -127,7 +149,7 @@ const Home = () => {
                 </div>
             </div>
 
-            {/* SECTION 4: DYNAMIC CATEGORIES */}
+            {/* SECTION 4: DYNAMIC CATEGORY MARQUEE */}
             {marqueeList.length > 0 && (
                 <div className="w-100 m-0 bg-white py-5">
                     <div className="text-start pb-4" style={{ paddingLeft: '10%' }}><h1 className="mb-0 fw-bold">SHOP BY CATEGORY</h1></div>
@@ -143,7 +165,7 @@ const Home = () => {
                                         <div className="text-center position-relative z-2">
                                             <h4 className="text-white fw-bold mb-3 text-uppercase">{cat.name}</h4>
                                             
-                                            {/* 💡 UPDATED LINK: PASS MAIN COLLECTION + SUB-CATEGORY */}
+                                            {/* 💡 LINK LOGIC: Filters by Main Collection AND SubCategory */}
                                             <Button 
                                                 size="sm" 
                                                 variant="light" 
@@ -161,8 +183,7 @@ const Home = () => {
                 </div>
             )}
 
-            {/* ... (Rest of the components: Reviews, Join Club) ... */}
-            {/* The rest of the file remains exactly as you had it */}
+            {/* SECTION 5: STYLE STORIES (REVIEWS) */}
             <div className="w-100 m-0 bg-white py-5">
                 <div className="text-start pb-5" style={{ paddingLeft: '10%' }}>
                      <h1 className="fw-bold">STYLE STORIES</h1>
@@ -182,28 +203,53 @@ const Home = () => {
                                         <div className="mb-3 text-warning">{[...Array(5)].map((_, i) => (<Star key={i} fill="currentColor" size={16} />))}</div>
                                         <Quote size={24} className="text-primary mb-3 opacity-25 mx-auto" />
                                         <p className="fst-italic mb-4 text-muted small">"{review.comment}"</p>
+                                        
                                         <div className="d-flex align-items-center justify-content-center gap-3 mb-3">
                                             <div className="bg-light rounded-circle d-flex align-items-center justify-content-center fw-bold text-secondary" style={{width: '40px', height: '40px'}}>{review.user.charAt(0).toUpperCase()}</div>
-                                            <div className="text-start"><h6 className="mb-0 fw-bold small">{review.user}</h6><small className="text-muted" style={{fontSize: '0.7rem'}}>Verified Buyer • {review.productName || 'View Item'}</small></div>
+                                            <div className="text-start">
+                                                <h6 className="mb-0 fw-bold small">{review.user}</h6>
+                                                <small className="text-muted" style={{fontSize: '0.7rem'}}>Verified Buyer • {review.productName || 'View Item'}</small>
+                                            </div>
                                         </div>
+
                                         <div className="d-flex justify-content-center align-items-center border-top pt-3 w-100">
-                                            <button className={`btn btn-sm rounded-pill d-flex align-items-center gap-1 ${isLiked ? 'text-danger bg-danger-subtle' : 'text-muted hover-pink'}`} onClick={(e) => handleLike(e, review.id)} style={{border: 'none'}}><Heart size={16} fill={isLiked ? "currentColor" : "none"} /><span className="small fw-bold">{review.likes || 0}</span></button>
+                                            <button 
+                                                className={`btn btn-sm rounded-pill d-flex align-items-center gap-1 ${isLiked ? 'text-danger bg-danger-subtle' : 'text-muted hover-pink'}`} 
+                                                onClick={(e) => handleLike(e, review.id)} 
+                                                style={{border: 'none'}}
+                                            >
+                                                <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
+                                                <span className="small fw-bold">{review.likes || 0}</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </Col>
                             );
-                        }) : (<div className="text-center text-muted py-5"><p>No 5-star reviews yet. Be the first!</p></div>)}
+                        }) : (
+                            <div className="text-center text-muted py-5"><p>No 5-star reviews yet. Be the first!</p></div>
+                        )}
                     </Row>
                 </Container>
             </div>
 
+            {/* SECTION 6: NEWSLETTER */}
             <div className="w-100 m-0 bg-white py-5">
-                <div className="text-start pb-5" style={{ paddingLeft: '10%' }}><h1 className="fw-bold">JOIN THE CLUB</h1><p className="text-muted lead">Get 10% off your first order & exclusive access.</p></div>
+                <div className="text-start pb-5" style={{ paddingLeft: '10%' }}>
+                    <h1 className="fw-bold">JOIN THE CLUB</h1>
+                    <p className="text-muted lead">Get 10% off your first order & exclusive access.</p>
+                </div>
                 <div className="d-flex align-items-center justify-content-center pb-5">
                     <Container style={{ maxWidth: '600px' }}>
                         <div className="text-center bg-white p-5 rounded-4 shadow-sm">
-                            <Mail size={48} className="text-primary mb-4" /><h2 className="fw-bold mb-3">Stay in Style</h2><p className="text-muted mb-4">Be the first to know about new drops, flash sales, and style inspiration.</p>
-                            <Form><Form.Group className="mb-3" controlId="formBasicEmail"><Form.Control type="email" placeholder="Enter your email" size="lg" className="text-center rounded-pill" /></Form.Group><Button variant="primary" type="submit" size="lg" className="w-100 rounded-pill">SUBSCRIBE</Button></Form>
+                            <Mail size={48} className="text-primary mb-4" />
+                            <h2 className="fw-bold mb-3">Stay in Style</h2>
+                            <p className="text-muted mb-4">Be the first to know about new drops, flash sales, and style inspiration.</p>
+                            <Form>
+                                <Form.Group className="mb-3" controlId="formBasicEmail">
+                                    <Form.Control type="email" placeholder="Enter your email" size="lg" className="text-center rounded-pill" />
+                                </Form.Group>
+                                <Button variant="primary" type="submit" size="lg" className="w-100 rounded-pill">SUBSCRIBE</Button>
+                            </Form>
                             <small className="text-muted mt-3 d-block">We respect your privacy. Unsubscribe at any time.</small>
                         </div>
                     </Container>

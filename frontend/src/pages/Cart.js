@@ -6,20 +6,29 @@ import { useProducts } from '../context/ProductContext'; // 💡 1. NEW IMPORT
 import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Truck, Tag, AlertTriangle } from 'lucide-react';
 import './styles/Cart.css';
 
+/**
+ * Cart Component
+ * * Manages the shopping cart interface.
+ * * Key Features: Item selection, Quantity adjustment (with stock validation), 
+ * * Free shipping progress tracking, and Checkout navigation.
+ */
 const Cart = () => {
+    // --- CONTEXT HOOKS ---
     const { cart, addToCart, removeFromCart, decreaseQuantity } = useCart();
     
     // 💡 2. GET MASTER PRODUCT LIST
+    // Used to check real-time stock levels against cart quantities
     const { products } = useProducts(); 
     
+    // --- LOCAL STATE ---
     const navigate = useNavigate();
     const [promoCode, setPromoCode] = useState('');
     
-    // Selection State
+    // Selection State (Track which items are selected for checkout)
     const [selectedItems, setSelectedItems] = useState([]);
     const [selectAll, setSelectAll] = useState(false);
 
-    // Remove Confirmation State
+    // Remove Confirmation State (Modal controls)
     const [showRemoveModal, setShowRemoveModal] = useState(false);
     const [itemToRemove, setItemToRemove] = useState(null);
 
@@ -32,17 +41,27 @@ const Cart = () => {
     }, [cart]);
 
     // --- CALCULATIONS BASED ON SELECTION ---
+    
+    // 1. Filter cart to only process selected items
     const selectedCartItems = cart.filter(item => selectedItems.includes(item.id));
     
+    // 2. Calculate Subtotal
     const currentTotal = selectedCartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
     
+    // 3. Free Shipping Logic (Gamification)
     const FREE_SHIPPING_THRESHOLD = 5000;
     const progress = Math.min((currentTotal / FREE_SHIPPING_THRESHOLD) * 100, 100);
     const remaining = FREE_SHIPPING_THRESHOLD - currentTotal;
+    
+    // 4. Calculate Shipping Cost (0 if threshold met or no items selected)
     const shippingCost = (selectedItems.length > 0 && remaining <= 0) ? 0 : (selectedItems.length > 0 ? 150 : 0);
+    
+    // 5. Final Total
     const finalTotal = currentTotal + shippingCost;
 
     // --- HANDLERS ---
+
+    // Toggles selection for ALL items currently in cart
     const handleSelectAll = () => {
         if (selectAll) {
             setSelectedItems([]);
@@ -52,6 +71,7 @@ const Cart = () => {
         setSelectAll(!selectAll);
     };
 
+    // Toggles selection for a SINGLE item
     const handleSelectItem = (id) => {
         if (selectedItems.includes(id)) {
             setSelectedItems(selectedItems.filter(itemId => itemId !== id));
@@ -59,26 +79,31 @@ const Cart = () => {
         } else {
             const newSelected = [...selectedItems, id];
             setSelectedItems(newSelected);
+            // If all items are manually selected, check the "Select All" box
             if (newSelected.length === cart.length) {
                 setSelectAll(true);
             }
         }
     };
 
+    // Prepares item for deletion via Modal
     const handleRemoveClick = (item) => {
         setItemToRemove(item);
         setShowRemoveModal(true);
     };
 
+    // Executes deletion after confirmation
     const confirmRemove = () => {
         if (itemToRemove) {
             removeFromCart(itemToRemove.id);
+            // Also remove from selectedItems array to prevent calculation errors
             setSelectedItems(selectedItems.filter(id => id !== itemToRemove.id));
         }
         setShowRemoveModal(false);
         setItemToRemove(null);
     };
 
+    // Validates selection and navigates to checkout
     const handleCheckout = () => {
         if (selectedItems.length === 0) {
             alert("Please select items to checkout.");
@@ -87,6 +112,7 @@ const Cart = () => {
         navigate('/checkout', { state: { checkoutItems: selectedCartItems } });
     };
 
+    // --- EMPTY STATE RENDER ---
     if (cart.length === 0) {
         return (
             <div className="cart-page d-flex align-items-center justify-content-center">
@@ -107,6 +133,7 @@ const Cart = () => {
     return (
         <div className="cart-page py-5 animate-fade-in">
             <Container>
+                {/* Header Section */}
                 <div className="d-flex align-items-center justify-content-between mb-5">
                     <h2 className="fw-bold mb-0">Shopping Cart ({cart.length})</h2>
                     <Link to="/products" className="text-decoration-none fw-bold text-muted d-flex align-items-center">
@@ -115,15 +142,17 @@ const Cart = () => {
                 </div>
 
                 <Row className="g-5">
-                    {/* LEFT: CART ITEMS */}
+                    {/* --- LEFT COLUMN: CART ITEMS LIST --- */}
                     <Col lg={8}>
+                        
+                        {/* Free Shipping Progress Bar */}
                         <div className="free-shipping-container">
                             <div className="d-flex align-items-center mb-2">
                                 <Truck size={20} className="text-primary me-2" />
                                 <span className="fw-bold">
                                     {remaining > 0 
-                                        ? <>Add <span className="text-primary">₱{remaining.toLocaleString()}</span> more to selected items for Free Shipping!</>
-                                        : <span className="text-success">You've unlocked Free Shipping!</span>
+                                    ? <>Add <span className="text-primary">₱{remaining.toLocaleString()}</span> more to selected items for Free Shipping!</>
+                                    : <span className="text-success">You've unlocked Free Shipping!</span>
                                     }
                                 </span>
                             </div>
@@ -132,6 +161,7 @@ const Cart = () => {
                             </div>
                         </div>
 
+                        {/* Items Table */}
                         <div className="cart-table">
                             <Table responsive className="mb-0">
                                 <thead>
@@ -154,6 +184,7 @@ const Cart = () => {
                                 <tbody>
                                     {cart.map((item) => {
                                         // 💡 3. FIND REAL-TIME STOCK FOR THIS ITEM
+                                        // Prevents user from increasing quantity beyond available inventory
                                         const masterProduct = products.find(p => p.id === item.id);
                                         const currentStock = masterProduct ? masterProduct.stock : 0;
                                         const isMaxStockReached = item.quantity >= currentStock;
@@ -189,6 +220,7 @@ const Cart = () => {
                                                     <div className="qty-group">
                                                         <button 
                                                             className="qty-btn" 
+                                                            // If Qty is 1, minus button triggers delete modal
                                                             onClick={() => item.quantity > 1 ? decreaseQuantity(item.id) : handleRemoveClick(item)}
                                                         >
                                                             <Minus size={14} />
@@ -224,7 +256,7 @@ const Cart = () => {
                         </div>
                     </Col>
 
-                    {/* RIGHT: SUMMARY */}
+                    {/* --- RIGHT COLUMN: ORDER SUMMARY --- */}
                     <Col lg={4}>
                         <Card className="summary-card p-4">
                             <h5 className="fw-bold mb-4">Order Summary</h5>
@@ -282,6 +314,7 @@ const Cart = () => {
                     </Col>
                 </Row>
 
+                {/* --- MODALS --- */}
                 {/* REMOVE CONFIRMATION MODAL */}
                 <Modal show={showRemoveModal} onHide={() => setShowRemoveModal(false)} centered size="sm">
                     <Modal.Body className="text-center p-4">

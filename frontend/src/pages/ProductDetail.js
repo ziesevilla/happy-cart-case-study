@@ -10,23 +10,33 @@ import api from '../api/axios';
 import ProductCard from '../components/ProductCard';
 import './styles/ProductDetail.css';
 
+/**
+ * ProductDetail Component
+ * * The main page for viewing a single product's information.
+ * * Features: Image Gallery, Stock Status, Cart Actions, and Reviews.
+ * * Handles both adding to cart and direct "Buy Now" flow.
+ */
 const ProductDetail = () => {
+    // --- HOOKS ---
     const { id } = useParams();
     const navigate = useNavigate();
     
+    // --- CONTEXT DATA ---
     const { products: ALL_PRODUCTS } = useProducts(); 
     const { addToCart } = useCart();
     const { user } = useAuth();
     
-    // 💡 1. Get Review Helpers
+    // 💡 1. Get Review Helpers from Context
+    // Allows interaction with the review system (Read/Write/Like)
     const { getProductReviews, reviews, getAverageRating, toggleLike, addReview } = useReviews();
 
+    // --- LOCAL STATE ---
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Cart & Buy States
-    const [isAdded, setIsAdded] = useState(false);
-    const [isBuying, setIsBuying] = useState(false);
+    // Cart & Checkout Action States
+    const [isAdded, setIsAdded] = useState(false); // Controls "Added" button feedback
+    const [isBuying, setIsBuying] = useState(false); // Controls "Buy Now" spinner
     const [showToast, setShowToast] = useState(false);
     const [showBuyModal, setShowBuyModal] = useState(false);
     const [buyQuantity, setBuyQuantity] = useState(1);
@@ -37,21 +47,25 @@ const ProductDetail = () => {
     const [reviewComment, setReviewComment] = useState('');
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
-    // FETCH DATA
+    // --- DATA FETCHING ---
+    // Strategies:
+    // 1. Try to find the product in the global 'ALL_PRODUCTS' context (Fastest).
+    // 2. Fallback to API call if not found (e.g., direct link sharing).
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                // Fetch Product
+                // Strategy 1: Local Context Lookup
                 const existing = ALL_PRODUCTS.find(p => p.id === parseInt(id));
                 if (existing) {
                     setProduct(existing);
                 } else {
+                    // Strategy 2: API Fallback
                     const response = await api.get(`/products/${id}`);
                     setProduct(response.data);
                 }
 
-                // Fetch Reviews
+                // Fetch latest reviews for this specific product
                 await getProductReviews(id);
 
             } catch (error) {
@@ -64,6 +78,7 @@ const ProductDetail = () => {
         fetchData();
     }, [id, ALL_PRODUCTS]);
 
+    // Loading State Render
     if (loading) {
         return (
             <Container className="py-5 text-center d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
@@ -72,6 +87,7 @@ const ProductDetail = () => {
         );
     }
 
+    // Not Found Render
     if (!product) {
         return (
             <Container className="py-5 text-center" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -83,7 +99,7 @@ const ProductDetail = () => {
         );
     }
 
-    // --- LOGIC ---
+    // --- DERIVED STATE & LOGIC ---
     const stock = product.stock || 0;
     const isOutOfStock = stock === 0;
     const isLowStock = stock > 0 && stock <= 5;
@@ -91,9 +107,12 @@ const ProductDetail = () => {
     const productReviews = reviews.filter(r => r.product_id === parseInt(id));
     const averageRating = getAverageRating(parseInt(id));
 
+    // Recommend similar products based on the current category
     const relatedProducts = ALL_PRODUCTS
         .filter(p => p.category === product.category && p.id !== product.id)
         .slice(0, 3);
+
+    // --- CART ACTIONS ---
 
     const handleAddToCart = () => {
         if (isOutOfStock) return; 
@@ -105,7 +124,7 @@ const ProductDetail = () => {
         addToCart(product);
         setIsAdded(true);
         setShowToast(true);
-        setTimeout(() => setIsAdded(false), 2000);
+        setTimeout(() => setIsAdded(false), 2000); // Reset button state
     };
 
     const handleBuyNowClick = () => {
@@ -123,12 +142,16 @@ const ProductDetail = () => {
         setIsBuying(true);
         const itemToCheckout = { ...product, quantity: buyQuantity };
         
+        // Simulate processing delay for better UX
         setTimeout(() => {
             setIsBuying(false);
             setShowBuyModal(false);
+            // Pass specific item to checkout (bypassing full cart)
             navigate('/checkout', { state: { checkoutItems: [itemToCheckout] } });
         }, 800);
     };
+
+    // --- REVIEW ACTIONS ---
 
     const handleLikeReview = (reviewId) => {
         if (!user) {
@@ -166,19 +189,22 @@ const ProductDetail = () => {
         setIsSubmittingReview(false);
     };
 
+    // Quantity Controls for Buy Now Modal
     const increaseQty = () => { if (buyQuantity < stock) setBuyQuantity(prev => prev + 1); };
     const decreaseQty = () => { if (buyQuantity > 1) setBuyQuantity(prev => prev - 1); };
 
     return (
         <div className="product-detail-page animate-fade-in bg-white min-vh-100 py-5">
             <Container>
+                {/* Back Button */}
                 <Button variant="link" className="text-muted mb-4 text-decoration-none p-0 d-flex align-items-center" onClick={() => navigate(-1)}>
                     <ArrowLeft size={18} className="me-2" /> Back to Collection
                 </Button>
 
-                {/* PRODUCT INFO ROW */}
+                {/* --- MAIN PRODUCT INFO SECTION --- */}
                 <Row className="g-5 mb-5">
-                    {/* LEFT: IMAGE */}
+                    
+                    {/* LEFT COLUMN: IMAGE GALLERY */}
                     <Col md={6}>
                         <div className="position-relative rounded-4 overflow-hidden shadow-sm product-image-container">
                              {isOutOfStock && (
@@ -193,10 +219,12 @@ const ProductDetail = () => {
                         </div>
                     </Col>
 
-                    {/* RIGHT: DETAILS */}
+                    {/* RIGHT COLUMN: PRODUCT DETAILS & ACTIONS */}
                     <Col md={6}>
                         <div className="h-100 d-flex flex-column justify-content-center">
                             <h1 className="display-4 fw-bold mb-3">{product.name}</h1>
+                            
+                            {/* Price & Rating Summary */}
                             <div className="d-flex align-items-center mb-4">
                                 <h3 className="text-primary fw-bold mb-0 me-4">{product.formatted_price || `₱${product.price}`}</h3>
                                 <div className="d-flex align-items-center text-warning">
@@ -206,6 +234,7 @@ const ProductDetail = () => {
                                 </div>
                             </div>
                             
+                            {/* Stock Status Indicator */}
                             <div className="mb-4">
                                 {isOutOfStock ? (
                                     <span className="text-danger fw-bold d-flex align-items-center"><Box size={18} className="me-2"/> Currently Out of Stock</span>
@@ -218,6 +247,7 @@ const ProductDetail = () => {
 
                             <p className="lead text-muted mb-5">{product.description}</p>
                             
+                            {/* CTA Buttons */}
                             <div className="d-grid gap-3">
                                 <Button 
                                     variant={isAdded ? "success" : (isOutOfStock ? "secondary" : "primary")} 
@@ -248,7 +278,7 @@ const ProductDetail = () => {
                     </Col>
                 </Row>
 
-                {/* REVIEWS SECTION */}
+                {/* --- REVIEWS SECTION --- */}
                 <div className="mt-5 pt-5 border-top">
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <h3 className="fw-bold mb-0">CUSTOMER REVIEWS ({productReviews.length})</h3>
@@ -307,7 +337,7 @@ const ProductDetail = () => {
                     )}
                 </div>
 
-                {/* RELATED PRODUCTS */}
+                {/* --- RELATED PRODUCTS SECTION --- */}
                 {relatedProducts.length > 0 && (
                     <div className="mt-5 pt-5 border-top">
                         <h3 className="fw-bold mb-4">YOU MIGHT ALSO LIKE</h3>
@@ -317,7 +347,7 @@ const ProductDetail = () => {
                     </div>
                 )}
 
-                {/* TOAST NOTIFICATION */}
+                {/* --- TOAST NOTIFICATION --- */}
                 <ToastContainer position="bottom-end" className="p-3 position-fixed" style={{zIndex: 9999}}>
                     <Toast onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide bg="dark">
                         <Toast.Header closeButton={false} className="d-flex justify-content-between bg-dark text-white border-0">
@@ -329,7 +359,7 @@ const ProductDetail = () => {
                     </Toast>
                 </ToastContainer>
 
-                {/* BUY NOW MODAL */}
+                {/* --- BUY NOW MODAL --- */}
                 <Modal show={showBuyModal} onHide={() => setShowBuyModal(false)} centered>
                     <Modal.Header closeButton className="border-0"><Modal.Title className="fw-bold">Select Quantity</Modal.Title></Modal.Header>
                     <Modal.Body className="text-center py-4">
@@ -355,7 +385,7 @@ const ProductDetail = () => {
                     </Modal.Footer>
                 </Modal>
 
-                {/* 💡 5. WRITE REVIEW MODAL */}
+                {/* --- WRITE REVIEW MODAL --- */}
                 <Modal show={showReviewModal} onHide={() => setShowReviewModal(false)} centered>
                     <Modal.Header closeButton className="border-0"><Modal.Title className="fw-bold">Write a Review</Modal.Title></Modal.Header>
                     <Modal.Body className="p-4">

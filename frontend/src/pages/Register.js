@@ -5,14 +5,24 @@ import { useAuth } from '../context/AuthContext';
 import { ArrowRight, ArrowLeft, Check, X, Chrome, Facebook, User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import './styles/Auth.css';
 
+/**
+ * Register Component
+ * * A multi-step wizard for user registration.
+ * * Features: Real-time password strength validation, step progression logic,
+ * * and form data aggregation before final submission.
+ */
 const Register = () => {
+    // --- HOOKS ---
     const { register } = useAuth();
     const navigate = useNavigate();
 
-    // 1. TRACK CURRENT STEP
+    // --- LOCAL STATE MANAGEMENT ---
+    
+    // 1. TRACK CURRENT STEP (1: Personal, 2: Contact, 3: Security)
     const [step, setStep] = useState(1); 
     const totalSteps = 3;
 
+    // Centralized state object for all input fields across steps
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -23,16 +33,19 @@ const Register = () => {
         confirmPassword: ''
     });
     
-    // UI States
+    // UI States: Password visibility, Loading spinner, and Error messages
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     
-    // Password Strength
+    // Password Strength Indicators
     const [passStrength, setPassStrength] = useState({
         length: false, uppercase: false, number: false, special: false
     });
 
+    // --- EFFECTS ---
+    
+    // Real-time Password Analysis: Updates strength indicators whenever password changes
     useEffect(() => {
         const { password } = formData;
         setPassStrength({
@@ -43,11 +56,14 @@ const Register = () => {
         });
     }, [formData.password]);
 
+    // --- HANDLERS ---
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     // --- VALIDATION LOGIC FOR STEPS ---
+    // Derived state booleans to enable/disable the "Next" button
     const isStep1Valid = formData.name && formData.dob && formData.gender;
     const isStep2Valid = formData.email && formData.phone;
     const isStrongPassword = Object.values(passStrength).every(Boolean);
@@ -55,22 +71,26 @@ const Register = () => {
     const isStep3Valid = isStrongPassword && passwordsMatch;
 
     // --- NAVIGATION HANDLERS ---
+    
+    // Advances to the next step if within bounds
     const handleNext = () => {
         if (step < totalSteps) setStep(step + 1);
     };
 
+    // Returns to the previous step
     const handleBack = () => {
         if (step > 1) setStep(step - 1);
     };
 
     // --- FINAL SUBMISSION ---
+    // Triggered only on the final step
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
 
         try {
-            // Send the accumulated formData to the backend
+            // Send the accumulated formData to the backend via AuthContext
             const result = await register(formData);
 
             if (result.success) {
@@ -85,6 +105,7 @@ const Register = () => {
         setLoading(false);
     };
 
+    // Helper Component for rendering password requirements checklist
     const ValidationItem = ({ fulfilled, text }) => (
         <div className={`d-flex align-items-center small mb-1 ${fulfilled ? 'text-success' : 'text-muted'}`}>
             {fulfilled ? <Check size={14} className="me-2" /> : <X size={14} className="me-2" />}
@@ -95,7 +116,9 @@ const Register = () => {
     return (
         <div className="auth-page">
             <Row className="g-0">
-                {/* LEFT: Editorial Image */}
+                
+                {/* --- LEFT COLUMN: EDITORIAL IMAGE --- */}
+                {/* Hidden on mobile, shows lifestyle image on desktop */}
                 <Col md={6} className="d-none d-md-block order-md-2">
                     <div 
                         className="auth-image-side"
@@ -108,7 +131,7 @@ const Register = () => {
                     </div>
                 </Col>
 
-                {/* RIGHT: Form */}
+                {/* --- RIGHT COLUMN: REGISTRATION FORM --- */}
                 <Col md={6} className="auth-form-side order-md-1">
                     <div className="auth-container">
                         <Link to="/" className="auth-brand">HAPPY CART</Link>
@@ -118,7 +141,7 @@ const Register = () => {
                             <p className="auth-subtitle">Let's get you set up in 3 easy steps.</p>
                         </div>
 
-                        {/* PROGRESS BAR */}
+                        {/* PROGRESS BAR INDICATOR */}
                         <div className="mb-4">
                             <ProgressBar now={(step / totalSteps) * 100} variant="dark" style={{height: '5px'}} />
                             <div className="d-flex justify-content-between mt-2 small text-muted fw-bold text-uppercase">
@@ -128,6 +151,7 @@ const Register = () => {
                             </div>
                         </div>
 
+                        {/* Error Alert */}
                         {error && <Alert variant="danger" className="rounded-3 border-0 shadow-sm mb-4">{error}</Alert>}
 
                         <Form onSubmit={handleSubmit}>
@@ -181,7 +205,7 @@ const Register = () => {
                                     </div>
                                 )}
 
-                                {/* --- STEP 3: SECURITY --- */}
+                                {/* --- STEP 3: SECURITY (Password) --- */}
                                 {step === 3 && (
                                     <div className="animate-fade-in">
                                         <div className="d-flex align-items-center mb-3 text-primary">
@@ -197,6 +221,7 @@ const Register = () => {
                                             </button>
                                         </div>
 
+                                        {/* Password Strength Checklist */}
                                         {formData.password && (
                                             <div className="mb-3 ps-2">
                                                 <ValidationItem fulfilled={passStrength.length} text="At least 8 characters" />
@@ -219,7 +244,7 @@ const Register = () => {
                                 )}
                             </div>
 
-                            {/* NAVIGATION BUTTONS */}
+                            {/* --- NAVIGATION BUTTONS (Back / Next / Submit) --- */}
                             <div className="d-flex gap-2 mb-4">
                                 {step > 1 && (
                                     <Button variant="light" className="rounded-pill px-4 fw-bold" onClick={handleBack}>
