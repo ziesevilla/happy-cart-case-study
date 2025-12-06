@@ -7,18 +7,30 @@ import { useReviews } from '../../context/ReviewContext';
 import { useOrders } from '../../context/OrderContext'; 
 import ReviewModal from '../ReviewModal'; 
 
+/**
+ * OrdersTab Component
+ * * Displays a paginated list of user orders with status tracking.
+ * * Functionality: View details, Cancel orders, Request returns, Write reviews.
+ * * Includes filtering, sorting, and modal workflows.
+ */
 const OrdersTab = ({ showNotification }) => {
+    // --- CONTEXT HOOKS ---
     const { user } = useAuth(); 
     const { orders: globalOrders, updateOrderStatus } = useOrders(); 
     
     // 💡 1. Destructure Review Helpers
+    // Used to check eligibility or manage review permissions
     const { canUserReview } = useReviews(); 
     
     const navigate = useNavigate();
     
     // 💡 2. Filter Orders Safe Check
+    // Filters the global order list to show only the current logged-in user's data
     const userOrders = globalOrders ? globalOrders.filter(order => order.email === user?.email) : [];
 
+    // --- LOCAL STATE MANAGEMENT ---
+    
+    // UI Selection States
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [sortOption, setSortOption] = useState('date-desc'); 
@@ -27,18 +39,23 @@ const OrdersTab = ({ showNotification }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5; 
 
-    // Modal States
+    // Modal Visibility States
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showReturnModal, setShowReturnModal] = useState(false);
+    
+    // Return Form Data State
     const [returnReason, setReturnReason] = useState('');
     const [returnDescription, setReturnDescription] = useState('');
     const [returnProof, setReturnProof] = useState(null);
-    const [selectedReturnItems, setSelectedReturnItems] = useState({});
+    const [selectedReturnItems, setSelectedReturnItems] = useState({}); // Map of {itemId: boolean}
 
+    // Review Modal State
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [reviewProduct, setReviewProduct] = useState(null);
 
-    // --- HELPERS ---
+    // --- VISUAL HELPERS ---
+
+    // Maps order status string to CSS class for badge coloring
     const getStatusClass = (status) => {
         switch(status) {
             case 'Delivered': return 'status-delivered';
@@ -49,6 +66,7 @@ const OrdersTab = ({ showNotification }) => {
         }
     };
 
+    // Maps status to a numeric step index (0-4) for the Timeline UI
     const getStatusStep = (status) => {
         switch(status) {
             case 'Placed': return 0;
@@ -61,6 +79,8 @@ const OrdersTab = ({ showNotification }) => {
         }
     };
 
+    // --- ACTION HANDLERS ---
+
     const handleReturnProofUpload = (e) => {
         const file = e.target.files[0];
         if (file) { setReturnProof(file.name); }
@@ -69,6 +89,7 @@ const OrdersTab = ({ showNotification }) => {
     const handleCancelClick = () => setShowCancelModal(true);
     
     // 💡 3. FIXED: Async Cancel Logic (Waits for DB)
+    // Updates status to 'Cancelled' via Context API
     const handleConfirmCancel = async () => {
         await updateOrderStatus(selectedOrder.id, 'Cancelled');
         
@@ -77,6 +98,7 @@ const OrdersTab = ({ showNotification }) => {
         showNotification("Order cancelled successfully", "secondary");
     };
 
+    // Resets form and opens Return Modal
     const handleOpenReturn = () => {
         setSelectedReturnItems({});
         setReturnReason('');
@@ -85,6 +107,7 @@ const OrdersTab = ({ showNotification }) => {
     };
 
     // 💡 4. FIXED: Async Return Logic
+    // Submits return request via Context API
     const handleSubmitReturn = async (e) => {
         e.preventDefault();
         await updateOrderStatus(selectedOrder.id, 'Return Requested');
@@ -93,6 +116,7 @@ const OrdersTab = ({ showNotification }) => {
         showNotification("Return request submitted!");
     };
 
+    // Toggles selection of items in the Return Modal list
     const toggleReturnItem = (itemId) => {
         setSelectedReturnItems(prev => ({
             ...prev,
@@ -101,12 +125,15 @@ const OrdersTab = ({ showNotification }) => {
     };
 
     // 💡 5. Open Review Modal
+    // Triggered when clicking 'Write a Review' on a specific item
     const handleReviewClick = (item) => {
         setReviewProduct(item);
         setShowReviewModal(true);
     };
 
-    // --- SORTING ---
+    // --- DATA PROCESSING (SORTING & PAGINATION) ---
+
+    // Sorts the userOrders array based on the selected dropdown option
     const sortedOrders = [...userOrders].sort((a, b) => {
         switch (sortOption) {
             case 'date-desc': return new Date(b.date || 0) - new Date(a.date || 0);
@@ -118,7 +145,7 @@ const OrdersTab = ({ showNotification }) => {
         }
     });
 
-    // --- PAGINATION ---
+    // Calculates slicing indices for pagination
     const indexOfLastOrder = currentPage * itemsPerPage;
     const indexOfFirstOrder = indexOfLastOrder - itemsPerPage;
     const currentOrders = sortedOrders.slice(indexOfFirstOrder, indexOfLastOrder);
@@ -131,10 +158,10 @@ const OrdersTab = ({ showNotification }) => {
     return (
         <div className="animate-fade-in">
             
-            {/* HEADER ROW */}
+            {/* --- HEADER: PAGINATION & SORT CONTROLS --- */}
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
                 
-                {/* LEFT: PAGINATION */}
+                {/* LEFT: PAGINATION COMPONENT */}
                 <div className="order-2 order-md-1">
                     {totalPages > 1 && (
                         <Pagination className="mb-0">
@@ -159,7 +186,7 @@ const OrdersTab = ({ showNotification }) => {
                     )}
                 </div>
 
-                {/* RIGHT: SORT CONTROLS */}
+                {/* RIGHT: SORT DROPDOWN */}
                 <div className="d-flex align-items-center gap-2 order-1 order-md-2 ms-auto">
                     <ArrowUpDown size={16} className="text-muted" />
                     <Form.Select 
@@ -169,7 +196,7 @@ const OrdersTab = ({ showNotification }) => {
                         value={sortOption}
                         onChange={(e) => {
                             setSortOption(e.target.value);
-                            setCurrentPage(1); 
+                            setCurrentPage(1); // Reset to first page on sort change
                         }}
                     >
                         <option value="date-desc">Date: Newest First</option>
@@ -181,7 +208,7 @@ const OrdersTab = ({ showNotification }) => {
                 </div>
             </div>
 
-            {/* ORDER LIST */}
+            {/* --- ORDER LIST RENDERING --- */}
             <div className="d-flex flex-column gap-3">
                 {currentOrders.length > 0 ? currentOrders.map((order, idx) => (
                     <div key={idx} className="order-card p-4 d-flex flex-column flex-md-row justify-content-between align-items-center">
@@ -203,6 +230,7 @@ const OrdersTab = ({ showNotification }) => {
                         </div>
                     </div>
                 )) : (
+                    /* Empty State */
                     <div className="empty-state text-center py-5">
                         <ShoppingBag size={48} className="mb-3 opacity-25" />
                         <h5>No orders yet</h5>
@@ -212,7 +240,7 @@ const OrdersTab = ({ showNotification }) => {
                 )}
             </div>
 
-            {/* ORDER DETAILS MODAL */}
+            {/* --- ORDER DETAILS MODAL --- */}
             <Modal show={showOrderModal} onHide={() => setShowOrderModal(false)} centered size="lg">
                 <Modal.Header className="border-0 pb-0">
                     <Modal.Title className="fw-bold">Order Details #{selectedOrder?.order_number || selectedOrder?.id}</Modal.Title>
@@ -221,11 +249,13 @@ const OrdersTab = ({ showNotification }) => {
                 <Modal.Body className="pt-2">
                     {selectedOrder && (
                         <>
-                            {/* TIMELINE */}
+                            {/* STATUS TIMELINE */}
                             <div className="timeline">
                                 {['Placed', 'Processing', 'Shipped', 'Delivered'].map((step, i) => {
                                     const currentStep = getStatusStep(selectedOrder.status);
                                     let statusClass = '';
+                                    
+                                    // Logic for coloring timeline steps
                                     if (selectedOrder.status === 'Cancelled') statusClass = '';
                                     else if (selectedOrder.status === 'Return Requested') statusClass = 'completed';
                                     else if (i < currentStep) statusClass = 'completed';
@@ -291,6 +321,7 @@ const OrdersTab = ({ showNotification }) => {
                                 })}
                             </div>
                             
+                            {/* Order Summary Footer */}
                             <div className="border-top pt-3 d-flex justify-content-between align-items-center">
                                 <div>
                                     {selectedOrder.status === 'Placed' && <Button variant="danger" size="sm" className="rounded-pill fw-bold" onClick={handleCancelClick}><XCircle size={16} className="me-2" /> Cancel Order</Button>}
@@ -305,7 +336,7 @@ const OrdersTab = ({ showNotification }) => {
                 </Modal.Body>
             </Modal>
 
-            {/* CANCEL MODAL */}
+            {/* --- CANCEL CONFIRMATION MODAL --- */}
             <Modal show={showCancelModal} onHide={() => setShowCancelModal(false)} centered size="sm">
                 <Modal.Body className="text-center p-4">
                     <div className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{width:'60px', height:'60px'}}><AlertTriangle size={24} className="text-danger" /></div>
@@ -318,7 +349,7 @@ const OrdersTab = ({ showNotification }) => {
                 </Modal.Body>
             </Modal>
             
-            {/* RETURN MODAL */}
+            {/* --- RETURN REQUEST MODAL --- */}
             <Modal show={showReturnModal} onHide={() => setShowReturnModal(false)} centered size="lg">
                 <Modal.Header closeButton className="border-0"><Modal.Title className="fw-bold">Request Return</Modal.Title></Modal.Header>
                 <Modal.Body className="px-4 pb-4">
@@ -345,7 +376,7 @@ const OrdersTab = ({ showNotification }) => {
                 </Modal.Body>
             </Modal>
 
-            {/* REVIEW MODAL */}
+            {/* --- REVIEW SUBMISSION MODAL --- */}
             {reviewProduct && (
                 <ReviewModal 
                     show={showReviewModal} 

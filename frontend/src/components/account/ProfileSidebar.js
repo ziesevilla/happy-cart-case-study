@@ -4,6 +4,12 @@ import { Settings, LogOut, Camera, User, Package, Save, DollarSign, Star, Award 
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios'; 
 
+/**
+ * ProfileSidebar Component
+ * * Displays the user's profile card, avatar, and account statistics.
+ * * Handles Profile Editing, including Image Uploads via FormData.
+ * * Manages Logout functionality.
+ */
 const ProfileSidebar = ({ 
     showNotification, 
     orderCount = 0, 
@@ -11,8 +17,12 @@ const ProfileSidebar = ({
     reviewCount = 0, 
     memberTier = 'Bronze' 
 }) => {
+    // --- CONTEXT HOOKS ---
     const { user, login, logout } = useAuth();
     
+    // --- LOCAL STATE MANAGEMENT ---
+    
+    // Image Handling: 'profileImage' for UI preview, 'selectedFile' for API upload
     const [profileImage, setProfileImage] = useState(null); // Preview URL
     const [selectedFile, setSelectedFile] = useState(null); // 💡 NEW: Actual File Object
     const [loading, setLoading] = useState(false);
@@ -22,6 +32,7 @@ const ProfileSidebar = ({
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [showUpdateConfirmModal, setShowUpdateConfirmModal] = useState(false);
     
+    // Form Data State for Editing
     const [profileData, setProfileData] = useState({ 
         name: '', 
         email: '', 
@@ -30,6 +41,12 @@ const ProfileSidebar = ({
         gender: '' 
     });
 
+    // --- HANDLERS ---
+
+    /**
+     * Handles file selection from the input.
+     * Generates a local preview URL immediately for better UX.
+     */
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -49,6 +66,10 @@ const ProfileSidebar = ({
         }
     };
 
+    /**
+     * Opens the Edit Modal and populates it with current user data.
+     * Prevents the user from seeing empty fields when they start editing.
+     */
     const handleOpenEdit = () => {
         setProfileData({ 
             name: user.name || '', 
@@ -60,12 +81,17 @@ const ProfileSidebar = ({
         setShowProfileModal(true);
     };
 
+    // Triggers the confirmation modal before API submission
     const handleSaveProfile = (e) => {
         e.preventDefault();
         setShowUpdateConfirmModal(true); 
     };
 
     // 💡 UPDATED: Send Data + File
+    /**
+     * Submits the updated profile data to the backend.
+     * Uses FormData to handle multipart/form-data for file uploads.
+     */
     const confirmUpdate = async () => {
         setLoading(true);
         try {
@@ -77,6 +103,7 @@ const ProfileSidebar = ({
             formData.append('gender', profileData.gender || '');
             
             // Laravel method spoofing for PUT requests with files
+            // (Standard HTML forms/multipart often require POST with _method field)
             formData.append('_method', 'PUT'); 
 
             if (selectedFile) {
@@ -90,7 +117,7 @@ const ProfileSidebar = ({
                 },
             });
 
-            // Update React Context with fresh user data
+            // Update React Context with fresh user data so UI reflects changes immediately
             login(response.data); 
 
             setShowUpdateConfirmModal(false);
@@ -114,6 +141,7 @@ const ProfileSidebar = ({
     const getAvatarUrl = () => {
         if (profileImage) return profileImage; // Local Preview
         if (user.profile_image) {
+            // Checks if the URL is absolute or relative (useful for Docker/Localhost environments)
             return user.profile_image.startsWith('http') 
                 ? user.profile_image 
                 : `http://localhost:80${user.profile_image}`; // Docker URL
@@ -123,16 +151,19 @@ const ProfileSidebar = ({
 
     return (
         <>
+            {/* --- MAIN PROFILE CARD --- */}
             <Card className="profile-card text-center mb-4">
                 <div className="profile-header"></div>
                 <div className="profile-avatar-container">
                     <div className="profile-avatar">
+                        {/* Avatar Render Logic: Preview -> Database Image -> Initial Fallback */}
                         {getAvatarUrl() ? (
                             <img src={getAvatarUrl()} alt="Profile" />
                         ) : (
                             user.name.charAt(0).toUpperCase()
                         )}
                     </div>
+                    {/* Hidden File Input triggered by Label */}
                     <label className="profile-upload-overlay">
                         <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
                         <Camera size={24} />
@@ -153,6 +184,7 @@ const ProfileSidebar = ({
                 </Card.Body>
             </Card>
 
+            {/* --- STATS SUMMARY CARD --- */}
             <Card className="border-0 shadow-sm rounded-4 p-4">
                  <h6 className="fw-bold text-muted mb-3 text-uppercase small">Account Details</h6>
                  

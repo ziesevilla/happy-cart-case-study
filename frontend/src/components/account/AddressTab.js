@@ -4,31 +4,46 @@ import { Plus, Home, Briefcase, MapPin, CheckCircle, Trash2, Save } from 'lucide
 import { useAuth } from '../../context/AuthContext';
 import { useAddress } from '../../context/AddressContext'; // 💡 Import Address Context
 
+/**
+ * AddressTab Component
+ * * Manages the user's saved addresses.
+ * * Allows users to View, Add, Edit, Delete, and Set Default addresses.
+ * * Uses local state for modal management and form handling.
+ */
 const AddressTab = () => {
+    // --- CONTEXT HOOKS ---
     const { user } = useAuth(); 
     const { getUserAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } = useAddress();
 
-    // --- 🔍 DEBUGGING START ---
-    console.log("Logged In User Object:", JSON.stringify(user, null, 2));
-    console.log("User ID:", user ? user.id : "No User ID");
-    // --- 🔍 DEBUGGING END ---
-
     // 💡 Fetch addresses ONLY for this user
+    // Filters the global address list to find items belonging to the current user
     const myAddresses = user ? getUserAddresses(user.id) : [];
     
     console.log("Addresses Found:", myAddresses);
 
+    // --- LOCAL STATE MANAGEMENT ---
+
+    // Modal Visibility States
     const [showFormModal, setShowFormModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showUpdateConfirmModal, setShowUpdateConfirmModal] = useState(false);
+
+    // Edit & Selection States
     const [isEditing, setIsEditing] = useState(false);
     const [currentId, setCurrentId] = useState(null);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [addressToDelete, setAddressToDelete] = useState(null);
-    const [showUpdateConfirmModal, setShowUpdateConfirmModal] = useState(false);
+    
+    // Form Handling States
     const [isCustomLabel, setIsCustomLabel] = useState(false);
-
     const initialFormState = { label: 'Home', firstName: '', lastName: '', street: '', city: '', zip: '', phone: '' };
     const [formData, setFormData] = useState(initialFormState);
 
+    // --- MODAL HANDLERS ---
+
+    /**
+     * Opens the modal in "Add Mode".
+     * Resets the form data to initial empty state.
+     */
     const openAddModal = () => {
         setIsEditing(false);
         setFormData(initialFormState);
@@ -36,6 +51,10 @@ const AddressTab = () => {
         setShowFormModal(true);
     };
 
+    /**
+     * Opens the modal in "Edit Mode".
+     * Populates the form with the selected address data.
+     */
     const openEditModal = (address) => {
         setIsEditing(true);
         setCurrentId(address.id);
@@ -49,6 +68,7 @@ const AddressTab = () => {
             phone: address.phone
         });
 
+        // Determine if the label is one of the presets or a custom string
         if (!['Home', 'Office'].includes(address.label)) {
             setIsCustomLabel(true);
         } else {
@@ -57,9 +77,12 @@ const AddressTab = () => {
         setShowFormModal(true);
     };
 
+    // --- FORM SUBMISSION HANDLERS ---
+
     const handleFormSubmit = (e) => {
         e.preventDefault();
         if (isEditing) {
+            // Trigger confirmation modal before updating
             setShowUpdateConfirmModal(true);
         } else {
             // 💡 Pass User ID when adding
@@ -68,27 +91,34 @@ const AddressTab = () => {
         }
     };
 
+    // Finalizes the update after user confirmation
     const confirmUpdate = () => {
         updateAddress(currentId, formData);
         setShowUpdateConfirmModal(false);
         setShowFormModal(false);
     };
 
+    // --- DELETE HANDLERS ---
+
     const handleDeleteClick = (id) => {
         setAddressToDelete(id);
         setShowDeleteModal(true);
     };
 
+    // Finalizes deletion after user confirmation
     const confirmDelete = () => {
         if (addressToDelete) deleteAddress(addressToDelete);
         setShowDeleteModal(false);
         setAddressToDelete(null);
     };
 
+    // --- UTILITY HANDLERS ---
+
     const handleSetDefault = (id) => {
         if (user) setDefaultAddress(user.id, id); // 💡 Pass User ID
     };
 
+    // Toggles between preset dropdown and custom text input for the Label
     const handleLabelSelect = (e) => {
         const val = e.target.value;
         if (val === 'Custom') {
@@ -100,6 +130,7 @@ const AddressTab = () => {
         }
     };
 
+    // Returns the appropriate visual icon based on the address label
     const getLabelIcon = (label) => {
         if (label === 'Home') return <Home size={18}/>;
         if (label === 'Office') return <Briefcase size={18}/>;
@@ -108,18 +139,21 @@ const AddressTab = () => {
 
     return (
         <div className="animate-fade-in">
+            {/* Header Section */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <Button variant="primary" size="sm" className="rounded-pill" onClick={openAddModal}>
                     <Plus size={16} className="me-2"/> Add New
                 </Button>
             </div>
             
+            {/* Address Grid Render */}
             {myAddresses.length > 0 ? (
                 <Row className="g-3">
                     {myAddresses.map(addr => (
                         <Col md={6} key={addr.id}>
                             <Card className={`h-100 border-0 shadow-sm rounded-4 p-2 ${addr.default ? 'border border-primary bg-primary-subtle' : ''}`}>
                                 <Card.Body>
+                                    {/* Card Header: Icon, Label, and Default Badge */}
                                     <div className="d-flex justify-content-between align-items-start mb-3">
                                         <div className="d-flex align-items-center gap-2 text-primary">
                                             {getLabelIcon(addr.label)}
@@ -136,12 +170,15 @@ const AddressTab = () => {
                                         )}
                                     </div>
 
+                                    {/* Address Details */}
                                     <h6 className="fw-bold mb-1">{addr.firstName} {addr.lastName}</h6>
                                     <p className="text-muted small mb-3">
                                         {addr.street}<br/>
                                         {addr.city}, {addr.zip}<br/>
                                         {addr.phone}
                                     </p>
+                                    
+                                    {/* Action Buttons */}
                                     <div className="d-flex gap-2">
                                         <Button variant="outline-secondary" size="sm" className="rounded-pill px-3" onClick={() => openEditModal(addr)}>Edit</Button>
                                         {!addr.default && (
@@ -154,13 +191,16 @@ const AddressTab = () => {
                     ))}
                 </Row>
             ) : (
+                /* Empty State */
                 <div className="text-center p-5 border rounded-4 text-muted">
                     <Home size={48} className="mb-3 opacity-25"/>
                     <p>No saved addresses yet.</p>
                 </div>
             )}
 
-            {/* FORM MODAL */}
+            {/* --- MODALS SECTION --- */}
+
+            {/* 1. FORM MODAL (Add / Edit) */}
             <Modal show={showFormModal} onHide={() => setShowFormModal(false)} centered>
                 <Modal.Header closeButton className="border-0">
                     <Modal.Title className="fw-bold">{isEditing ? 'Edit Address' : 'Add New Address'}</Modal.Title>
@@ -172,11 +212,13 @@ const AddressTab = () => {
                                 <Form.Group className="mb-3">
                                     <Form.Label>Address Label</Form.Label>
                                     <div className="d-flex gap-2">
+                                        {/* Dropdown for Presets */}
                                         <Form.Select value={isCustomLabel ? 'Custom' : formData.label} onChange={handleLabelSelect} className="rounded-pill" style={{ width: isCustomLabel ? '40%' : '100%' }}>
                                             <option value="Home">Home</option>
                                             <option value="Office">Office</option>
                                             <option value="Custom">Custom...</option>
                                         </Form.Select>
+                                        {/* Conditional Input for Custom Label */}
                                         {isCustomLabel && (
                                             <Form.Control placeholder="E.g. Mom's House" value={formData.label} onChange={(e) => setFormData({...formData, label: e.target.value})} className="rounded-pill animate-fade-in" required autoFocus />
                                         )}
@@ -195,7 +237,7 @@ const AddressTab = () => {
                 </Modal.Body>
             </Modal>
 
-            {/* DELETE MODAL */}
+            {/* 2. DELETE CONFIRMATION MODAL */}
             <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered size="sm">
                 <Modal.Body className="text-center p-4">
                     <div className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{width:'60px', height:'60px'}}><Trash2 size={24} className="text-danger" /></div>
@@ -208,7 +250,7 @@ const AddressTab = () => {
                 </Modal.Body>
             </Modal>
 
-            {/* UPDATE MODAL */}
+            {/* 3. UPDATE CONFIRMATION MODAL */}
             <Modal show={showUpdateConfirmModal} onHide={() => setShowUpdateConfirmModal(false)} centered size="sm">
                 <Modal.Body className="text-center p-4">
                     <div className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{width:'60px', height:'60px'}}><Save size={24} className="text-primary" /></div>
