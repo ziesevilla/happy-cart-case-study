@@ -5,13 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Class Address
+ * * Represents a user's shipping or billing address.
+ * * Handles formatting and default status logic.
+ */
 class Address extends Model
 {
     use HasFactory;
 
     /**
      * The attributes that are mass assignable.
-     * This allows you to use Address::create($data) safely.
+     * * Security: This protects your database. Even if a hacker sends a 'user_id'
+     * * or 'id' in the request, Laravel will only save the fields listed here.
+     *
+     * @var array<int, string>
      */
     protected $fillable = [
         'user_id',
@@ -22,19 +30,26 @@ class Address extends Model
         'city',
         'zip',
         'phone',
-        'is_default'    // Boolean (0 or 1)
+        'is_default'    // Stored as TINYINT (0/1) in DB
     ];
 
     /**
      * The attributes that should be cast to native types.
-     * This ensures 'is_default' comes back as true/false, not 1/0.
+     * * 'boolean': Converts database 0/1 to PHP true/false automatically.
+     * * This ensures the frontend receives a real boolean JSON value.
+     *
+     * @var array<string, string>
      */
     protected $casts = [
         'is_default' => 'boolean',
     ];
 
+    // ================= RELATIONSHIPS =================
+
     /**
-     * Relationship: An address belongs to one User.
+     * Get the user that owns the address.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function user()
     {
