@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import api from '../api/axios'; // 💡 Import the bridge
+import api from '../api/axios';
 
 const ProductContext = createContext();
 
@@ -7,7 +7,10 @@ export const ProductProvider = ({ children }) => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // 1. Fetch Products from Database
+    /**
+     * 1. Fetch Products
+     * * Loads the initial catalog from the database.
+     */
     const fetchProducts = async () => {
         setLoading(true);
         try {
@@ -20,25 +23,32 @@ export const ProductProvider = ({ children }) => {
         setLoading(false);
     };
 
-    // Load data when the app starts
+    // Load data once when the app starts
     useEffect(() => {
         fetchProducts();
     }, []);
 
-    // 2. Add Product (Handles JSON or FormData)
+    /**
+     * 2. Add Product (Admin)
+     * * Handles both text-only creation and File Uploads.
+     * * @param {FormData|object} productData 
+     */
     const addProduct = async (productData) => {
         try {
             let response;
-            // Check if we are sending a File (FormData)
+            
+            // Check if we are uploading an image (FormData)
             if (productData instanceof FormData) {
                 response = await api.post('/products', productData, {
+                    // Critical: Tell the server a file is coming
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
             } else {
-                // Standard JSON (for text-only updates)
+                // Standard JSON (Text only)
                 response = await api.post('/products', productData);
             }
             
+            // UI Update: Add new item to the top of the list
             setProducts(prev => [response.data, ...prev]);
             return { success: true };
         } catch (error) {
@@ -47,22 +57,30 @@ export const ProductProvider = ({ children }) => {
         }
     };
 
-    // 3. Update Product (Handles File Uploads via Spoofing)
+    /**
+     * 3. Update Product (The Tricky Part)
+     * * Uses "Method Spoofing" to handle file updates in PHP/Laravel.
+     */
     const updateProduct = async (id, updatedData) => {
         try {
             let response;
             
             if (updatedData instanceof FormData) {
-                // 💡 METHOD SPOOFING: Laravel requires POST for file updates
+                // --- METHOD SPOOFING EXPLAINED ---
+                // PHP has a known limitation where it cannot read files from a 'PUT' request.
+                // WORKAROUND: We send a 'POST' request but add a hidden field '_method' = 'PUT'.
+                // Laravel sees this field and treats the request exactly like a real PUT.
                 updatedData.append('_method', 'PUT'); 
+                
                 response = await api.post(`/products/${id}`, updatedData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
             } else {
-                // Standard JSON Update
+                // Standard JSON Update (No files involved)
                 response = await api.put(`/products/${id}`, updatedData);
             }
             
+            // UI Update: Find the item by ID and replace it with the new server response
             setProducts(prev => prev.map(p => p.id === id ? response.data : p));
             return { success: true };
         } catch (error) {
@@ -71,13 +89,14 @@ export const ProductProvider = ({ children }) => {
         }
     };
 
-    // 4. Delete Product (Admin)
+    /**
+     * 4. Delete Product (Admin)
+     */
     const deleteProduct = async (id) => {
         try {
-            // DELETE http://localhost/api/products/{id}
             await api.delete(`/products/${id}`);
             
-            // Remove from local state
+            // UI Update: Remove the item from the local array
             setProducts(prev => prev.filter(p => p.id !== id));
             return { success: true };
         } catch (error) {
@@ -86,9 +105,11 @@ export const ProductProvider = ({ children }) => {
         }
     };
 
-    // 5. Stock Management (For Checkout)
-    // Note: In a real app, the backend handles this during checkout. 
-    // We will simulate the UI update for now.
+    /**
+     * 5. Stock Adjustment (Visual Only)
+     * * This runs after a successful checkout to update the numbers on the screen
+     * * without needing to re-fetch the entire database.
+     */
     const updateStockAfterPurchase = (purchasedItems) => {
         setProducts(prevProducts => {
             return prevProducts.map(product => {
@@ -102,9 +123,8 @@ export const ProductProvider = ({ children }) => {
         });
     };
 
-    // Reset Data (Not needed for DB version, but kept for compatibility)
     const resetData = () => {
-        fetchProducts(); // Just re-fetch from DB
+        fetchProducts(); 
     };
 
     return (

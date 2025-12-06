@@ -1,32 +1,45 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import api from '../api/axios'; // Import the bridge
-import { useAuth } from './AuthContext'; // Import Auth to track login state
+import api from '../api/axios'; 
+import { useAuth } from './AuthContext'; 
 
+// Initialize Context
 const UserContext = createContext();
 
+/**
+ * UserProvider Component (Admin Only)
+ * * Manages the list of ALL registered users for the Admin Dashboard.
+ * * Handles fetching, pagination extraction, and account suspension logic.
+ */
 export const UserProvider = ({ children }) => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     
-    // Get the current user to know WHEN to fetch
+    // dependency: We need the 'currentUser' from AuthContext to know 
+    // if we are logged in (and if we are an Admin).
     const { user: currentUser } = useAuth(); 
 
-    // Fetch users from Database
+    /**
+     * Fetch all users from the database.
+     */
     const fetchUsers = async () => {
         setLoading(true);
         try {
+            // GET /api/users
             const response = await api.get('/users');
             
-            // 💡 FIX: Laravel Pagination puts the array inside '.data'
-            // Check if response.data is an array (old way) or object (new way)
+            // 💡 LARAVEL PAGINATION HANDLING
+            // If the backend uses 'User::all()', it returns a simple Array.
+            // If the backend uses 'User::paginate(10)', it returns an Object with a 'data' property.
+            // This check ensures our frontend works with BOTH approaches.
             if (Array.isArray(response.data)) {
                 setUsers(response.data);
             } else {
-                setUsers(response.data.data); // Extract array from paginator
+                setUsers(response.data.data); // Extract array from the 'data' key
             }
             
         } catch (error) {
             console.error("Error fetching users:", error);
+            // Security: If the session expired (401), wipe the data immediately.
             if (error.response?.status === 401) {
                 setUsers([]);
             }
@@ -34,29 +47,37 @@ export const UserProvider = ({ children }) => {
         setLoading(false);
     };
 
-    // Effect: Fetch when user logs in or token exists
+    /**
+     * Synchronization Effect
+     * * Only attempts to fetch data if a user is actually logged in.
+     */
     useEffect(() => {
         const token = localStorage.getItem('AUTH_TOKEN');
         
-        // Only fetch if we have a token AND we are logged in
         if (token && currentUser) {
             fetchUsers();
         } else {
-            setUsers([]); // Clear list if logged out
+            setUsers([]); // Clear sensitive data on logout
             setLoading(false);
         }
-    }, [currentUser]); // 👈 Re-run when currentUser changes
+    }, [currentUser]); 
 
-    // Update Status (Suspend/Activate)
+    /**
+     * Update User Status (e.g., Suspend/Ban a user).
+     * * Uses Optimistic UI to make the Admin panel feel snappy.
+     */
     const updateUserStatus = async (id, newStatus) => {
-        // Optimistic UI Update
+        // 1. Optimistic Update
+        // Update the screen immediately before waiting for the server
         setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus } : u));
 
-        // API Call to save it
+        // 2. API Call
         try {
             await api.put(`/users/${id}`, { status: newStatus });
         } catch (error) {
             console.error("Failed to update status");
+            // Optional: You could revert the change here if the API fails
+            fetchUsers(); 
         }
     };
 
