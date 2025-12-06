@@ -9,49 +9,80 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\OrderController;
 
-// --- PUBLIC ROUTES (No Login Required) ---
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| is assigned the "api" middleware group.
+|
+*/
+
+// ========================================================================
+// 1. PUBLIC ROUTES (No Login Required)
+// ========================================================================
+// These endpoints allow guests to browse the shop and sign up.
+
+// Authentication
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::get('/reviews/{productId}', [ReviewController::class, 'index']);
 
-// Shop Routes (Guests can view products)
+// Catalog (Read-Only)
+// Guests must be able to view products and reviews to make a buying decision.
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::get('/reviews/{productId}', [ReviewController::class, 'index']);
 
-// --- PROTECTED ROUTES (Requires Login) ---
+
+// ========================================================================
+// 2. PROTECTED ROUTES (Requires Bearer Token)
+// ========================================================================
+// All routes inside this group require a valid Sanctum token in the header.
+// Header format: "Authorization: Bearer <your-token-here>"
+
 Route::middleware('auth:sanctum')->group(function () {
     
-    // 1. Authentication & Profile
+    // --- User Profile & Auth ---
     Route::post('/logout', [AuthController::class, 'logout']);
     
-    
+    // Simple closure to get the currently logged-in user's data
     Route::get('/user', function (Request $request) {
-        return $request->user(); // Get current user info
+        return $request->user(); 
     });
 
     Route::put('/user/profile', [UserController::class, 'updateProfile']);
 
-    // 2. Admin User Management
-    Route::get('/users', [UserController::class, 'index']); // List all users
-    Route::put('/users/{id}', [UserController::class, 'update']); // Suspend/Activate user
-
-    // 3. Address Book
+    // --- Address Book (User Specific) ---
     Route::get('/addresses', [AddressController::class, 'index']);
     Route::post('/addresses', [AddressController::class, 'store']);
     Route::delete('/addresses/{id}', [AddressController::class, 'destroy']);
 
-    // 4. Product Management (Admin Only)
-    // 💡 These routes handle Creating, Updating, and Deleting products
+    // --- Shopping Cart & Orders ---
+    Route::get('/orders', [OrderController::class, 'index']);      // View History
+    Route::post('/orders', [OrderController::class, 'store']);     // Checkout Process
+    Route::put('/orders/{id}/cancel', [OrderController::class, 'cancel']); // User Cancel
+
+    // ====================================================================
+    // 3. ADMIN ROUTES
+    // ====================================================================
+    // Note: Currently, these are protected by 'auth', but the specific logic 
+    // to check for 'Admin' role is handled inside the Controllers.
+    // Ideally, you would create a separate middleware alias (e.g., 'isAdmin').
+
+    // User Management
+    Route::get('/users', [UserController::class, 'index']);       // List all users
+    Route::put('/users/{id}', [UserController::class, 'update']); // Suspend/Ban users
+
+    // Product Inventory Management
     Route::post('/products', [ProductController::class, 'store']);
     Route::put('/products/{id}', [ProductController::class, 'update']);
     Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
-    // 5. Review Management
+    // Order Management (Fulfillment)
+    Route::put('/orders/{id}/status', [OrderController::class, 'updateStatus']); // e.g. "Shipped"
+    
+    // Reviews
     Route::post('/reviews', [ReviewController::class, 'store']);
-
-    // 6. Orders Management
-    Route::get('/orders', [OrderController::class, 'index']);     // History
-    Route::post('/orders', [OrderController::class, 'store']);    // Checkout
-    Route::put('/orders/{id}/cancel', [OrderController::class, 'cancel']); // Cancel
-    Route::put('/orders/{id}/status', [OrderController::class, 'updateStatus']);
 });
