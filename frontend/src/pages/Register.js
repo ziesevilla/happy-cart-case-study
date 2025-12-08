@@ -217,7 +217,7 @@ const Register = () => {
                                                 <Form.Control type={showPassword ? "text" : "password"} name="password" className="auth-input rounded-pill pe-5" placeholder="Password" value={formData.password} onChange={handleChange} autoFocus />
                                             </FloatingLabel>
                                             <button type="button" className="btn border-0 p-0 position-absolute top-50 end-0 translate-middle-y me-3 text-muted" onClick={() => setShowPassword(!showPassword)} style={{ zIndex: 5 }}>
-                                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                                {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                                             </button>
                                         </div>
 
