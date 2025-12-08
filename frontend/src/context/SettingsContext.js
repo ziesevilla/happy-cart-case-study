@@ -1,149 +1,190 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import api from '../api/axios'; // <--- IMPORT YOUR CONFIGURED AXIOS INSTANCE
 
 // Initialize Context
 const SettingsContext = createContext();
 
-/**
- * SettingsProvider Component
- * * Acts as the centralized "Control Panel" for the application.
- * * Manages Categories, Global Toggles (Maintenance Mode), and Financial Configs.
- * * Uses LocalStorage to persist Admin preferences across browser sessions.
- */
 export const SettingsProvider = ({ children }) => {
     
     // =================================================================
-    // 1. STATE: CATEGORIES
+    // 1. STATE INITIALIZATION
     // =================================================================
-    // We use Lazy Initialization (passing a function to useState) so we don't 
-    // parse JSON from LocalStorage on every single render.
-    const [categories, setCategories] = useState(() => {
-        try {
-            const saved = localStorage.getItem('happyCart_categories');
-            return saved ? JSON.parse(saved) : ['Clothing', 'Shoes', 'Accessories'];
-        } catch (error) { 
-            return ['Clothing', 'Shoes', 'Accessories']; 
-        }
+    const [loading, setLoading] = useState(true);
+
+    // Default categories to prevent UI flicker before DB loads
+    const [categories, setCategories] = useState(['Clothing', 'Shoes', 'Accessories']);
+
+    const [settings, setSettings] = useState({
+        maintenanceMode: false,
+        allowRegistration: true,
+        enableReviews: true
     });
 
-    // =================================================================
-    // 2. STATE: SITE CONFIG (Feature Flags)
-    // =================================================================
-    // These booleans control major features of the app.
-    const [settings, setSettings] = useState(() => {
-        try {
-            const saved = localStorage.getItem('happyCart_config');
-            return saved ? JSON.parse(saved) : {
-                maintenanceMode: false,
-                allowRegistration: true,
-                enableReviews: true
-            };
-        } catch (error) {
-            return { maintenanceMode: false, allowRegistration: true, enableReviews: true };
-        }
-    });
-
-    // =================================================================
-    // 3. STATE: STORE INFORMATION (Financials)
-    // =================================================================
-    // Centralized constants for calculations in the Cart/Checkout.
-    const DEFAULT_STORE_INFO = {
+    const [storeInfo, setStoreInfo] = useState({
         name: 'HappyCart',
         email: 'support@happycart.com',
         currency: 'PHP',
         shippingFee: 150,
         freeShippingThreshold: 5000,
-        taxRate: 12 // Percentage
-    };
-
-    const [storeInfo, setStoreInfo] = useState(() => {
-        try {
-            const saved = localStorage.getItem('happyCart_storeInfo');
-            return saved ? JSON.parse(saved) : DEFAULT_STORE_INFO;
-        } catch (error) {
-            return DEFAULT_STORE_INFO;
-        }
+        taxRate: 12
     });
 
     // =================================================================
-    // 4. PERSISTENCE EFFECTS
+    // 2. HELPER: SAVE TO BACKEND
     // =================================================================
-    // Whenever any state changes, save it immediately to LocalStorage.
-    
-    useEffect(() => {
-        localStorage.setItem('happyCart_categories', JSON.stringify(categories));
-    }, [categories]);
-
-    useEffect(() => {
-        localStorage.setItem('happyCart_config', JSON.stringify(settings));
-    }, [settings]);
-
-    useEffect(() => {
-        localStorage.setItem('happyCart_storeInfo', JSON.stringify(storeInfo));
-    }, [storeInfo]);
+    const saveToBackend = async (dataToUpdate) => {
+        try {
+            // WE USE 'api' HERE. It automatically handles the Base URL and the Token.
+            await api.post('/settings', dataToUpdate);
+            console.log("Settings saved:", dataToUpdate);
+        } catch (error) {
+            console.error("Failed to save settings to backend:", error);
+            // Optional: Revert state if save fails (Advanced)
+        }
+    };
 
     // =================================================================
-    // 5. ACTIONS
+    // 3. FETCH DATA ON LOAD
+    // =================================================================
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                // Use the configured API instance
+                const response = await api.get('/settings');
+                const dbData = response.data;
+
+                // 1. Update Toggles
+                setSettings({
+                    maintenanceMode: dbData.maintenanceMode ?? false,
+                    allowRegistration: dbData.allowRegistration ?? true,
+                    enableReviews: dbData.enableReviews ?? true
+                });
+
+                // 2. Update Financials
+                setStoreInfo(prev => ({
+                    ...prev, 
+                    ...dbData 
+                }));
+
+                // 3. Update Categories (WITH ROBUST CHECK)
+                // If DB has categories, use them. If empty/null, keep the defaults.
+                if (dbData.categories && Array.isArray(dbData.categories) && dbData.categories.length > 0) {
+                    setCategories(dbData.categories);
+                } else {
+                    // Fallback to ensure Navbar is never empty
+                    setCategories(['Clothing', 'Shoes', 'Accessories']);
+                }
+
+            } catch (error) {
+                console.error("Could not load settings from server:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchSettings();
+    }, []);
+
+    // =================================================================
+    // 4. ACTIONS
     // =================================================================
 
-    /**
-     * Add a new category (Prevent duplicates).
-     */
     const addCategory = (newCat) => {
         if (!categories.includes(newCat)) {
-            setCategories([...categories, newCat]);
+            const updatedCats = [...categories, newCat];
+            setCategories(updatedCats);
+            // Send the WHOLE updated array to backend
+            saveToBackend({ categories: updatedCats }); 
             return true;
         }
         return false; 
     };
 
-    /**
-     * Delete a category.
-     */
-    const deleteCategory = (catToDelete) => {
-        setCategories(categories.filter(cat => cat !== catToDelete));
+    const deleteCategory = async (catToDelete) => {
+        try {
+            // 1. Attempt to delete on the server
+            await api.post('/settings/categories/delete', { category: catToDelete });
+            
+            // 2. If successful, update local state
+            const updatedCats = categories.filter(cat => cat !== catToDelete);
+            setCategories(updatedCats);
+            
+            return { success: true, message: 'Category deleted successfully.' };
+
+        } catch (error) {
+            // 3. Handle the restriction error
+            const msg = error.response?.data?.message || "Failed to delete category.";
+            console.error("Delete failed:", msg);
+            return { success: false, message: msg };
+        }
     };
 
-    /**
-     * Toggle a boolean setting dynamically.
-     * * Usage: toggleSetting('maintenanceMode')
-     * * This prevents us from writing a separate function for every single switch.
-     */
     const toggleSetting = (settingKey) => {
-        setSettings(prev => ({
-            ...prev,
-            // Dynamic Key Access: Flip the value of the specific key passed in.
-            [settingKey]: !prev[settingKey]
-        }));
+        setSettings(prev => {
+            const newValue = !prev[settingKey];
+            
+            // 1. Optimistic Update (Update UI immediately)
+            const newState = { ...prev, [settingKey]: newValue };
+            
+            // 2. Send Background Request
+            saveToBackend({ [settingKey]: newValue });
+            
+            return newState;
+        });
     };
 
-    /**
-     * Update Store Financials.
-     * * Uses the Spread Operator to merge new data with existing data.
-     * * Example: updateStoreInfo({ shippingFee: 200 }) -> Only updates shipping fee.
-     */
     const updateStoreInfo = (newInfo) => {
-        setStoreInfo(prev => ({
-            ...prev,
-            ...newInfo
-        }));
+        setStoreInfo(prev => {
+            const updatedInfo = { ...prev, ...newInfo };
+            saveToBackend(updatedInfo); 
+            return updatedInfo;
+        });
+    };
+
+    const resetSettings = () => {
+        const defaults = {
+            maintenanceMode: false,
+            allowRegistration: true,
+            enableReviews: true,
+            name: 'HappyCart',
+            email: 'support@happycart.com',
+            currency: 'PHP',
+            shippingFee: 150,
+            freeShippingThreshold: 5000,
+            taxRate: 12,
+            categories: ['Clothing', 'Shoes', 'Accessories']
+        };
+
+        // Reset State
+        setSettings({ maintenanceMode: false, allowRegistration: true, enableReviews: true });
+        setStoreInfo({ ...defaults }); 
+        setCategories(defaults.categories);
+
+        // Reset Database
+        saveToBackend(defaults);
     };
 
     /**
-     * Factory Reset.
-     * * Wipes LocalStorage and reverts state to hardcoded defaults.
+     * Perform Factory Reset.
+     * Wipes data and reloads the page.
      */
-    const resetSettings = () => {
-        setCategories(['Clothing', 'Shoes', 'Accessories']);
-        setSettings({ maintenanceMode: false, allowRegistration: true, enableReviews: true });
-        setStoreInfo(DEFAULT_STORE_INFO);
-        
-        localStorage.removeItem('happyCart_categories');
-        localStorage.removeItem('happyCart_config');
-        localStorage.removeItem('happyCart_storeInfo');
+    const factoryReset = async () => {
+        try {
+            await api.post('/system/factory-reset');
+            
+            // Success! Force reload the page to clear all Client State.
+            // This is safer than trying to reset every Context manually.
+            window.location.reload(); 
+            return true;
+        } catch (error) {
+            console.error("Factory Reset Failed:", error);
+            return false;
+        }
     };
 
     return (
         <SettingsContext.Provider value={{ 
+            loading, 
             categories, 
             addCategory, 
             deleteCategory, 
@@ -154,7 +195,9 @@ export const SettingsProvider = ({ children }) => {
             storeInfo,        
             updateStoreInfo,
 
-            resetSettings
+            resetSettings,
+
+            factoryReset
         }}>
             {children}
         </SettingsContext.Provider>
