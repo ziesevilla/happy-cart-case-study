@@ -5,6 +5,7 @@ import { Package, Check, CheckCircle, ShoppingBag, RotateCcw, XCircle, AlertTria
 import { useAuth } from '../../context/AuthContext'; 
 import { useReviews } from '../../context/ReviewContext'; 
 import { useOrders } from '../../context/OrderContext'; 
+import { useSettings } from '../../context/SettingsContext'; // <--- IMPORT SETTINGS
 import ReviewModal from '../ReviewModal'; 
 
 /**
@@ -17,15 +18,12 @@ const OrdersTab = ({ showNotification }) => {
     // --- CONTEXT HOOKS ---
     const { user } = useAuth(); 
     const { orders: globalOrders, updateOrderStatus } = useOrders(); 
-    
-    // 💡 1. Destructure Review Helpers
-    // Used to check eligibility or manage review permissions
     const { canUserReview } = useReviews(); 
+    const { settings } = useSettings(); // <--- GET SETTINGS
     
     const navigate = useNavigate();
     
-    // 💡 2. Filter Orders Safe Check
-    // Filters the global order list to show only the current logged-in user's data
+    // Filter Orders: Filters the global order list to show only the current logged-in user's data
     const userOrders = globalOrders ? globalOrders.filter(order => order.email === user?.email) : [];
 
     // --- LOCAL STATE MANAGEMENT ---
@@ -88,8 +86,7 @@ const OrdersTab = ({ showNotification }) => {
 
     const handleCancelClick = () => setShowCancelModal(true);
     
-    // 💡 3. FIXED: Async Cancel Logic (Waits for DB)
-    // Updates status to 'Cancelled' via Context API
+    // Async Cancel Logic (Waits for DB)
     const handleConfirmCancel = async () => {
         await updateOrderStatus(selectedOrder.id, 'Cancelled');
         
@@ -106,8 +103,7 @@ const OrdersTab = ({ showNotification }) => {
         setShowReturnModal(true);
     };
 
-    // 💡 4. FIXED: Async Return Logic
-    // Submits return request via Context API
+    // Async Return Logic
     const handleSubmitReturn = async (e) => {
         e.preventDefault();
         await updateOrderStatus(selectedOrder.id, 'Return Requested');
@@ -124,7 +120,7 @@ const OrdersTab = ({ showNotification }) => {
         }));
     };
 
-    // 💡 5. Open Review Modal
+    // Open Review Modal
     // Triggered when clicking 'Write a Review' on a specific item
     const handleReviewClick = (item) => {
         setReviewProduct(item);
@@ -285,7 +281,6 @@ const OrdersTab = ({ showNotification }) => {
 
                             <h6 className="fw-bold mb-3">Items Ordered</h6>
                             <div className="d-flex flex-column gap-3 mb-4">
-                                {/* 💡 Handle both 'details' (legacy) and 'items' (API) structures */}
                                 {(selectedOrder.items || selectedOrder.details || []).map((item, idx) => {
                                     return (
                                         <div 
@@ -301,15 +296,15 @@ const OrdersTab = ({ showNotification }) => {
                                                     <h6 className="mb-0 fw-bold small">{item.product_name || item.name}</h6>
                                                     <small className="text-muted">Qty: {item.quantity || item.qty}</small>
                                                     
-                                                    {/* 💡 REVIEW BUTTON: Only show if delivered */}
-                                                    {selectedOrder.status === 'Delivered' && (
+                                                    {/* REVIEW BUTTON: Only show if Delivered AND Enabled in Settings */}
+                                                    {selectedOrder.status === 'Delivered' && settings.enableReviews && (
                                                         <div className="mt-1">
                                                             <div 
-                                                                    className="text-primary small fw-bold d-flex align-items-center" 
-                                                                    style={{cursor: 'pointer', zIndex: 10}} 
-                                                                    onClick={(e) => { e.stopPropagation(); handleReviewClick(item); }} 
+                                                                className="text-primary small fw-bold d-flex align-items-center" 
+                                                                style={{cursor: 'pointer', zIndex: 10}} 
+                                                                onClick={(e) => { e.stopPropagation(); handleReviewClick(item); }} 
                                                             >
-                                                                    <Star size={12} className="me-1" /> Write a Review
+                                                                <Star size={12} className="me-1" /> Write a Review
                                                             </div>
                                                         </div>
                                                     )}
@@ -370,7 +365,7 @@ const OrdersTab = ({ showNotification }) => {
                                 </div>
                             ))}
                         </div>
-                        {/* ... Reason inputs ... */}
+                        {/* You can add inputs for Return Reason here if needed later */}
                         <div className="d-grid"><Button variant="primary" type="submit" className="rounded-pill fw-bold">Submit Request</Button></div>
                     </Form>
                 </Modal.Body>

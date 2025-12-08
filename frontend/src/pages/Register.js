@@ -2,18 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Form, Button, Alert, FloatingLabel, ProgressBar } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ArrowRight, ArrowLeft, Check, X, Chrome, Facebook, User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext'; // <--- IMPORT SETTINGS
+import { ArrowRight, ArrowLeft, Check, X, Chrome, Facebook, User, Mail, Lock, Eye, EyeOff, UserX } from 'lucide-react';
 import './styles/Auth.css';
 
 /**
  * Register Component
  * * A multi-step wizard for user registration.
  * * Features: Real-time password strength validation, step progression logic,
- * * and form data aggregation before final submission.
+ * * and system toggle check (Sign Ups enabled/disabled).
  */
 const Register = () => {
     // --- HOOKS ---
     const { register } = useAuth();
+    const { settings, loading } = useSettings(); // <--- GET SETTINGS
     const navigate = useNavigate();
 
     // --- LOCAL STATE MANAGEMENT ---
@@ -35,7 +37,7 @@ const Register = () => {
     
     // UI States: Password visibility, Loading spinner, and Error messages
     const [showPassword, setShowPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false); 
     const [error, setError] = useState('');
     
     // Password Strength Indicators
@@ -63,7 +65,6 @@ const Register = () => {
     };
 
     // --- VALIDATION LOGIC FOR STEPS ---
-    // Derived state booleans to enable/disable the "Next" button
     const isStep1Valid = formData.name && formData.dob && formData.gender;
     const isStep2Valid = formData.email && formData.phone;
     const isStrongPassword = Object.values(passStrength).every(Boolean);
@@ -72,22 +73,19 @@ const Register = () => {
 
     // --- NAVIGATION HANDLERS ---
     
-    // Advances to the next step if within bounds
     const handleNext = () => {
         if (step < totalSteps) setStep(step + 1);
     };
 
-    // Returns to the previous step
     const handleBack = () => {
         if (step > 1) setStep(step - 1);
     };
 
     // --- FINAL SUBMISSION ---
-    // Triggered only on the final step
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        setLoading(true);
+        setIsSubmitting(true);
 
         try {
             // Send the accumulated formData to the backend via AuthContext
@@ -102,10 +100,9 @@ const Register = () => {
             setError("Something went wrong. Please try again.");
         }
         
-        setLoading(false);
+        setIsSubmitting(false);
     };
 
-    // Helper Component for rendering password requirements checklist
     const ValidationItem = ({ fulfilled, text }) => (
         <div className={`d-flex align-items-center small mb-1 ${fulfilled ? 'text-success' : 'text-muted'}`}>
             {fulfilled ? <Check size={14} className="me-2" /> : <X size={14} className="me-2" />}
@@ -113,12 +110,36 @@ const Register = () => {
         </div>
     );
 
+    // --- SYSTEM CHECK: IS REGISTRATION ALLOWED? ---
+    // If settings are loaded and registration is disabled, show "Closed" screen.
+    if (!loading && settings.allowRegistration === false) {
+        return (
+            <div className="auth-page d-flex align-items-center justify-content-center bg-light" style={{minHeight: '100vh'}}>
+                <div className="text-center p-5 bg-white shadow-sm rounded-4 border" style={{maxWidth: '500px'}}>
+                    <div className="mb-3 text-secondary bg-light rounded-circle d-inline-flex p-3">
+                        <UserX size={40} />
+                    </div>
+                    <h2 className="fw-bold mb-3">Registration Closed</h2>
+                    <p className="text-muted mb-4">
+                        We are currently not accepting new user registrations at this time. 
+                        If you already have an account, please log in.
+                    </p>
+                    <div className="d-grid gap-2">
+                        <Link to="/login" className="btn btn-primary rounded-pill fw-bold">
+                            Go to Login
+                        </Link>
+                        <Link to="/" className="btn btn-outline-dark rounded-pill fw-bold">
+                            Back to Store
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="auth-page">
             <Row className="g-0">
-                
-                {/* --- LEFT COLUMN: EDITORIAL IMAGE --- */}
-                {/* Hidden on mobile, shows lifestyle image on desktop */}
                 <Col md={6} className="d-none d-md-block order-md-2">
                     <div 
                         className="auth-image-side"
@@ -131,7 +152,6 @@ const Register = () => {
                     </div>
                 </Col>
 
-                {/* --- RIGHT COLUMN: REGISTRATION FORM --- */}
                 <Col md={6} className="auth-form-side order-md-1">
                     <div className="auth-container">
                         <Link to="/" className="auth-brand">HAPPY CART</Link>
@@ -141,7 +161,6 @@ const Register = () => {
                             <p className="auth-subtitle">Let's get you set up in 3 easy steps.</p>
                         </div>
 
-                        {/* PROGRESS BAR INDICATOR */}
                         <div className="mb-4">
                             <ProgressBar now={(step / totalSteps) * 100} variant="dark" style={{height: '5px'}} />
                             <div className="d-flex justify-content-between mt-2 small text-muted fw-bold text-uppercase">
@@ -151,7 +170,6 @@ const Register = () => {
                             </div>
                         </div>
 
-                        {/* Error Alert */}
                         {error && <Alert variant="danger" className="rounded-3 border-0 shadow-sm mb-4">{error}</Alert>}
 
                         <Form onSubmit={handleSubmit}>
@@ -221,7 +239,6 @@ const Register = () => {
                                             </button>
                                         </div>
 
-                                        {/* Password Strength Checklist */}
                                         {formData.password && (
                                             <div className="mb-3 ps-2">
                                                 <ValidationItem fulfilled={passStrength.length} text="At least 8 characters" />
@@ -244,7 +261,6 @@ const Register = () => {
                                 )}
                             </div>
 
-                            {/* --- NAVIGATION BUTTONS (Back / Next / Submit) --- */}
                             <div className="d-flex gap-2 mb-4">
                                 {step > 1 && (
                                     <Button variant="light" className="rounded-pill px-4 fw-bold" onClick={handleBack}>
@@ -266,14 +282,13 @@ const Register = () => {
                                         variant="primary" 
                                         type="submit" 
                                         className="rounded-pill w-100 fw-bold shadow-sm"
-                                        disabled={!isStep3Valid || loading}
+                                        disabled={!isStep3Valid || isSubmitting}
                                     >
-                                        {loading ? 'Creating Account...' : 'Complete Registration'}
+                                        {isSubmitting ? 'Creating Account...' : 'Complete Registration'}
                                     </Button>
                                 )}
                             </div>
 
-                            {/* SOCIAL LOGIN (Only show on first step to keep it clean, or allow skipping) */}
                             {step === 1 && (
                                 <div className="d-flex gap-3 mb-4">
                                     <Button variant="outline-light" className="btn-social w-100"><Chrome size={18} className="me-2 text-danger" /> Google</Button>

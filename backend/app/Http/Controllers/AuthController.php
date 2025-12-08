@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Setting; // <--- 1. IMPORT SETTING MODEL
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -21,7 +22,22 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
-        // 1. Validate the registration data
+        // =========================================================
+        // 1. CHECK REGISTRATION SETTING (SECURITY GATE)
+        // =========================================================
+        $setting = Setting::where('key', 'system_toggles')->first();
+        $toggles = $setting->value ?? [];
+
+        // If 'allowRegistration' exists and is strictly FALSE, block the request.
+        if (isset($toggles['allowRegistration']) && $toggles['allowRegistration'] === false) {
+            return response()->json([
+                'message' => 'New user registrations are currently disabled by the administrator.'
+            ], 403); // Return 403 Forbidden
+        }
+
+        // =========================================================
+        // 2. STANDARD VALIDATION
+        // =========================================================
         // Note: 'confirmed' checks for a matching 'password_confirmation' field in the request.
         $fields = $request->validate([
             'name'     => 'required|string',
@@ -32,7 +48,9 @@ class AuthController extends Controller
             'gender'   => 'nullable|string'
         ]);
 
-        // 2. Create the User
+        // =========================================================
+        // 3. CREATE USER
+        // =========================================================
         $user = User::create([
             'name'     => $fields['name'],
             'email'    => $fields['email'],
@@ -46,10 +64,10 @@ class AuthController extends Controller
             'status'   => 'Active'    // Default status
         ]);
 
-        // 3. Generate a Sanctum API Token
+        // 4. Generate a Sanctum API Token
         $token = $user->createToken('myapptoken')->plainTextToken;
 
-        // 4. Return User and Token with 201 (Created) status
+        // 5. Return User and Token with 201 (Created) status
         return response()->json(['user' => $user, 'token' => $token], 201);
     }
 
@@ -77,7 +95,7 @@ class AuthController extends Controller
         if (!$user || !Hash::check($fields['password'], $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
-    
+     
         // 4. Check Account Status
         // Prevent login if the user has been banned/suspended
         if ($user->status === 'Suspended') {

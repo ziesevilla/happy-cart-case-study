@@ -1,114 +1,121 @@
 import React, { useState } from 'react';
-import { Modal, Form, Button } from 'react-bootstrap';
-import { Star } from 'lucide-react';
+import { Modal, Form, Button, Alert } from 'react-bootstrap';
+import { Star, Lock } from 'lucide-react';
 import { useReviews } from '../context/ReviewContext';
+import { useSettings } from '../context/SettingsContext'; // <--- 1. IMPORT SETTINGS
 
 /**
  * ReviewModal Component
  * * A popup form allowing users to rate and review a specific product.
- * * Interact with ReviewContext to save data to the backend.
- * * @param {boolean} show - Controls visibility
- * @param {function} onHide - Function to close the modal
- * @param {object} product - The product being reviewed (name, image, id)
- * @param {function} showNotification - Global toast helper for success messages
  */
 const ReviewModal = ({ show, onHide, product, showNotification }) => {
-    // Access the 'addReview' action from our Context
+    // Access Contexts
     const { addReview } = useReviews();
+    const { settings } = useSettings(); // <--- 2. GET SETTINGS
     
-    // Local State for the form inputs
-    const [rating, setRating] = useState(5); // Default to 5 stars (Positive UX)
+    // Local State
+    const [rating, setRating] = useState(5); 
     const [comment, setComment] = useState('');
 
-    /**
-     * Handle Form Submission
-     */
     const handleSubmit = (e) => {
-        e.preventDefault(); // Stop page reload
-        
-        // Basic Validation: Ensure comment isn't just whitespace
+        e.preventDefault(); 
         if (!comment.trim()) return;
 
-        // 1. Call Context Action (Async)
+        // Extra check before submitting
+        if (!settings.enableReviews) {
+            showNotification("Reviews are currently disabled.", "error");
+            return;
+        }
+
         const success = addReview(product.id, product, rating, comment);
         
-        // 2. Handle Success
         if (success) {
             showNotification("Review submitted successfully!", "success");
-            
-            // Reset Form State (So it's clean next time it opens)
             setComment('');
             setRating(5);
-            
-            // Close Modal
             onHide();
         }
     };
 
     return (
         <Modal show={show} onHide={onHide} centered>
-            {/* Header */}
             <Modal.Header closeButton className="border-0">
                 <Modal.Title className="fw-bold">Write a Review</Modal.Title>
             </Modal.Header>
 
             <Modal.Body className="px-4 pb-4">
-                {/* Product Summary: Reminds the user what they are reviewing */}
-                <div className="d-flex align-items-center gap-3 mb-4 p-3 bg-light rounded-3">
-                    {/* Optional Chaining (?.) prevents crash if product data is slow to load */}
-                    <img 
-                        src={product?.image} 
-                        alt={product?.name} 
-                        style={{width: '50px', height: '50px', objectFit: 'cover'}} 
-                        className="rounded-3"
-                    />
-                    <div>
-                        <h6 className="mb-0 fw-bold small">{product?.name}</h6>
-                        <small className="text-muted">Share your experience with this product</small>
-                    </div>
-                </div>
-
-                <Form onSubmit={handleSubmit}>
-                    {/* STAR RATING INPUT */}
-                    <Form.Group className="mb-3 text-center">
-                        <Form.Label className="d-block fw-bold small text-muted mb-2">YOUR RATING</Form.Label>
-                        <div className="d-flex justify-content-center gap-2">
-                            {/* Logic: Create 5 stars, fill them if their index <= current rating */}
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <Star 
-                                    key={star} 
-                                    size={32} 
-                                    // Visual Feedback: Gold if active, Gray if inactive
-                                    fill={star <= rating ? "#ffc107" : "none"} 
-                                    color={star <= rating ? "#ffc107" : "#dee2e6"}
-                                    style={{cursor: 'pointer'}}
-                                    // Interaction: Click to set rating
-                                    onClick={() => setRating(star)}
-                                />
-                            ))}
+                
+                {/* SAFEGUARD: If Admin disables reviews while modal is open */}
+                {!settings.enableReviews ? (
+                    <div className="text-center py-4">
+                        <div className="bg-light rounded-circle d-inline-flex p-3 mb-3">
+                            <Lock size={32} className="text-muted" />
                         </div>
-                    </Form.Group>
-
-                    {/* TEXT COMMENT INPUT */}
-                    <Form.Group className="mb-4">
-                        <Form.Label className="fw-bold small text-muted">YOUR REVIEW</Form.Label>
-                        <Form.Control 
-                            as="textarea" 
-                            rows={4} 
-                            placeholder="What did you like or dislike? How was the fit?"
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            className="bg-light border-0 rounded-4 p-3"
-                            required
-                        />
-                    </Form.Group>
-
-                    <div className="d-grid">
-                        <Button variant="dark" type="submit" className="rounded-pill fw-bold py-2">
-                            Submit Review
+                        <h5>Reviews Disabled</h5>
+                        <p className="text-muted small">
+                            The administrator has temporarily disabled new reviews. 
+                            Please try again later.
+                        </p>
+                        <Button variant="outline-dark" onClick={onHide} className="rounded-pill px-4">
+                            Close
                         </Button>
                     </div>
-                </Form>
+                ) : (
+                    <>
+                        {/* Product Summary */}
+                        <div className="d-flex align-items-center gap-3 mb-4 p-3 bg-light rounded-3">
+                            <img 
+                                src={product?.image} 
+                                alt={product?.name} 
+                                style={{width: '50px', height: '50px', objectFit: 'cover'}} 
+                                className="rounded-3"
+                            />
+                            <div>
+                                <h6 className="mb-0 fw-bold small">{product?.name}</h6>
+                                <small className="text-muted">Share your experience with this product</small>
+                            </div>
+                        </div>
+
+                        <Form onSubmit={handleSubmit}>
+                            {/* STAR RATING INPUT */}
+                            <Form.Group className="mb-3 text-center">
+                                <Form.Label className="d-block fw-bold small text-muted mb-2">YOUR RATING</Form.Label>
+                                <div className="d-flex justify-content-center gap-2">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star 
+                                            key={star} 
+                                            size={32} 
+                                            fill={star <= rating ? "#ffc107" : "none"} 
+                                            color={star <= rating ? "#ffc107" : "#dee2e6"}
+                                            style={{cursor: 'pointer'}}
+                                            onClick={() => setRating(star)}
+                                        />
+                                    ))}
+                                </div>
+                            </Form.Group>
+
+                            {/* TEXT COMMENT INPUT */}
+                            <Form.Group className="mb-4">
+                                <Form.Label className="fw-bold small text-muted">YOUR REVIEW</Form.Label>
+                                <Form.Control 
+                                    as="textarea" 
+                                    rows={4} 
+                                    placeholder="What did you like or dislike? How was the fit?"
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                    className="bg-light border-0 rounded-4 p-3"
+                                    required
+                                />
+                            </Form.Group>
+
+                            <div className="d-grid">
+                                <Button variant="dark" type="submit" className="rounded-pill fw-bold py-2">
+                                    Submit Review
+                                </Button>
+                            </div>
+                        </Form>
+                    </>
+                )}
             </Modal.Body>
         </Modal>
     );
