@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -57,13 +58,10 @@ class OrderController extends Controller
             'total'            => 'required|numeric'
         ]);
 
-        // 1. Database Transaction
-        // We wrap everything in a transaction. If any product is out of stock, 
-        // or if the code crashes halfway through, nothing is saved to the DB.
         return DB::transaction(function () use ($request) {
             $user = Auth::user();
             
-            // Create the parent Order record
+            // 1. Create Order
             $order = Order::create([
                 'order_number'     => 'ORD-' . strtoupper(Str::random(8)),
                 'user_id'          => $user->id,
@@ -74,24 +72,16 @@ class OrderController extends Controller
                 'shipping_address' => $request->shipping_address
             ]);
 
-            // Process every item in the cart
+            // 2. Process Items & Deduct Stock
             foreach ($request->items as $item) {
-                
-                // 2. Pessimistic Locking (lockForUpdate)
-                // Critical: This prevents "Race Conditions".
-                // It temporarily "freezes" this product row in the DB so no one else 
-                // can buy it until this transaction is finished.
                 $product = Product::where('id', $item['id'])->lockForUpdate()->first();
 
-                // Check stock levels
                 if (!$product || $product->stock < $item['quantity']) {
                     throw new Exception("Product {$item['name']} is out of stock.");
                 }
 
-                // Deduct stock
                 $product->decrement('stock', $item['quantity']);
 
-                // Create the OrderItem entry
                 OrderItem::create([
                     'order_id'     => $order->id,
                     'product_id'   => $product->id,
@@ -101,6 +91,17 @@ class OrderController extends Controller
                     'image'        => $product->image
                 ]);
             }
+
+            // 3. CREATE TRANSACTION RECORD (New Logic)
+            Transaction::create([
+                'order_id'           => $order->id,
+                'user_id'            => $user->id,
+                'transaction_number' => 'TRX-' . strtoupper(Str::random(10)),
+                'amount'             => $request->total,
+                // If payment method is not sent from frontend, default to 'Credit Card'
+                'payment_method'     => $request->payment_method ?? 'Credit Card', 
+                'status'             => 'Paid'
+            ]);
 
             return $order;
         });

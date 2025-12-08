@@ -1,76 +1,69 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import api from '../api/axios'; 
 
-// Initialize Context
 const TransactionContext = createContext();
 
-/**
- * TransactionProvider Component
- * * Manages the financial history of the store (Payments & Refunds).
- * * currently uses Mock Data to simulate a payment gateway like Stripe or PayPal.
- */
 export const TransactionProvider = ({ children }) => {
-    
-    // =================================================================
-    // 1. STATE: FINANCIAL RECORDS
-    // =================================================================
-    const [transactions, setTransactions] = useState(() => {
+    const [transactions, setTransactions] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // 1. FETCH TRANSACTIONS FROM DB
+    const fetchTransactions = async () => {
         try {
-            // CACHE BUSTING STRATEGY:
-            // We use '_v3' in the key name. If you change the data structure in code,
-            // simply increment this number (e.g., to '_v4'). This forces the browser
-            // to ignore the old, incompatible data in LocalStorage and load the new defaults.
-            const saved = localStorage.getItem('happyCart_transactions_v3');
+            const response = await api.get('/transactions');
             
-            return saved ? JSON.parse(saved) : [
-                // --- MOCK DATA (Simulates a Database response) ---
-                
-                // Scenario: Successful Standard Order
-                { id: 'TRX-99281', orderId: 'ORD-001', date: 'Oct 12, 2023', amount: 260.00, method: 'Credit Card', status: 'Paid' },
-                
-                // Scenario: Alternative Payment Method
-                { id: 'TRX-88213', orderId: 'ORD-002', date: 'Nov 05, 2023', amount: 215.00, method: 'GCash', status: 'Paid' },
-                
-                // Scenario: Recent Successful Order
-                { id: 'TRX-66432', orderId: 'ORD-003', date: 'Nov 20, 2023', amount: 315.00, method: 'Credit Card', status: 'Paid' },
-                
-                // Scenario: Payment Failed (e.g., Insufficient Funds)
-                { id: 'TRX-77321', orderId: 'ORD-004', date: 'Nov 22, 2023', amount: 300.00, method: 'Credit Card', status: 'Failed' },
-                
-                // Scenario: Retry Success (User tried again with PayPal)
-                { id: 'TRX-77322', orderId: 'ORD-004', date: 'Nov 22, 2023', amount: 300.00, method: 'PayPal', status: 'Paid' },
-                
-                // Scenario: Refund Issued (Admin Action)
-                { id: 'TRX-33765', orderId: 'ORD-005', date: 'Nov 25, 2023', amount: 330.00, method: 'Credit Card', status: 'Refunded' },
-            ];
-        } catch (error) { 
-            return []; 
+            // Format data to match what the UI expects
+            const formatted = response.data.map(t => ({
+                id: t.transaction_number, // Display ID (TRX-...)
+                dbId: t.id,               // Internal DB ID (1, 2, 3...)
+                orderId: t.order?.order_number || 'N/A',
+                date: t.created_at,       // API sends formatted date string
+                amount: parseFloat(t.amount),
+                method: t.payment_method,
+                status: t.status
+            }));
+            
+            setTransactions(formatted);
+        } catch (error) {
+            console.error("Failed to load transactions:", error);
+        } finally {
+            setLoading(false);
         }
-    });
+    };
 
-    // =================================================================
-    // 2. PERSISTENCE
-    // =================================================================
     useEffect(() => {
-        localStorage.setItem('happyCart_transactions_v3', JSON.stringify(transactions));
-    }, [transactions]);
+        fetchTransactions();
+    }, []);
 
-    // =================================================================
-    // 3. ACTIONS
-    // =================================================================
+    // 2. PROCESS REFUND
+    const updateTransactionStatus = async (trxId, newStatus) => {
+        try {
+            // Find the numeric DB ID based on the string ID (TRX-...)
+            const transaction = transactions.find(t => t.id === trxId);
+            if (!transaction) return;
 
-    /**
-     * Update the status of a transaction (e.g., Marking a 'Paid' transaction as 'Refunded').
-     * * @param {string} id - The Transaction ID (TRX-...)
-     * * @param {string} newStatus - 'Paid', 'Failed', 'Refunded'
-     */
-    const updateTransactionStatus = (id, newStatus) => {
-        setTransactions(prev => prev.map(trx => 
-            trx.id === id ? { ...trx, status: newStatus } : trx
-        ));
+            if (newStatus === 'Refunded') {
+                await api.put(`/transactions/${transaction.dbId}/refund`);
+            }
+
+            // Optimistic Update (Update UI immediately)
+            setTransactions(prev => prev.map(trx => 
+                trx.id === trxId ? { ...trx, status: newStatus } : trx
+            ));
+            return true;
+        } catch (error) {
+            console.error("Refund failed:", error);
+            return false;
+        }
     };
 
     return (
-        <TransactionContext.Provider value={{ transactions, updateTransactionStatus }}>
+        <TransactionContext.Provider value={{ 
+            transactions, 
+            loading, 
+            updateTransactionStatus, 
+            refreshTransactions: fetchTransactions 
+        }}>
             {children}
         </TransactionContext.Provider>
     );
