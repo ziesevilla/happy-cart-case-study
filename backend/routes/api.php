@@ -74,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // User Management
     Route::get('/users', [UserController::class, 'index']);       // List all users
     Route::put('/users/{id}', [UserController::class, 'update']); // Suspend/Ban users
+    Route::post('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
 
     // Product Inventory Management
     Route::post('/products', [ProductController::class, 'store']);

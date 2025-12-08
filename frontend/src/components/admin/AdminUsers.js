@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Table, Button, Form, InputGroup, Row, Col, Card, Badge, Tab, Nav, Modal, Spinner, Pagination } from 'react-bootstrap';
-import { Search, User, Mail, Calendar, ShoppingBag, CreditCard, ChevronRight, X, MapPin, Download, AlertTriangle, Key, Lock, UserX, Phone } from 'lucide-react';
+import { Search, User, Mail, Calendar, ShoppingBag, CreditCard, ChevronRight, X, MapPin, Download, AlertTriangle, Key, Lock, UserX, Phone, CheckCircle } from 'lucide-react';
 import { useUsers } from '../../context/UserContext';
 import { useOrders } from '../../context/OrderContext';
 import { useTransactions } from '../../context/TransactionContext';
@@ -14,8 +14,8 @@ import { useAddress } from '../../context/AddressContext';
  */
 const AdminUsers = ({ showNotification }) => {
     // --- CONTEXT HOOKS ---
-    // Fetch global state for users, orders, transactions, and addresses
-    const { users, updateUserStatus, loading } = useUsers();
+    // 💡 UPDATE: Extracted resetUserPassword from context
+    const { users, updateUserStatus, loading, resetUserPassword } = useUsers();
     const { orders } = useOrders();
     const { transactions } = useTransactions();
     const { getUserAddresses } = useAddress(); 
@@ -33,7 +33,7 @@ const AdminUsers = ({ showNotification }) => {
     // State for the "Suspend/Activate" confirmation modal
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [userToToggle, setUserToToggle] = useState(null);
-    
+     
     // State for the "Reset Password" modal
     const [showResetModal, setShowResetModal] = useState(false);
     const [userToReset, setUserToReset] = useState(null);
@@ -169,15 +169,24 @@ const AdminUsers = ({ showNotification }) => {
         setShowResetModal(true);
     };
 
-    // Simulates an API call for password reset
-    const confirmReset = () => {
+    // 💡 UPDATE: Executes the REAL API call via Context
+    const confirmReset = async () => {
+        if (!userToReset) return;
+
         setIsResetting(true);
-        setTimeout(() => {
-            setIsResetting(false);
-            setShowResetModal(false);
+        try {
+            // This calls the backend to invalidate the password
+            await resetUserPassword(userToReset.id);
+            
             showNotification(`Password reset link sent to ${userToReset.email}`, 'success');
+            setShowResetModal(false);
             setUserToReset(null);
-        }, 1500);
+        } catch (error) {
+            console.error("Reset failed", error);
+            showNotification("Failed to send reset email.", "error");
+        } finally {
+            setIsResetting(false);
+        }
     };
 
     return (
@@ -385,7 +394,7 @@ const AdminUsers = ({ showNotification }) => {
                                                                     <td className="fw-bold small">₱{parseFloat(order.total).toLocaleString()}</td>
                                                                     <td>
                                                                         <Badge bg={order.status === 'Delivered' ? 'success' : order.status === 'Cancelled' ? 'danger' : 'warning'} className="fw-normal rounded-pill" style={{fontSize: '0.7rem'}}>
-                                                                            {order.status}
+                                                                                {order.status}
                                                                         </Badge>
                                                                     </td>
                                                                 </tr>
@@ -431,9 +440,9 @@ const AdminUsers = ({ showNotification }) => {
                                                                         </div>
                                                                         <div className="small text-muted ps-4">
                                                                             <div className="text-dark fw-bold">{addr.firstName || addr.first_name} {addr.lastName || addr.last_name}</div>
-                                                                            <div>{addr.street}</div>
-                                                                            <div>{addr.city}, {addr.zip}</div>
-                                                                            <div className="mt-1"> {addr.phone}</div>
+                                                                                <div>{addr.street}</div>
+                                                                                <div>{addr.city}, {addr.zip}</div>
+                                                                                <div className="mt-1"> {addr.phone}</div>
                                                                         </div>
                                                                     </div>
                                                                 </Col>
@@ -456,7 +465,7 @@ const AdminUsers = ({ showNotification }) => {
                 )}
             </Row>
 
-            {/* ... MODALS (Keep unchanged) ... */}
+            {/* ... MODALS ... */}
             
             {/* Status Confirmation Modal (Suspend/Activate) */}
             <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
@@ -477,7 +486,7 @@ const AdminUsers = ({ showNotification }) => {
                 </Modal.Body>
                 <Modal.Footer className="border-0 justify-content-center pb-4">
                     <Button variant="light" className="rounded-pill px-4" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
-                    <Button variant="userToToggle?.status === 'Active' ? 'danger' : 'success'" className="rounded-pill px-4 fw-bold" onClick={confirmAction}>
+                    <Button variant={userToToggle?.status === 'Active' ? 'danger' : 'success'} className="rounded-pill px-4 fw-bold" onClick={confirmAction}>
                         {userToToggle?.status === 'Active' ? 'Suspend Account' : 'Activate Account'}
                     </Button>
                 </Modal.Footer>
@@ -489,10 +498,11 @@ const AdminUsers = ({ showNotification }) => {
                 <Modal.Body className="text-center py-4">
                     <div className="bg-light rounded-circle d-inline-flex p-3 mb-3"><Lock size={32} className="text-primary"/></div>
                     <h5 className="fw-bold">Confirm Password Reset</h5>
-                    <p className="text-muted mb-0">This will invalidate the current password for *{userToReset?.name}*.<br/><span className="text-dark fw-bold">{userToReset?.email}</span></p>
+                    <p className="text-muted mb-0">This will invalidate the current password for <strong>{userToReset?.name}</strong>.<br/><span className="text-dark fw-bold">{userToReset?.email}</span></p>
                 </Modal.Body>
                 <Modal.Footer className="border-0 justify-content-center pb-4">
                     <Button variant="light" className="rounded-pill px-4" onClick={() => setShowResetModal(false)} disabled={isResetting}>Cancel</Button>
+                    {/* 💡 UPDATE: Shows spinner if API call is active */}
                     <Button variant="dark" className="rounded-pill px-4 fw-bold" onClick={confirmReset} disabled={isResetting}>{isResetting ? <><Spinner animation="border" size="sm" className="me-2"/> Sending...</> : 'Send Recovery Email'}</Button>
                 </Modal.Footer>
             </Modal>

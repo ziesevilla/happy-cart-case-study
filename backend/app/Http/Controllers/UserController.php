@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage; // Imported for image cleanup
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * Class UserController
@@ -108,5 +110,32 @@ class UserController extends Controller
         $user->update($data);
 
         return $user;
+    }
+
+    /**
+     * Invalidate the user's current password.
+     */
+    public function resetPassword($id)
+    {
+        // 1. Find User in MySQL
+        $user = User::findOrFail($id);
+
+        // 2. Invalidate Password
+        // We set it to a random hash. The user cannot login until they 
+        // use the "Forgot Password" link to set a new one.
+        $user->password = Hash::make(Str::random(60));
+        
+        // 3. Update Status (Optional, to show visual feedback in Admin Panel)
+        $user->status = 'Recovery';
+        
+        // 4. Save to Database
+        $user->save();
+
+        // 5. (Optional) Send Email Logic would go here...
+
+        return response()->json([
+            'message' => 'Password invalidated successfully', 
+            'user' => $user
+        ]);
     }
 }
