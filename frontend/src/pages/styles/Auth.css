@@ -202,6 +202,17 @@
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
+/* --- Custom styling for visually disabled buttons --- */
+.btn-muted-disabled {
+    /* Apply a light background and grey text for low contrast */
+    background-color: #E9ECEF !important;
+    color: #8C949D !important;
+    border-color: #CED4DA !important;
+    opacity: 0.8 !important; /* Reduce opacity slightly */
+    cursor: not-allowed;
+    pointer-events: auto !important; /* Allow the click handler to fire and show error if needed */
+}
+
 /* --- 4. ANIMATIONS (Sequential Slide-In) --- */
 
 @keyframes slideUpFade {

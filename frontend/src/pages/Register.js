@@ -2,29 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Form, Button, Alert, FloatingLabel, ProgressBar } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useSettings } from '../context/SettingsContext'; // <--- IMPORT SETTINGS
+import { useSettings } from '../context/SettingsContext';
 import { ArrowRight, ArrowLeft, Check, X, Chrome, Facebook, User, Mail, Lock, Eye, EyeOff, UserX } from 'lucide-react';
 import './styles/Auth.css';
 
 /**
  * Register Component
- * * A multi-step wizard for user registration.
- * * Features: Real-time password strength validation, step progression logic,
- * * and system toggle check (Sign Ups enabled/disabled).
  */
 const Register = () => {
     // --- HOOKS ---
     const { register } = useAuth();
-    const { settings, loading } = useSettings(); // <--- GET SETTINGS
+    const { settings, loading } = useSettings();
     const navigate = useNavigate();
 
     // --- LOCAL STATE MANAGEMENT ---
-    
-    // 1. TRACK CURRENT STEP (1: Personal, 2: Contact, 3: Security)
     const [step, setStep] = useState(1); 
     const totalSteps = 3;
 
-    // Centralized state object for all input fields across steps
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -35,7 +29,7 @@ const Register = () => {
         confirmPassword: ''
     });
     
-    // UI States: Password visibility, Loading spinner, and Error messages
+    // UI States
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false); 
     const [error, setError] = useState('');
@@ -45,9 +39,26 @@ const Register = () => {
         length: false, uppercase: false, number: false, special: false
     });
 
+    // --- AGE VALIDATION HELPER ---
+    /**
+     * Checks if the user is 18 years or older based on the date of birth.
+     */
+    const isOver18 = (dob) => {
+        if (!dob) return false;
+        const today = new Date();
+        const birthDate = new Date(dob);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        // If birthday month hasn't passed, or if it's the same month but the day hasn't passed, subtract 1 from age
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age >= 18;
+    };
+
+
     // --- EFFECTS ---
     
-    // Real-time Password Analysis: Updates strength indicators whenever password changes
     useEffect(() => {
         const { password } = formData;
         setPassStrength({
@@ -61,11 +72,17 @@ const Register = () => {
     // --- HANDLERS ---
 
     const handleChange = (e) => {
+        // Clear age error message if DOB field is changed
+        if (e.target.name === 'dob') {
+            setError(''); 
+        }
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     // --- VALIDATION LOGIC FOR STEPS ---
-    const isStep1Valid = formData.name && formData.dob && formData.gender;
+    const isAdult = isOver18(formData.dob);
+    // Step 1 now REQUIRES the user to be an adult
+    const isStep1Valid = formData.name && formData.dob && formData.gender && isAdult;
     const isStep2Valid = formData.email && formData.phone;
     const isStrongPassword = Object.values(passStrength).every(Boolean);
     const passwordsMatch = formData.password && formData.password === formData.confirmPassword;
@@ -74,6 +91,20 @@ const Register = () => {
     // --- NAVIGATION HANDLERS ---
     
     const handleNext = () => {
+        setError(''); // Clear previous error
+
+        // Specific Age Gate Check on Step 1
+        if (step === 1) {
+            if (!formData.dob) {
+                setError("Please enter your date of birth.");
+                return;
+            }
+            if (!isAdult) {
+                setError("Registration requires you to be 18 years or older.");
+                return;
+            }
+        }
+
         if (step < totalSteps) setStep(step + 1);
     };
 
@@ -88,7 +119,6 @@ const Register = () => {
         setIsSubmitting(true);
 
         try {
-            // Send the accumulated formData to the backend via AuthContext
             const result = await register(formData);
 
             if (result.success) {
@@ -111,7 +141,6 @@ const Register = () => {
     );
 
     // --- SYSTEM CHECK: IS REGISTRATION ALLOWED? ---
-    // If settings are loaded and registration is disabled, show "Closed" screen.
     if (!loading && settings.allowRegistration === false) {
         return (
             <div className="auth-page d-flex align-items-center justify-content-center bg-light" style={{minHeight: '100vh'}}>
@@ -170,6 +199,7 @@ const Register = () => {
                             </div>
                         </div>
 
+                        {/* Show Error Alert */}
                         {error && <Alert variant="danger" className="rounded-3 border-0 shadow-sm mb-4">{error}</Alert>}
 
                         <Form onSubmit={handleSubmit}>
@@ -235,7 +265,7 @@ const Register = () => {
                                                 <Form.Control type={showPassword ? "text" : "password"} name="password" className="auth-input rounded-pill pe-5" placeholder="Password" value={formData.password} onChange={handleChange} autoFocus />
                                             </FloatingLabel>
                                             <button type="button" className="btn border-0 p-0 position-absolute top-50 end-0 translate-middle-y me-3 text-muted" onClick={() => setShowPassword(!showPassword)} style={{ zIndex: 5 }}>
-                                                {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                             </button>
                                         </div>
 
@@ -261,6 +291,7 @@ const Register = () => {
                                 )}
                             </div>
 
+                            {/* --- NAVIGATION BUTTONS --- */}
                             <div className="d-flex gap-2 mb-4">
                                 {step > 1 && (
                                     <Button variant="light" className="rounded-pill px-4 fw-bold" onClick={handleBack}>
@@ -271,7 +302,11 @@ const Register = () => {
                                 {step < 3 ? (
                                     <Button 
                                         variant="dark" 
-                                        className="rounded-pill w-100 fw-bold" 
+                                        type="button" 
+                                        className={`rounded-pill w-100 fw-bold 
+                                            ${step === 1 ? (!isStep1Valid && 'btn-muted-disabled') : 
+                                              (step === 2 && !isStep2Valid && 'btn-muted-disabled')}`
+                                        }
                                         onClick={handleNext}
                                         disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
                                     >
@@ -281,7 +316,9 @@ const Register = () => {
                                     <Button 
                                         variant="primary" 
                                         type="submit" 
-                                        className="rounded-pill w-100 fw-bold shadow-sm"
+                                        className={`rounded-pill w-100 fw-bold shadow-sm 
+                                            ${!isStep3Valid && 'btn-muted-disabled'}`
+                                        }
                                         disabled={!isStep3Valid || isSubmitting}
                                     >
                                         {isSubmitting ? 'Creating Account...' : 'Complete Registration'}
