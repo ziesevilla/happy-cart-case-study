@@ -295,14 +295,26 @@ const AdminInventory = ({ showNotification }) => {
                 </div>
 
                 <div className="d-flex gap-3">
-                    <div className="bg-white p-1 rounded-pill border d-flex">
-                        <Button variant={viewMode === 'list' ? 'dark' : 'light'} size="sm" className="rounded-pill px-3 d-flex align-items-center gap-2" onClick={() => setViewMode('list')}>
-                            <LayoutList size={14}/> List
-                        </Button>
-                        <Button variant={viewMode === 'grid' ? 'dark' : 'light'} size="sm" className="rounded-pill px-3 d-flex align-items-center gap-2" onClick={() => setViewMode('grid')}>
-                            <LayoutGrid size={14}/> Grid
-                        </Button>
-                    </div>
+                <div className="bg-white p-1 rounded-pill border d-flex">
+                    <Button 
+                        variant={viewMode === 'list' ? 'dark' : 'light'} 
+                        size="sm" 
+                        // FIX: Explicitly add 'text-white' when active, otherwise 'text-muted'
+                        className={`rounded-pill px-3 d-flex align-items-center gap-2 ${viewMode === 'list' ? 'text-white' : 'text-muted'}`}
+                        onClick={() => setViewMode('list')}
+                    >
+                        <LayoutList size={14}/> List
+                    </Button>
+                    <Button 
+                        variant={viewMode === 'grid' ? 'dark' : 'light'} 
+                        size="sm" 
+                        // FIX: Explicitly add 'text-white' when active
+                        className={`rounded-pill px-3 d-flex align-items-center gap-2 ${viewMode === 'grid' ? 'text-white' : 'text-muted'}`}
+                        onClick={() => setViewMode('grid')}
+                    >
+                        <LayoutGrid size={14}/> Grid
+                    </Button>
+                </div>
 
                     <Button variant="primary" className="rounded-pill fw-bold px-4" onClick={handleOpenAdd}>
                         <Plus size={18} className="me-2"/> Add Product

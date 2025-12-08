@@ -227,12 +227,12 @@ const AdminTransactions = ({ showNotification }) => {
                     )}
                 </div>
                 
-                {/* View Mode Toggles (List vs Grid) */}
                 <div className="bg-white p-1 rounded-pill border d-flex">
                     <Button 
                         variant={viewMode === 'list' ? 'dark' : 'light'} 
                         size="sm" 
-                        className="rounded-pill px-3 d-flex align-items-center gap-2"
+                        // FIX: Explicitly add 'text-white' when active, otherwise 'text-muted'
+                        className={`rounded-pill px-3 d-flex align-items-center gap-2 ${viewMode === 'list' ? 'text-white' : 'text-muted'}`}
                         onClick={() => setViewMode('list')}
                     >
                         <LayoutList size={14}/> List
@@ -240,7 +240,8 @@ const AdminTransactions = ({ showNotification }) => {
                     <Button 
                         variant={viewMode === 'grid' ? 'dark' : 'light'} 
                         size="sm" 
-                        className="rounded-pill px-3 d-flex align-items-center gap-2"
+                        // FIX: Explicitly add 'text-white' when active
+                        className={`rounded-pill px-3 d-flex align-items-center gap-2 ${viewMode === 'grid' ? 'text-white' : 'text-muted'}`}
                         onClick={() => setViewMode('grid')}
                     >
                         <LayoutGrid size={14}/> Grid
