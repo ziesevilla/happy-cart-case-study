@@ -20,7 +20,7 @@ const AdminSettings = ({ showNotification }) => {
         settings, 
         toggleSetting, 
         resetSettings,
-        storeInfo,      
+        storeInfo,       
         updateStoreInfo 
     } = useSettings();
 

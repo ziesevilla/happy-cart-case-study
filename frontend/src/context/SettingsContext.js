@@ -7,7 +7,7 @@ const SettingsContext = createContext();
  * SettingsProvider Component
  * * Acts as the centralized "Control Panel" for the application.
  * * Manages Categories, Global Toggles (Maintenance Mode), and Financial Configs.
- * * uses LocalStorage to persist Admin preferences across browser sessions.
+ * * Uses LocalStorage to persist Admin preferences across browser sessions.
  */
 export const SettingsProvider = ({ children }) => {
     
@@ -151,7 +151,7 @@ export const SettingsProvider = ({ children }) => {
             settings, 
             toggleSetting,
 
-            storeInfo,       
+            storeInfo,        
             updateStoreInfo,
 
             resetSettings
