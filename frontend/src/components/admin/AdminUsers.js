@@ -9,8 +9,8 @@ import { useAddress } from '../../context/AddressContext';
 /**
  * AdminUsers Component
  * * A comprehensive dashboard view for managing customer accounts.
- * * Features: User list with search & pagination, detailed profile view (Orders/Transactions/Address),
- * * and administrative actions (Suspend/Activate, Password Reset).
+ * * Features: User list with search & pagination, detailed profile view.
+ * * 💡 UPDATE: Now excludes 'Admin' accounts from the list view.
  */
 const AdminUsers = ({ showNotification }) => {
     // --- CONTEXT HOOKS ---
@@ -48,12 +48,20 @@ const AdminUsers = ({ showNotification }) => {
         );
     }
 
-    // --- FILTERING ---
-    // Filters users based on name or email (case-insensitive)
-    const filteredUsers = users.filter(u => 
-        (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // --- FILTERING LOGIC ---
+    const filteredUsers = users.filter(u => {
+        // 1. 💡 EXCLUDE ADMINS: Check if the role is 'Admin' (case-insensitive)
+        if (u.role && u.role.toLowerCase() === 'admin') {
+            return false;
+        }
+
+        // 2. SEARCH FILTER: Match Name or Email
+        const searchLower = searchTerm.toLowerCase();
+        return (
+            (u.name || '').toLowerCase().includes(searchLower) ||
+            (u.email || '').toLowerCase().includes(searchLower)
+        );
+    });
 
     // --- PAGINATION LOGIC ---
     // Calculate indices to slice the filtered user array
@@ -176,7 +184,7 @@ const AdminUsers = ({ showNotification }) => {
         <div className="animate-fade-in h-100">
             <Row className="h-100 g-4">
                 
-                {/* LEFT COLUMN: USER LIST */}
+                {/* --- LEFT COLUMN: USER LIST --- */}
                 {/* On mobile: Hides this column if a user is selected to show details instead */}
                 <Col md={selectedUser ? 5 : 12} className={`d-flex flex-column ${selectedUser ? 'd-none d-md-flex' : ''}`}>
                     <div className="d-flex justify-content-between align-items-center mb-4">
@@ -270,7 +278,7 @@ const AdminUsers = ({ showNotification }) => {
                     </Card>
                 </Col>
 
-                {/* RIGHT COLUMN: PROFILE DETAILS */}
+                {/* --- RIGHT COLUMN: PROFILE DETAILS --- */}
                 {/* Shows detailed view when a user is selected */}
                 {selectedUser && (
                     <Col md={7} className="h-100 animate-slide-in-right">
@@ -469,7 +477,7 @@ const AdminUsers = ({ showNotification }) => {
                 </Modal.Body>
                 <Modal.Footer className="border-0 justify-content-center pb-4">
                     <Button variant="light" className="rounded-pill px-4" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
-                    <Button variant={userToToggle?.status === 'Active' ? 'danger' : 'success'} className="rounded-pill px-4 fw-bold" onClick={confirmAction}>
+                    <Button variant="userToToggle?.status === 'Active' ? 'danger' : 'success'" className="rounded-pill px-4 fw-bold" onClick={confirmAction}>
                         {userToToggle?.status === 'Active' ? 'Suspend Account' : 'Activate Account'}
                     </Button>
                 </Modal.Footer>

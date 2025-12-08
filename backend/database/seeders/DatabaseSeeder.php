@@ -19,7 +19,6 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role' => 'Customer',
                 'status' => 'Active',
-                // 💡 Added new profile fields
                 'phone' => '0912 345 6789',
                 'dob' => '1995-08-15',
                 'gender' => 'Male',
