@@ -5,43 +5,63 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 use App\Models\Product;
-use App\Models\Order;
-use App\Models\Review;
 use App\Models\Setting;
-use App\Models\Address;
 
 class SystemController extends Controller
 {
     public function factoryReset(Request $request)
     {
-        // 1. Security Check: Only Admins can do this
-        if ($request->user()->role !== 'Admin') {
+        // 1. Security Check (Case Insensitive)
+        if (strcasecmp($request->user()->role, 'admin') !== 0) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // 2. Start Transaction (Safety Net)
+        ini_set('max_execution_time', 300); // 5 minutes
+        ini_set('memory_limit', '512M');
+
         DB::beginTransaction();
 
         try {
-            // --- DELETE ALL DATA ---
-            
-            // Delete transactional data first to avoid Foreign Key constraint errors
-            Order::query()->delete(); 
-            Review::query()->delete();
-            Address::query()->delete();
+            // 1. DISABLE FOREIGN KEY CHECKS
+            Schema::disableForeignKeyConstraints();
 
-            // Delete Users (EXCEPT the current Admin who is clicking the button)
+            // --- DELETE DATA (Using delete() instead of truncate()) ---
+
+            // Delete Child Tables First
+            DB::table('order_items')->delete();
+            DB::table('reviews')->delete();
+            DB::table('addresses')->delete();
+            
+            // Delete Parent Tables
+            DB::table('orders')->delete();
+            
+            // Delete Users (Keep Admin)
             $currentAdminId = Auth::id();
             User::where('id', '!=', $currentAdminId)->delete();
 
-            // Delete Inventory
-            Product::truncate(); 
+            // Wipe Products
+            DB::table('products')->delete(); 
 
-            // --- RESTORE DEFAULTS (Seeding) ---
+            // Wipe Settings
+            DB::table('settings')->delete();
 
-            // 1. Default Products
+            // --- RESET ID COUNTERS (Optional) ---
+            // This attempts to reset the auto-increment to 1
+            $tables = ['products', 'orders', 'users', 'reviews', 'addresses', 'order_items'];
+            foreach ($tables as $table) {
+                try {
+                    DB::statement("ALTER TABLE $table AUTO_INCREMENT = 1");
+                } catch (\Exception $e) {
+                    // Ignore
+                }
+            }
+
+            // --- RESTORE DEFAULTS ---
+
+            // 1. Seed Products
             $defaults = [
                 [
                     'name' => 'Classic White Tee',
@@ -51,7 +71,9 @@ class SystemController extends Controller
                     'description' => 'A comfortable classic.',
                     'image' => 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=500&q=60',
                     'stock' => 50,
-                    'rating' => 5
+                    'cached_avg_rating' => 5, // <--- FIXED COLUMN NAME
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ],
                 [
                     'name' => 'Denim Jacket',
@@ -61,7 +83,9 @@ class SystemController extends Controller
                     'description' => 'Stylish denim for any season.',
                     'image' => 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=500&q=60',
                     'stock' => 20,
-                    'rating' => 4
+                    'cached_avg_rating' => 4, // <--- FIXED COLUMN NAME
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ],
                 [
                     'name' => 'Running Shoes',
@@ -71,18 +95,16 @@ class SystemController extends Controller
                     'description' => 'Lightweight and durable.',
                     'image' => 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=500&q=60',
                     'stock' => 15,
-                    'rating' => 5
+                    'cached_avg_rating' => 5, // <--- FIXED COLUMN NAME
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ]
             ];
             
-            foreach ($defaults as $prod) {
-                Product::create($prod);
-            }
+            DB::table('products')->insert($defaults);
 
-            // 2. Reset Settings
-            Setting::truncate();
+            // 2. Restore Settings
             
-            // Create "Store Info"
             Setting::create([
                 'key' => 'store_info',
                 'value' => [
@@ -95,25 +117,25 @@ class SystemController extends Controller
                 ]
             ]);
 
-            // Create "Toggles" (All ON by default)
             Setting::create([
                 'key' => 'system_toggles',
                 'value' => ['maintenanceMode' => false, 'allowRegistration' => true, 'enableReviews' => true]
             ]);
 
-            // Create "Categories"
             Setting::create([
                 'key' => 'categories',
                 'value' => ['Clothing', 'Shoes', 'Accessories']
             ]);
 
-            // --- COMMIT CHANGES ---
-            DB::commit();
+            // 3. RE-ENABLE CHECKS & COMMIT
+            Schema::enableForeignKeyConstraints();
+            DB::commit(); 
 
             return response()->json(['message' => 'Factory Reset Complete.']);
 
         } catch (\Exception $e) {
-            DB::rollBack(); // Something went wrong, undo deletions
+            DB::rollBack();
+            Schema::enableForeignKeyConstraints();
             return response()->json(['message' => 'Reset failed: ' . $e->getMessage()], 500);
         }
     }

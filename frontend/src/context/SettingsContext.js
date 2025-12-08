@@ -172,12 +172,18 @@ export const SettingsProvider = ({ children }) => {
         try {
             await api.post('/system/factory-reset');
             
-            // Success! Force reload the page to clear all Client State.
-            // This is safer than trying to reset every Context manually.
+            // Success
             window.location.reload(); 
             return true;
         } catch (error) {
-            console.error("Factory Reset Failed:", error);
+            // --- DEBUGGING ---
+            const status = error.response?.status;
+            const message = error.response?.data?.message || error.message;
+            
+            console.error("Factory Reset Error Details:", { status, message });
+            alert(`Reset Failed!\nStatus: ${status}\nMessage: ${message}`);
+            // -----------------
+            
             return false;
         }
     };
