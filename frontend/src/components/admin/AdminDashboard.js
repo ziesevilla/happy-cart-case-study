@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Container, Nav, Row, Col, Card, Tab, Toast, ToastContainer } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Package, ShoppingBag, Users, Settings, FileText, CreditCard } from 'lucide-react';
+import { LogOut, Package, ShoppingBag, Users, Settings, FileText, CreditCard, Layers } from 'lucide-react'; // Added Layers icon
 
 // 💡 IMPORT CONTEXTS (Data Sources)
 import { useOrders } from '../../context/OrderContext';
 import { useUsers } from '../../context/UserContext';
 import { useTransactions } from '../../context/TransactionContext';
+import { useProducts } from '../../context/ProductContext'; // <--- 1. IMPORT PRODUCT CONTEXT
 
 // 💡 IMPORT SUB-COMPONENTS (Tabs)
 import AdminInventory from './AdminInventory';
@@ -21,21 +22,20 @@ import AdminSettings from './AdminSettings';
  * AdminDashboard Component
  * * The central hub for administrators.
  * * Aggregates data from all contexts to display high-level KPIs.
- * * Manages the "Active Tab" state to switch between different management views.
  */
 const AdminDashboard = () => {
     const { logout } = useAuth();
     const navigate = useNavigate();
 
     // 1. Consume Data
-    // We pull raw data from our contexts to calculate statistics on the fly.
     const { orders } = useOrders();
     const { users } = useUsers();
     const { transactions } = useTransactions();
+    const { products } = useProducts(); // <--- 2. GET PRODUCTS
 
     const [activeTab, setActiveTab] = useState('orders'); 
     
-    // Global Toast Notification for all child tabs
+    // Global Toast Notification
     const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
 
     // Dashboard Statistics State
@@ -43,21 +43,20 @@ const AdminDashboard = () => {
         totalRevenue: 0,
         activeOrders: 0,
         totalCustomers: 0,
+        availableProducts: 0, // <--- 3. ADD NEW STAT STATE
         refundsProcessed: 0
     });
 
     /**
      * 2. Dynamic Metric Calculation
-     * * This runs automatically whenever orders, users, or transactions change.
-     * * It ensures the "cards" at the top always show real-time numbers.
      */
     useEffect(() => {
-        // A. Calculate Total Revenue (Sum of all 'Paid' transactions)
+        // A. Calculate Total Revenue
         const revenue = transactions
             .filter(t => t.status === 'Paid')
             .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
 
-        // B. Calculate Active Orders (Everything NOT Delivered/Cancelled)
+        // B. Calculate Active Orders
         const active = orders.filter(o => 
             ['Pending', 'Processing', 'Shipped', 'Placed'].includes(o.status)
         ).length;
@@ -65,7 +64,11 @@ const AdminDashboard = () => {
         // C. Calculate Total Customers
         const customerCount = users.filter(u => u.role === 'Customer').length;
 
-        // D. Calculate Refunds (Lost Revenue)
+        // D. Calculate Available Inventory (Stock > 0)
+        // We parse stock as integer just to be safe
+        const inStockCount = products.filter(p => parseInt(p.stock) > 0).length;
+
+        // E. Calculate Refunds
         const refunds = transactions
             .filter(t => t.status === 'Refunded')
             .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
@@ -75,10 +78,11 @@ const AdminDashboard = () => {
             totalRevenue: revenue,
             activeOrders: active,
             totalCustomers: customerCount,
+            availableProducts: inStockCount, // <--- SET THE NEW COUNT
             refundsProcessed: refunds
         });
 
-    }, [orders, users, transactions]); 
+    }, [orders, users, transactions, products]); 
 
     const handleLogout = () => {
         if(window.confirm("Are you sure you want to log out?")) {
@@ -87,7 +91,6 @@ const AdminDashboard = () => {
         }
     };
 
-    // Helper passed down to child components so they can trigger alerts
     const showNotification = (message, variant = 'success') => {
         setToast({ show: true, message, variant });
     };
@@ -105,24 +108,26 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* ======================================================== */}
-                {/* KPI STATS ROW (The "Heads Up Display") */}
+                {/* KPI STATS ROW */}
                 {/* ======================================================== */}
+                {/* Note: Used 'col-md' without number to let Flexbox space 5 items evenly */}
                 <Row className="g-4 mb-5">
-                    {/* Revenue Card */}
-                    <Col md={3}>
+                    
+                    {/* 1. Revenue */}
+                    <Col className="col-md"> 
                         <Card className="border-0 shadow-sm rounded-4 bg-primary text-white h-100">
                             <Card.Body className="p-4">
                                 <div className="d-flex justify-content-between align-items-start mb-3">
                                     <div className="bg-white bg-opacity-25 p-2 rounded-3"><ShoppingBag size={24}/></div>
                                 </div>
                                 <h3 className="fw-bold mb-0 text-white">₱{stats.totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}</h3>
-                                <small className="opacity-75">Total Revenue (Paid)</small>
+                                <small className="opacity-75">Total Revenue</small>
                             </Card.Body>
                         </Card>
                     </Col>
                     
-                    {/* Active Orders Card */}
-                    <Col md={3}>
+                    {/* 2. Active Orders */}
+                    <Col className="col-md">
                         <Card className="border-0 shadow-sm rounded-4 bg-white h-100">
                             <Card.Body className="p-4">
                                 <div className="d-flex justify-content-between align-items-start mb-3">
@@ -134,8 +139,8 @@ const AdminDashboard = () => {
                         </Card>
                     </Col>
 
-                    {/* Customers Card */}
-                    <Col md={3}>
+                    {/* 3. Customers */}
+                    <Col className="col-md">
                         <Card className="border-0 shadow-sm rounded-4 bg-white h-100">
                             <Card.Body className="p-4">
                                 <div className="d-flex justify-content-between align-items-start mb-3">
@@ -147,8 +152,21 @@ const AdminDashboard = () => {
                         </Card>
                     </Col>
 
-                    {/* Refunds Card */}
-                    <Col md={3}>
+                    {/* 4. NEW: Available Inventory (Not Out of Stock) */}
+                    <Col className="col-md">
+                        <Card className="border-0 shadow-sm rounded-4 bg-white h-100">
+                            <Card.Body className="p-4">
+                                <div className="d-flex justify-content-between align-items-start mb-3">
+                                    <div className="bg-light p-2 rounded-3 text-dark"><Layers size={24}/></div>
+                                </div>
+                                <h3 className="fw-bold mb-0">{stats.availableProducts.toLocaleString()}</h3>
+                                <small className="text-muted">Products In Stock</small>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+
+                    {/* 5. Refunds */}
+                    <Col className="col-md">
                         <Card className="border-0 shadow-sm rounded-4 bg-white h-100">
                             <Card.Body className="p-4">
                                 <div className="d-flex justify-content-between align-items-start mb-3">
@@ -162,13 +180,12 @@ const AdminDashboard = () => {
                 </Row>
 
                 {/* ======================================================== */}
-                {/* MAIN CONTENT AREA (Tabbed Interface) */}
+                {/* MAIN CONTENT AREA */}
                 {/* ======================================================== */}
                 <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
                     <Row>
                         {/* SIDEBAR NAVIGATION */}
                         <Col md={2} className="mb-4">
-                            {/* Sticky Sidebar: Keeps nav in view while scrolling long lists */}
                             <div style={{ position: 'sticky', top: '100px', zIndex: 10 }}>
                                 <Nav variant="pills" className="flex-column bg-white p-3 rounded-4 shadow-sm border">
                                     <Nav.Item className="mb-1">
@@ -208,7 +225,6 @@ const AdminDashboard = () => {
                         {/* CONTENT PANELS */}
                         <Col md={10}>
                             <Tab.Content>
-                                {/* We pass 'showNotification' down so children can trigger Toasts */}
                                 <Tab.Pane eventKey="orders"><AdminOrders showNotification={showNotification} /></Tab.Pane>
                                 <Tab.Pane eventKey="inventory"><AdminInventory showNotification={showNotification} /></Tab.Pane>
                                 <Tab.Pane eventKey="users"><AdminUsers showNotification={showNotification} /></Tab.Pane>
@@ -220,7 +236,6 @@ const AdminDashboard = () => {
                     </Row>
                 </Tab.Container>
 
-                {/* Global Toast Container */}
                 <ToastContainer position="bottom-end" className="p-3 position-fixed">
                     <Toast onClose={() => setToast({...toast, show: false})} show={toast.show} delay={3000} autohide bg={toast.variant}>
                         <Toast.Body className="text-white fw-bold">{toast.message}</Toast.Body>
