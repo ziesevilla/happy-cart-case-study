@@ -108,11 +108,24 @@ const Footer = () => {
                         </div>
 
                         <h6 className="mt-3 mb-0" style={{fontSize: '0.75rem'}}>FOLLOW US</h6>
-                        <div className="social-icons">
-                            <a href="#" className="social-icon-circle"><Facebook size={18}/></a>
-                            <a href="#" className="social-icon-circle"><Instagram size={18}/></a>
-                            <a href="#" className="social-icon-circle"><Twitter size={18}/></a>
-                            <a href="#" className="social-icon-circle"><Youtube size={18}/></a>
+                        
+                        {/* UPDATE: Added 'd-flex gap-2' to the container for spacing.
+                           UPDATE: Added 'd-flex align-items-center justify-content-center' to the circles 
+                                   to perfectly center the icons.
+                        */}
+                        <div className="social-icons d-flex gap-2 mt-2">
+                            <a href="#" className="social-icon-circle d-flex align-items-center justify-content-center">
+                                <Facebook size={18}/>
+                            </a>
+                            <a href="#" className="social-icon-circle d-flex align-items-center justify-content-center">
+                                <Instagram size={18}/>
+                            </a>
+                            <a href="#" className="social-icon-circle d-flex align-items-center justify-content-center">
+                                <Twitter size={18}/>
+                            </a>
+                            <a href="#" className="social-icon-circle d-flex align-items-center justify-content-center">
+                                <Youtube size={18}/>
+                            </a>
                         </div>
                     </div>
                 </div>

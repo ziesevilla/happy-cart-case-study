@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Pagination, Spinner } from 'react-bootstrap';
-import { Search, SlidersHorizontal, X, Clock } from 'lucide-react';
+import { Search, SlidersHorizontal, Clock } from 'lucide-react'; // Removed X import as it wasn't used
 import { useLocation, useNavigate } from 'react-router-dom'; 
 import ProductCard from '../components/ProductCard';
-import { useProducts } from '../context/ProductContext'; // 💡 Use Context
+import { useProducts } from '../context/ProductContext'; 
 import './styles/Products.css';
 
 /**
@@ -13,16 +13,16 @@ import './styles/Products.css';
  * * Sorting, Search, and Pagination.
  */
 const Products = () => {
-    // 💡 1. Get products and loading state from Context
-    // We use the global context to ensure we have the latest data across the app
+    // 1. Get products and loading state from Context
     const { products: ALL_PRODUCTS, loading } = useProducts(); 
     
     // --- ROUTING HOOKS ---
     const location = useLocation();
     const navigate = useNavigate();
     
-    // Parse query parameters to determine current collection (e.g., ?collection=Shoes)
+    // Parse query parameters (e.g., ?collection=Shoes)
     const queryParams = new URLSearchParams(location.search);
+    // Default to 'All' if no param exists
     const collectionFilter = queryParams.get('collection') || 'All'; 
     const isNewArrivals = collectionFilter === 'New'; 
 
@@ -36,14 +36,13 @@ const Products = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 9; 
 
-    // Reset filters and page number when the main collection changes (e.g. Navigating from Men -> Women)
+    // Reset filters and page number when the main collection changes
     useEffect(() => {
         setSelectedSubCategory('All');
         setCurrentPage(1); 
     }, [collectionFilter]);
 
-    // 💡 2. Show Loading Spinner
-    // Prevents rendering empty grids while data fetches from API
+    // 2. Show Loading Spinner
     if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
@@ -64,22 +63,20 @@ const Products = () => {
         return diffDays <= 7;
     };
 
-    // Maps the URL 'collection' param to specific database Category names
+    // 💡 IMPROVED CATEGORY MAPPING (Dynamic)
+    // Instead of a hardcoded switch, we just pass the collection name directly.
+    // If collection is 'All' or 'New', we handle that separately.
+    // If collection is 'Gaming', this function returns ['Gaming'].
     const getCategoriesInCollection = (collection) => {
-        switch(collection) {
-            case 'Clothing': return ['Clothing']; 
-            case 'Shoes': return ['Shoes'];
-            case 'Accessories': return ['Accessories'];
-            default: return [];
-        }
+        if (collection === 'All' || collection === 'New') return [];
+        return [collection];
     };
 
     const targetCategories = getCategoriesInCollection(collectionFilter);
 
-    // 💡 3. Map unique sub-categories (Handle 'sub_category' from DB vs 'subCategory')
-    // Dynamically generates the sidebar filter options based on the currently displayed collection
+    // 3. Map unique sub-categories dynamically
     const uniqueSubCategories = [...new Set(
-        collectionFilter === 'All' 
+        collectionFilter === 'All' || collectionFilter === 'New'
             ? ALL_PRODUCTS.map(p => p.sub_category || p.subCategory).filter(Boolean)
             : ALL_PRODUCTS
                 .filter(p => targetCategories.includes(p.category))
@@ -91,27 +88,28 @@ const Products = () => {
 
     // --- CORE FILTERING LOGIC ---
     
-    // Step 1: Filter the master list based on all active criteria
     const filteredProducts = ALL_PRODUCTS.filter(product => {
-        // Handle "New Arrivals" (based on dateAdded from DB)
+        // 1. Handle "New Arrivals"
         if (isNewArrivals) {
             return isWithin7Days(product.dateAdded || product.created_at);
         }
 
-        // Filter by Main Category (e.g., Shoes)
+        // 2. Filter by Main Category (Dynamic)
+        // If collectionFilter is 'All', skip this check.
+        // Otherwise, check if the product's category matches the URL param.
         let matchesCollection = true;
         if (collectionFilter !== 'All') {
             matchesCollection = targetCategories.includes(product.category);
         }
 
-        // Filter by Search Input
+        // 3. Filter by Search Input
         const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
         
-        // Handle sub-category mapping (normalize keys)
+        // 4. Handle sub-category mapping
         const productSub = product.sub_category || product.subCategory;
         const matchesSubCategory = selectedSubCategory === 'All' || productSub === selectedSubCategory;
         
-        // Handle Price (Ensure number)
+        // 5. Handle Price
         const productPrice = parseFloat(product.price);
         const matchesPrice = productPrice <= priceRange;
 
@@ -127,13 +125,12 @@ const Products = () => {
 
         if (sortBy === 'price-low') return priceA - priceB;
         if (sortBy === 'price-high') return priceB - priceA;
-        return 0; // Default 'featured' order
+        return 0; // Default 'featured'
     });
 
     // --- PAGINATION LOGIC ---
-    // Slices the filtered and sorted array to display only the current page's items
     const currentProducts = isNewArrivals 
-        ? filteredProducts // Show all new arrivals without pagination
+        ? filteredProducts 
         : filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
         
     const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
@@ -143,7 +140,6 @@ const Products = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' }); 
     };
 
-    // Resets all local state filters to defaults
     const clearFilters = () => {
         setSearchTerm('');
         setSelectedSubCategory('All');
@@ -153,7 +149,6 @@ const Products = () => {
     };
 
     // --- DYNAMIC GRID LAYOUT ---
-    // Adjusts column width based on the number of items found to prevent huge cards when few results exist
     const getDynamicGridProps = () => {
         if (!isNewArrivals) return { xs: 1, md: 2, lg: 3 }; 
 
@@ -171,10 +166,14 @@ const Products = () => {
     // Selects the Hero Banner image based on the active collection
     const getBannerImage = () => {
         if (isNewArrivals) return 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2070&auto=format&fit=crop'; 
+        
+        // Dynamic fallback: If we have a specific image for a known category, use it.
+        // Otherwise, use a generic "Shop All" image.
         switch(collectionFilter) {
             case 'Clothing': return 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?q=80&w=2070&auto=format&fit=crop';
             case 'Shoes': return 'https://images.unsplash.com/photo-1556906781-9a412961c28c?q=80&w=2070&auto=format&fit=crop';
             case 'Accessories': return 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=2070&auto=format&fit=crop';
+            // Default for any new custom categories (e.g. Gaming)
             default: return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop';
         }
     }
@@ -306,7 +305,6 @@ const Products = () => {
                                 <Row {...gridProps} className="g-4 justify-content-center">
                                     {currentProducts.map((product) => (
                                         <Col key={product.id}>
-                                            {/* 💡 Pass product to card */}
                                             <ProductCard product={product} />
                                         </Col>
                                     ))}
