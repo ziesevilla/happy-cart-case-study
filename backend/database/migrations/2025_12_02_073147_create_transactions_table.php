@@ -13,11 +13,17 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            $table->string('transaction_number')->unique(); // TRX-12345
+            
+            // Foreign Keys
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            
+            // Core Data
+            $table->string('transaction_number')->unique();
             $table->decimal('amount', 10, 2);
-            $table->string('payment_method'); // Credit Card, GCash
-            $table->string('status')->default('Pending'); // Paid, Failed
+            $table->string('payment_method');
+            $table->string('status')->default('Paid');
+            
             $table->timestamps();
         });
     }
