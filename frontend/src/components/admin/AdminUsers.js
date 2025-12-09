@@ -115,21 +115,20 @@ const AdminUsers = ({ showNotification }) => {
         : [];
 
     // 2. Filter transactions linked to those orders
-    // 💡 FIX: We create a list of valid Order Numbers specifically for this user
-    // This connects the Transaction "orderId" (string) to the Order "order_number" (string)
     const validOrderNumbers = userOrders.map(o => o.order_number).filter(Boolean);
     
     const userTransactions = selectedUser 
         ? transactions.filter(t => validOrderNumbers.includes(t.orderId))
         : [];
 
-    // 3. Calculate total lifetime spend (excluding cancelled/refunded)
-    const totalSpent = userOrders
-        .filter(o => !['Cancelled', 'Refunded'].includes(o.status))
+    // 3. Calculate SUCCESSFUL orders and total spend (Updated Logic)
+    // 💡 FIX: We exclude Cancelled, Refunded, and Returned orders from both the count and the total.
+    const successfulOrders = userOrders.filter(o => !['Cancelled', 'Refunded', 'Returned'].includes(o.status));
+
+    const totalSpent = successfulOrders
         .reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
 
     // 4. Fetch addresses
-    // 💡 FIX: We read directly from selectedUser.addresses because we updated the Controller to include them.
     const userAddresses = selectedUser?.addresses || [];
 
     // --- ACTION HANDLERS ---
@@ -414,7 +413,8 @@ const AdminUsers = ({ showNotification }) => {
                                     <Col xs={6}>
                                         <div className="bg-white p-3 rounded-3 border">
                                             <small className="text-muted text-uppercase fw-bold" style={{fontSize: '0.7rem'}}>Total Orders</small>
-                                            <h4 className="fw-bold text-dark mb-0 mt-1">{userOrders.length}</h4>
+                                            {/* 💡 FIX: Now displays count of successful orders only */}
+                                            <h4 className="fw-bold text-dark mb-0 mt-1">{successfulOrders.length}</h4>
                                         </div>
                                     </Col>
                                 </Row>
@@ -526,6 +526,7 @@ const AdminUsers = ({ showNotification }) => {
                                                                 <th className="text-muted small">Recipient</th>
                                                                 <th className="text-muted small">Details</th>
                                                                 <th className="text-muted small">Contact</th>
+                                                                <th className="text-muted small">Status</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -539,6 +540,9 @@ const AdminUsers = ({ showNotification }) => {
                                                                         {addr.street}, {addr.city} {addr.zip}
                                                                     </td>
                                                                     <td className="small">{addr.phone}</td>
+                                                                    <td>
+                                                                        {addr.default ? <Badge bg="primary" className="fw-normal" style={{fontSize: '0.6rem'}}>Default</Badge> : <span className="text-muted small">-</span>}
+                                                                    </td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
