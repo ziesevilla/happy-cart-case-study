@@ -1,19 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Button, Container, Row, Col, Form } from 'react-bootstrap';
+import { Button, Container, Row, Col, Spinner } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { Star, Quote, Mail, Heart } from 'lucide-react';
+import { Star, Quote, Heart, Package, Truck, ShieldCheck } from 'lucide-react'; 
 import { useReviews } from '../context/ReviewContext';
 import { useAuth } from '../context/AuthContext'; 
 import { useProducts } from '../context/ProductContext'; 
 import './styles/Home.css';
 
-// --- CONSTANTS & STATIC DATA ---
-const PROMOS = [
-    "✨ NEW SEASON: Shop the Spring/Summer '24 Collection",
-    "🚚 Free Express Shipping on orders over $100",
-    "💖 Student Discount: Get 15% off with valid ID"
-];
-
+// --- STATIC DATA ---
 const HERO_SLIDES = [
     {
         id: 1,
@@ -33,72 +27,57 @@ const HERO_SLIDES = [
 ];
 
 const FEATURED_GRID = [
-    { id: 1, title: "DATE NIGHT LOOKS", image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Clothing" },
-    { id: 2, title: "OFF-DUTY DENIM", image: "https://images.unsplash.com/photo-1582552938357-32b906df40cb?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Clothing" },
-    { id: 3, title: "ACTIVEWEAR", image: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Clothing" },
-    { id: 4, title: "ACCESSORIES", image: "https://images.unsplash.com/photo-1576053139778-7e32f2ae3cfd?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Accessories" },
+    { id: 1, title: "NEW ARRIVALS", image: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=New" }, 
+    { id: 2, title: "CLOTHING ESSENTIALS", image: "https://images.unsplash.com/photo-1582552938357-32b906df40cb?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Clothing" },
+    { id: 3, title: "ACCESSORIES", image: "https://images.unsplash.com/photo-1576053139778-7e32f2ae3cfd?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Accessories" },
+    { id: 4, title: "SHOES & FOOTWEAR", image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Shoes" },
 ];
 
-/**
- * Home Component
- * * The landing page of the application.
- * * Aggregates data from ProductContext (for categories), ReviewContext (for social proof), and AuthContext.
- */
 const Home = () => {
-    // --- CONTEXT HOOKS ---
-    const { products } = useProducts(); 
+    const { products, loading } = useProducts(); 
     const { reviews, toggleLike } = useReviews(); 
     const { user } = useAuth();
     const navigate = useNavigate();
     
-    // --- LOCAL STATE ---
-    const [promoIndex, setPromoIndex] = useState(0);
     const [heroIndex, setHeroIndex] = useState(0);
 
-    // --- 💡 DATA LOGIC: DYNAMIC CATEGORY EXTRACTION ---
-    // Instead of hardcoding categories, we extract unique sub-categories from the product list.
-    // We also capture the 'mainCategory' to ensure the "Shop Now" link filters correctly.
-    const dynamicCategories = useMemo(() => {
-        const subCatMap = new Map();
+    // --- SUB-CATEGORY EXTRACTION ---
+    const subCategoryList = useMemo(() => {
+        if (!products || products.length === 0) return [];
 
-        products.forEach(product => {
-            if (product.subCategory && !subCatMap.has(product.subCategory)) {
-                subCatMap.set(product.subCategory, {
-                    name: product.subCategory,
-                    mainCategory: product.category, // Capture parent category for filtering
-                    img: product.image 
+        const map = new Map();
+        const sortedProducts = [...products].sort((a, b) => b.id - a.id);
+
+        sortedProducts.forEach(product => {
+            const subCat = product.sub_category || product.subCategory;
+            const mainCat = product.category;
+            const image = product.image;
+
+            if (subCat && !map.has(subCat)) {
+                map.set(subCat, {
+                    name: subCat,
+                    mainCategory: mainCat,
+                    img: image || "https://via.placeholder.com/300?text=No+Image" 
                 });
             }
         });
 
-        return Array.from(subCatMap.values());
+        return Array.from(map.values());
     }, [products]);
 
-    // --- 💡 DATA LOGIC: TOP REVIEWS ---
-    // Filters for 5-star reviews only, sorts by popularity (likes), limits to 6 items.
+    // --- TOP REVIEWS ---
     const topReviews = reviews
         .filter(r => r.rating === 5) 
         .sort((a, b) => (b.likes || 0) - (a.likes || 0)) 
         .slice(0, 6); 
 
-    // --- EFFECTS: ANIMATIONS ---
-    
-    // Rotate Top Promo Bar every 4 seconds
-    useEffect(() => {
-        const interval = setInterval(() => setPromoIndex((prev) => (prev + 1) % PROMOS.length), 4000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // Rotate Hero Slide every 5 seconds
     useEffect(() => {
         const interval = setInterval(() => setHeroIndex((prev) => (prev + 1) % HERO_SLIDES.length), 5000);
         return () => clearInterval(interval);
     }, []);
 
-    // --- HANDLERS ---
-    
     const handleLike = (e, reviewId) => {
-        e.stopPropagation(); // Prevent clicking the card (navigation) when just liking
+        e.stopPropagation(); 
         if (!user) {
             alert("Please login to like reviews!");
             return;
@@ -106,32 +85,59 @@ const Home = () => {
         toggleLike(reviewId);
     };
 
-    // Construct the marquee list (duplicated 4x for smooth infinite scroll)
-    const marqueeList = dynamicCategories.length > 0 
-        ? [...dynamicCategories, ...dynamicCategories, ...dynamicCategories, ...dynamicCategories]
-        : [];
+    // --- 💡 MARQUEE LOGIC FIX ---
+    // 1. Duplicate the list exactly once to create a seamless loop
+    const marqueeList = [...subCategoryList, ...subCategoryList];
+    
+    // 2. Calculate duration dynamically: e.g., 3 seconds per item
+    // This ensures that if you have 50 items, it slows down enough to see them all.
+    const animationDuration = `${Math.max(20, marqueeList.length * 2)}s`; 
+
+    if (loading) {
+        return (
+            <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+                <Spinner animation="border" variant="primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="home-page animate-fade-in">
             
-            {/* SECTION 1: TOP PROMO BAR */}
-            <div className="promo-bar d-flex justify-content-center align-items-center w-100 m-0 p-0">
-                <div key={promoIndex} className="promo-slide fw-bold">{PROMOS[promoIndex]}</div>
+            {/* 1. PROMO BAR */}
+            <div className="promo-bar d-flex justify-content-center align-items-center w-100 m-0 py-2 bg-light border-bottom">
+                <div className="d-flex gap-5 text-muted small fw-bold text-uppercase">
+                    <span className="d-flex align-items-center gap-2"><Truck size={16}/> FAST SHIPPING NATIONWIDE</span>
+                    <span className="d-flex align-items-center gap-2"><ShieldCheck size={16}/> SECURE PAYMENTS</span>
+                    <span className="d-flex align-items-center gap-2"><Package size={16}/> 30-DAY RETURNS</span>
+                </div>
             </div>
 
-            {/* SECTION 2: HERO CAROUSEL */}
+            {/* 2. HERO */}
             <div className="hero-section d-flex align-items-center justify-content-center text-white w-100 m-0" style={{ backgroundImage: `url(${HERO_SLIDES[heroIndex].image})` }}>
                 <div className="hero-overlay">
                     <div className="text-center animate-fade-in" key={heroIndex}>
                         <h1 className="display-1 fw-bold mb-4" style={{ letterSpacing: '2px', textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>{HERO_SLIDES[heroIndex].tagline}</h1>
-                        <Button variant="light" size="lg" className="rounded-pill px-5 py-3 fw-bold text-dark shadow" as={Link} to="/products">SHOP COLLECTION</Button>
+                        <Button 
+                            variant="light" 
+                            size="lg" 
+                            className="rounded-pill px-5 py-3 fw-bold text-dark shadow" 
+                            as={Link} 
+                            to="/products?collection=New"
+                        >
+                            BROWSE COLLECTION
+                        </Button>
                     </div>
                 </div>
             </div>
 
-            {/* SECTION 3: FEATURED GRID (TRENDING NOW) */}
+            {/* 3. FEATURED GRID */}
             <div className="w-100 m-0 bg-white py-5">
-                <div className="text-start pb-4" style={{ paddingLeft: '10%' }}><h1 className="mb-0 fw-bold">TRENDING NOW</h1></div>
+                <div className="text-start pb-4" style={{ paddingLeft: '10%' }}>
+                    <h1 className="mb-0 fw-bold">SHOP BY COLLECTION</h1>
+                    <p className="text-muted">Discover what is being offered.</p>
+                </div>
+                
                 <div className="position-relative">
                     <div className="featured-grid w-100">
                         {FEATURED_GRID.map((item) => (
@@ -140,7 +146,7 @@ const Home = () => {
                                 <div className="grid-overlay">
                                     <div className="text-center">
                                         <h3 className="text-white fw-bold mb-3" style={{textShadow: '0 2px 4px rgba(0,0,0,0.5)'}}>{item.title}</h3>
-                                        <Button variant="primary" className="grid-btn" as={Link} to={item.link}>SHOP LOOK</Button>
+                                        <Button variant="primary" className="grid-btn" as={Link} to={item.link}>VIEW ALL</Button>
                                     </div>
                                 </div>
                             </div>
@@ -149,30 +155,43 @@ const Home = () => {
                 </div>
             </div>
 
-            {/* SECTION 4: DYNAMIC CATEGORY MARQUEE */}
-            {marqueeList.length > 0 && (
-                <div className="w-100 m-0 bg-white py-5">
-                    <div className="text-start pb-4" style={{ paddingLeft: '10%' }}><h1 className="mb-0 fw-bold">SHOP BY CATEGORY</h1></div>
-                    <div className="d-flex align-items-center bg-white">
+            {/* 4. DYNAMIC SUB-CATEGORY MARQUEE */}
+            <div className="w-100 m-0 bg-light py-5">
+                <div className="text-start pb-4" style={{ paddingLeft: '10%' }}>
+                    <h1 className="mb-0 fw-bold">TRENDING CATEGORIES</h1>
+                    <p className="text-muted">Explore our most popular styles.</p>
+                </div>
+                
+                {subCategoryList.length > 0 ? (
+                    <div className="d-flex align-items-center bg-light overflow-hidden"> {/* Ensure overflow hidden */}
                         <div className="category-marquee-wrapper w-100 m-0">
-                            <div className="category-track">
+                            {/* 💡 PASS DYNAMIC DURATION HERE 
+                                We map 'animationDuration' to a CSS variable or direct style
+                            */}
+                            <div className="category-track" style={{ animationDuration: animationDuration }}>
                                 {marqueeList.map((cat, idx) => (
                                     <div 
                                         key={idx} 
-                                        className="category-card d-flex align-items-center justify-content-center position-relative" 
-                                        style={{ '--cat-img': `url(${cat.img})` }}
+                                        className="category-card d-flex align-items-center justify-content-center position-relative flex-shrink-0" // prevent shrinking
+                                        style={{ 
+                                            backgroundImage: `url("${cat.img}")`, 
+                                            backgroundSize: 'cover',
+                                            backgroundPosition: 'center',
+                                            borderRadius: '1rem',
+                                            overflow: 'hidden'
+                                        }}
                                     >
+                                        <div className="position-absolute top-0 start-0 w-100 h-100 bg-dark opacity-50"></div>
                                         <div className="text-center position-relative z-2">
-                                            <h4 className="text-white fw-bold mb-3 text-uppercase">{cat.name}</h4>
+                                            <h4 className="text-white fw-bold mb-3 text-uppercase" style={{textShadow: '0 2px 4px rgba(0,0,0,0.8)'}}>{cat.name}</h4>
                                             
-                                            {/* 💡 LINK LOGIC: Filters by Main Collection AND SubCategory */}
                                             <Button 
                                                 size="sm" 
                                                 variant="light" 
                                                 as={Link} 
-                                                to={`/products?collection=${cat.mainCategory}&subCategory=${cat.name}`}
+                                                to={`/products?collection=${cat.mainCategory || 'All'}&subCategory=${cat.name}`}
                                             >
-                                                View All
+                                                Shop {cat.name}
                                             </Button>
                                         </div>
                                     </div>
@@ -180,14 +199,18 @@ const Home = () => {
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                ) : (
+                    <div className="text-center py-5 text-muted">
+                        <p>Loading categories...</p>
+                    </div>
+                )}
+            </div>
 
-            {/* SECTION 5: STYLE STORIES (REVIEWS) */}
+            {/* 5. REVIEWS */}
             <div className="w-100 m-0 bg-white py-5">
                 <div className="text-start pb-5" style={{ paddingLeft: '10%' }}>
                      <h1 className="fw-bold">STYLE STORIES</h1>
-                     <p className="text-muted lead">Top rated looks from our community.</p>
+                     <p className="text-muted">Top rated looks from our community.</p>
                 </div>
                 <Container fluid className="px-0">
                     <Row className="g-4 px-4 mx-0 justify-content-center"> 
@@ -230,30 +253,6 @@ const Home = () => {
                         )}
                     </Row>
                 </Container>
-            </div>
-
-            {/* SECTION 6: NEWSLETTER */}
-            <div className="w-100 m-0 bg-white py-5">
-                <div className="text-start pb-5" style={{ paddingLeft: '10%' }}>
-                    <h1 className="fw-bold">JOIN THE CLUB</h1>
-                    <p className="text-muted lead">Get 10% off your first order & exclusive access.</p>
-                </div>
-                <div className="d-flex align-items-center justify-content-center pb-5">
-                    <Container style={{ maxWidth: '600px' }}>
-                        <div className="text-center bg-white p-5 rounded-4 shadow-sm">
-                            <Mail size={48} className="text-primary mb-4" />
-                            <h2 className="fw-bold mb-3">Stay in Style</h2>
-                            <p className="text-muted mb-4">Be the first to know about new drops, flash sales, and style inspiration.</p>
-                            <Form>
-                                <Form.Group className="mb-3" controlId="formBasicEmail">
-                                    <Form.Control type="email" placeholder="Enter your email" size="lg" className="text-center rounded-pill" />
-                                </Form.Group>
-                                <Button variant="primary" type="submit" size="lg" className="w-100 rounded-pill">SUBSCRIBE</Button>
-                            </Form>
-                            <small className="text-muted mt-3 d-block">We respect your privacy. Unsubscribe at any time.</small>
-                        </div>
-                    </Container>
-                </div>
             </div>
         </div>
     );
