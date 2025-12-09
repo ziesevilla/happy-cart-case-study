@@ -8,7 +8,6 @@ import api from '../../api/axios';
  * ProfileSidebar Component
  * * Displays the user's profile card, avatar, and account statistics.
  * * Handles Profile Editing, including Image Uploads via FormData.
- * * Manages Logout functionality.
  */
 const ProfileSidebar = ({ 
     showNotification, 
@@ -22,9 +21,8 @@ const ProfileSidebar = ({
     
     // --- LOCAL STATE MANAGEMENT ---
     
-    // Image Handling: 'profileImage' for UI preview, 'selectedFile' for API upload
-    const [profileImage, setProfileImage] = useState(null); // Preview URL
-    const [selectedFile, setSelectedFile] = useState(null); // 💡 NEW: Actual File Object
+    const [profileImage, setProfileImage] = useState(null); 
+    const [selectedFile, setSelectedFile] = useState(null); 
     const [loading, setLoading] = useState(false);
 
     // Modal States
@@ -43,69 +41,60 @@ const ProfileSidebar = ({
 
     // --- HANDLERS ---
 
-    /**
-     * Handles file selection from the input.
-     * Generates a local preview URL immediately for better UX.
-     */
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            // 1. Save the file object for uploading later
             setSelectedFile(file);
 
-            // 2. Create a preview URL for immediate display
             const reader = new FileReader();
             reader.onloadend = () => {
                 setProfileImage(reader.result);
-                showNotification("Profile picture preview updated! Click 'Edit Profile' to save.");
             };
             reader.readAsDataURL(file);
-            
-            // Optional: Open modal immediately to encourage saving
-            handleOpenEdit();
         }
     };
 
     /**
      * Opens the Edit Modal and populates it with current user data.
-     * Prevents the user from seeing empty fields when they start editing.
      */
     const handleOpenEdit = () => {
+        // Reset image states
+        setProfileImage(null);
+        setSelectedFile(null);
+
         setProfileData({ 
             name: user.name || '', 
             email: user.email || '',
             phone: user.phone || '', 
-            dob: user.dob || '', 
+            dob: user.dob ? user.dob.split('T')[0] : '', // Clean date format for input type="date"
             gender: user.gender || 'Male'
         });
         setShowProfileModal(true);
     };
 
-    // Triggers the confirmation modal before API submission
     const handleSaveProfile = (e) => {
         e.preventDefault();
         setShowUpdateConfirmModal(true); 
     };
 
-    // 💡 UPDATED: Send Data + File
     /**
-     * Submits the updated profile data to the backend.
-     * Uses FormData to handle multipart/form-data for file uploads.
+     * Submits the updated profile data and file upload to the backend.
      */
     const confirmUpdate = async () => {
         setLoading(true);
         try {
-            // Use FormData to handle file uploads
             const formData = new FormData();
+            
+            // Append TEXT fields
             formData.append('name', profileData.name);
             formData.append('phone', profileData.phone || '');
             formData.append('dob', profileData.dob || '');
             formData.append('gender', profileData.gender || '');
             
             // Laravel method spoofing for PUT requests with files
-            // (Standard HTML forms/multipart often require POST with _method field)
             formData.append('_method', 'PUT'); 
 
+            // Append FILE if selected
             if (selectedFile) {
                 formData.append('profile_image', selectedFile);
             }
@@ -117,7 +106,7 @@ const ProfileSidebar = ({
                 },
             });
 
-            // Update React Context with fresh user data so UI reflects changes immediately
+            // Update React Context with fresh user data
             login(response.data); 
 
             setShowUpdateConfirmModal(false);
@@ -137,11 +126,9 @@ const ProfileSidebar = ({
     };
 
     // Helper to get the correct image URL
-    // (If it's a local preview, use it. If from DB, prepend backend URL)
-    const getAvatarUrl = () => {
-        if (profileImage) return profileImage; // Local Preview
+    const getAvatarUrl = (isPreview = false) => {
+        if (isPreview && profileImage) return profileImage; 
         if (user.profile_image) {
-            // Checks if the URL is absolute or relative (useful for Docker/Localhost environments)
             return user.profile_image.startsWith('http') 
                 ? user.profile_image 
                 : `http://localhost:80${user.profile_image}`; // Docker URL
@@ -154,22 +141,40 @@ const ProfileSidebar = ({
             {/* --- MAIN PROFILE CARD --- */}
             <Card className="profile-card text-center mb-4">
                 <div className="profile-header"></div>
-                <div className="profile-avatar-container">
-                    <div className="profile-avatar">
-                        {/* Avatar Render Logic: Preview -> Database Image -> Initial Fallback */}
+                <div className="profile-avatar-container position-relative">
+                    <div 
+                        className="profile-avatar bg-white rounded-circle d-flex align-items-center justify-content-center mx-auto shadow-sm"
+                        style={{ 
+                            width: '100px', 
+                            height: '100px', 
+                            border: '4px solid white', 
+                            marginTop: '-50px',      // The magic number: Pulls it up exactly half its height
+                            position: 'relative',    // Required for zIndex to work
+                            zIndex: 10,              // Ensures it floats ABOVE the pink header
+                            overflow: 'hidden'       // Clips the image to the circle
+                        }}
+                    >
                         {getAvatarUrl() ? (
-                            <img src={getAvatarUrl()} alt="Profile" />
+                            <img 
+                                src={getAvatarUrl()} 
+                                alt="Profile" 
+                                style={{ 
+                                    width: '100%', 
+                                    height: '100%', 
+                                    objectFit: 'cover', 
+                                    display: 'block' 
+                                }} 
+                            />
                         ) : (
-                            user.name.charAt(0).toUpperCase()
+                            <span className="fs-1 fw-bold text-secondary">
+                                {user.name?.charAt(0).toUpperCase()}
+                            </span>
                         )}
                     </div>
-                    {/* Hidden File Input triggered by Label */}
-                    <label className="profile-upload-overlay">
-                        <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
-                        <Camera size={24} />
-                    </label>
+
                 </div>
-                <Card.Body className="pt-0 pb-4">
+
+                <Card.Body className="pt-3 pb-4">
                     <h4 className="fw-bold mb-1">{user.name}</h4>
                     <p className="text-muted small mb-1">{user.email}</p>
                     <p className="text-muted small mb-4">{user.phone || 'No phone added'}</p>
@@ -219,23 +224,101 @@ const ProfileSidebar = ({
                  </div>
             </Card>
 
-            {/* EDIT PROFILE MODAL */}
+            {/* --- EDIT PROFILE MODAL --- */}
             <Modal show={showProfileModal} onHide={() => setShowProfileModal(false)} centered>
                 <Modal.Header closeButton className="border-0 pb-0"><Modal.Title className="fw-bold">Edit Profile</Modal.Title></Modal.Header>
                 <Modal.Body>
                     <Form onSubmit={handleSaveProfile}>
-                        <Form.Group className="mb-3">
-                            <Form.Label>Full Name</Form.Label>
-                            <Form.Control type="text" className="rounded-pill" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} required/>
-                        </Form.Group>
-                        {/* ... Other fields (Email, Phone, DOB, Gender) remain unchanged ... */}
-                        {/* I'll assume you kept the fields from your previous message here */}
-                        {/* ... */}
                         
-                        {/* Display selected file if exists */}
-                        {selectedFile && <div className="text-success small mb-3 text-center fw-bold">📸 New image selected: {selectedFile.name}</div>}
+                        {/* 2. FIXED PREVIEW IMAGE STYLING (Modal View) */}
+                        <div className="text-center mb-4">
+                            <div className="d-inline-block position-relative">
+                                <div 
+                                    className="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center mx-auto mb-2 border" 
+                                    style={{
+                                        width: '100px', 
+                                        height: '100px', 
+                                        overflow: 'hidden', // CRITICAL
+                                        position: 'relative'
+                                    }}
+                                >
+                                    {getAvatarUrl(true) ? (
+                                        <img 
+                                            src={getAvatarUrl(true)} 
+                                            alt="Preview" 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                        />
+                                    ) : (
+                                        <span className="fs-1 fw-bold text-muted">{user.name.charAt(0).toUpperCase()}</span>
+                                    )}
+                                </div>
+                                <label className="btn btn-sm btn-light border rounded-pill shadow-sm d-flex align-items-center gap-2 justify-content-center cursor-pointer">
+                                    <Camera size={14}/> Change Photo
+                                    <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
+                                </label>
+                            </div>
+                        </div>
 
-                        <div className="d-grid"><Button variant="primary" type="submit" className="rounded-pill fw-bold">Review & Save</Button></div>
+                        <Row className="g-3">
+                            <Col xs={12}>
+                                <Form.Group>
+                                    <Form.Label>Full Name</Form.Label>
+                                    <Form.Control 
+                                        type="text" 
+                                        className="rounded-pill" 
+                                        value={profileData.name} 
+                                        onChange={(e) => setProfileData({...profileData, name: e.target.value})} 
+                                        required
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col xs={12}>
+                                <Form.Group>
+                                    <Form.Label>Phone Number</Form.Label>
+                                    <Form.Control 
+                                        type="tel" 
+                                        className="rounded-pill" 
+                                        value={profileData.phone} 
+                                        onChange={(e) => setProfileData({...profileData, phone: e.target.value})} 
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Date of Birth</Form.Label>
+                                    <Form.Control 
+                                        type="date" 
+                                        className="rounded-pill" 
+                                        value={profileData.dob} 
+                                        onChange={(e) => setProfileData({...profileData, dob: e.target.value})} 
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Gender</Form.Label>
+                                    <Form.Select 
+                                        className="rounded-pill" 
+                                        value={profileData.gender} 
+                                        onChange={(e) => setProfileData({...profileData, gender: e.target.value})}
+                                    >
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                        </Row>
+                        
+                        <Form.Group className="mb-4 mt-3">
+                            <Form.Label className="d-block">Email Address</Form.Label>
+                            <Form.Control type="email" value={profileData.email} disabled className="rounded-pill bg-light" />
+                            <Form.Text className="text-muted small">Email cannot be changed here.</Form.Text>
+                        </Form.Group>
+
+                        <div className="d-grid">
+                            <Button variant="primary" type="submit" className="rounded-pill fw-bold">Review & Save</Button>
+                        </div>
                     </Form>
                 </Modal.Body>
             </Modal>
@@ -257,8 +340,20 @@ const ProfileSidebar = ({
                 </Modal.Body>
             </Modal>
 
-            {/* LOGOUT MODAL (Unchanged) */}
-            {/* ... */}
+            {/* LOGOUT MODAL */}
+            <Modal show={showLogoutModal} onHide={() => setShowLogoutModal(false)} centered size="sm">
+                <Modal.Body className="text-center p-4">
+                    <div className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{width:'60px', height:'60px'}}>
+                        <LogOut size={24} className="text-danger" />
+                    </div>
+                    <h5 className="fw-bold mb-2">Log Out?</h5>
+                    <p className="text-muted small mb-4">You will be securely logged out of your account.</p>
+                    <div className="d-grid gap-2">
+                        <Button variant="danger" onClick={handleLogout} className="rounded-pill fw-bold">Yes, Log Out</Button>
+                        <Button variant="link" onClick={() => setShowLogoutModal(false)} className="text-muted text-decoration-none">Cancel</Button>
+                    </div>
+                </Modal.Body>
+            </Modal>
         </>
     );
 };

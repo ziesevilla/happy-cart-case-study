@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Button, Modal, Form, Alert, Pagination } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { Package, Check, CheckCircle, ShoppingBag, RotateCcw, XCircle, AlertTriangle, Info, UploadCloud, ArrowUpDown, Star } from 'lucide-react';
+import { Package, Check, CheckCircle, ShoppingBag, RotateCcw, XCircle, AlertTriangle, Info, ArrowUpDown, Star } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext'; 
 import { useReviews } from '../../context/ReviewContext'; 
 import { useOrders } from '../../context/OrderContext'; 
-import { useSettings } from '../../context/SettingsContext'; // <--- IMPORT SETTINGS
+import { useSettings } from '../../context/SettingsContext'; 
 import ReviewModal from '../ReviewModal'; 
 
 /**
@@ -18,8 +18,7 @@ const OrdersTab = ({ showNotification }) => {
     // --- CONTEXT HOOKS ---
     const { user } = useAuth(); 
     const { orders: globalOrders, updateOrderStatus } = useOrders(); 
-    const { canUserReview } = useReviews(); 
-    const { settings } = useSettings(); // <--- GET SETTINGS
+    const { settings } = useSettings(); 
     
     const navigate = useNavigate();
     
@@ -42,8 +41,6 @@ const OrdersTab = ({ showNotification }) => {
     const [showReturnModal, setShowReturnModal] = useState(false);
     
     // Return Form Data State
-    const [returnReason, setReturnReason] = useState('');
-    const [returnDescription, setReturnDescription] = useState('');
     const [returnProof, setReturnProof] = useState(null);
     const [selectedReturnItems, setSelectedReturnItems] = useState({}); // Map of {itemId: boolean}
 
@@ -98,7 +95,6 @@ const OrdersTab = ({ showNotification }) => {
     // Resets form and opens Return Modal
     const handleOpenReturn = () => {
         setSelectedReturnItems({});
-        setReturnReason('');
         setShowOrderModal(false);
         setShowReturnModal(true);
     };
@@ -231,7 +227,8 @@ const OrdersTab = ({ showNotification }) => {
                         <ShoppingBag size={48} className="mb-3 opacity-25" />
                         <h5>No orders yet</h5>
                         <p className="text-muted">Looks like you haven't made any purchases yet.</p>
-                        <Button variant="primary" className="rounded-pill mt-3" onClick={() => navigate('/products')}>Start Shopping</Button>
+                        {/* 💡 UPDATED: Redirect to Home ('/') instead of Products */}
+                        <Button variant="primary" className="rounded-pill mt-3" onClick={() => navigate('/')}>Start Shopping</Button>
                     </div>
                 )}
             </div>

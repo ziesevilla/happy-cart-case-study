@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Button, Toast, ToastContainer, Spinner } from 'react-bootstrap'; // 💡 Added Spinner
+import { Container, Row, Col, Button, Toast, ToastContainer, Spinner } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext'; 
 import { useReviews } from '../context/ReviewContext'; 
@@ -13,14 +13,9 @@ import './styles/Account.css';
 /**
  * Account Component
  * * The central hub for user profile management.
- * * Functionality: 
- * 1. Protects the route (Redirects if not logged in).
- * 2. Aggregates user stats (Orders, Spend, Reviews).
- * 3. Switches view based on Role (Admin vs. Customer).
  */
 const Account = () => {
     // --- CONTEXT HOOKS ---
-    // 💡 FIX 1: Get 'loading' state from AuthContext to prevent premature redirects
     const { user, loading } = useAuth();
     
     // Fetch global data to calculate personal stats
@@ -33,16 +28,12 @@ const Account = () => {
     const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
 
     // --- AUTHENTICATION PROTECTION ---
-    // 💡 FIX 2: Handle the Redirect Logic correctly
     useEffect(() => {
-        // Only redirect if we are DONE loading and there is NO user
-        // This prevents kicking the user out while the token is still being verified
         if (!loading && !user) {
             navigate('/login');
         }
     }, [user, loading, navigate]);
 
-    // 💡 FIX 3: Show a Loading Spinner while checking the token
     if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
@@ -51,36 +42,33 @@ const Account = () => {
         );
     }
 
-    // If not loading and no user, return null (waiting for redirect effect to trigger)
     if (!user) return null;
 
     // --- DATA AGGREGATION & LOGIC ---
-    // Calculate stats specifically for the logged-in user
     const userOrders = orders.filter(order => order.email === user.email);
     const orderCount = userOrders.length;
     const totalSpent = userOrders.reduce((acc, order) => acc + order.total, 0);
     const reviewCount = reviews.filter(r => r.user === user.name).length;
 
-    // Determine Loyalty Tier based on lifetime spend
     let memberTier = 'Bronze';
     if (totalSpent > 50000) memberTier = 'Platinum';
     else if (totalSpent > 20000) memberTier = 'Gold';
     else if (totalSpent > 5000) memberTier = 'Silver';
 
-    // Notification helper
     const showNotification = (message, variant = 'success') => {
         setToast({ show: true, message, variant });
     };
 
     // --- ADMIN VIEW ---
-    // If the user has an 'admin' role, render the Dashboard instead of the standard profile
     if (user.role && user.role.toLowerCase() === 'admin') {
         return <AdminDashboard />;
     }
 
     // --- CUSTOMER VIEW ---
     return (
-        <div className="account-page py-5">
+        // 💡 STYLE FIX: Added inline style to force a whitish/light-gray background
+        // and minHeight to ensure the whole page is covered.
+        <div className="account-page py-5" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
             <Container>
                 <Row className="g-5">
                     
@@ -97,16 +85,27 @@ const Account = () => {
 
                     {/* RIGHT CONTENT: Tabs for Orders & Addresses */}
                     <Col lg={8}>
-                        {/* Tab Navigation Buttons */}
+                        {/* Tab Navigation Buttons (White Inactive Style Preserved) */}
                         <div className="d-flex gap-3 mb-4 border-bottom pb-3">
                             <Button 
-                                className={`rounded-pill px-4 fw-bold ${activeTab === 'orders' ? 'tab-active' : 'tab-inactive'}`}
+                                variant={activeTab === 'orders' ? 'primary' : 'light'}
+                                className={`rounded-pill px-4 fw-bold ${
+                                    activeTab === 'orders' 
+                                        ? 'tab-active shadow' 
+                                        : 'bg-white text-secondary border-0 shadow-sm'
+                                }`}
                                 onClick={() => setActiveTab('orders')}
                             >
                                 Order History
                             </Button>
+                            
                             <Button 
-                                className={`rounded-pill px-4 fw-bold ${activeTab === 'addresses' ? 'tab-active' : 'tab-inactive'}`}
+                                variant={activeTab === 'addresses' ? 'primary' : 'light'}
+                                className={`rounded-pill px-4 fw-bold ${
+                                    activeTab === 'addresses' 
+                                        ? 'tab-active shadow' 
+                                        : 'bg-white text-secondary border-0 shadow-sm'
+                                }`}
                                 onClick={() => setActiveTab('addresses')}
                             >
                                 My Addresses
@@ -122,7 +121,6 @@ const Account = () => {
                     </Col>
                 </Row>
 
-                {/* Global Toast Notification for Account Page */}
                 <ToastContainer className="toast-container">
                     <Toast onClose={() => setToast({...toast, show: false})} show={toast.show} delay={3000} autohide bg={toast.variant}>
                         <Toast.Body className="text-white fw-bold">{toast.message}</Toast.Body>
