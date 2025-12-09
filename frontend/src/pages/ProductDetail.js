@@ -12,9 +12,6 @@ import './styles/ProductDetail.css';
 
 /**
  * ProductDetail Component
- * * The main page for viewing a single product's information.
- * * Features: Image Gallery, Stock Status, Cart Actions, and Reviews.
- * * Handles both adding to cart and direct "Buy Now" flow.
  */
 const ProductDetail = () => {
     // --- HOOKS ---
@@ -26,31 +23,21 @@ const ProductDetail = () => {
     const { addToCart } = useCart();
     const { user } = useAuth();
     
-    // 💡 1. Get Review Helpers from Context
-    // Allows interaction with the review system (Read/Write/Like)
-    const { getProductReviews, reviews, getAverageRating, toggleLike, addReview } = useReviews();
+    // Review Helpers
+    const { getProductReviews, reviews, getAverageRating, toggleLike } = useReviews();
 
     // --- LOCAL STATE ---
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
 
     // Cart & Checkout Action States
-    const [isAdded, setIsAdded] = useState(false); // Controls "Added" button feedback
-    const [isBuying, setIsBuying] = useState(false); // Controls "Buy Now" spinner
+    const [isAdded, setIsAdded] = useState(false); 
+    const [isBuying, setIsBuying] = useState(false); 
     const [showToast, setShowToast] = useState(false);
     const [showBuyModal, setShowBuyModal] = useState(false);
     const [buyQuantity, setBuyQuantity] = useState(1);
 
-    // 💡 2. REVIEW MODAL STATES
-    const [showReviewModal, setShowReviewModal] = useState(false);
-    const [reviewRating, setReviewRating] = useState(5);
-    const [reviewComment, setReviewComment] = useState('');
-    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-
     // --- DATA FETCHING ---
-    // Strategies:
-    // 1. Try to find the product in the global 'ALL_PRODUCTS' context (Fastest).
-    // 2. Fallback to API call if not found (e.g., direct link sharing).
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
@@ -65,7 +52,6 @@ const ProductDetail = () => {
                     setProduct(response.data);
                 }
 
-                // Fetch latest reviews for this specific product
                 await getProductReviews(id);
 
             } catch (error) {
@@ -107,10 +93,22 @@ const ProductDetail = () => {
     const productReviews = reviews.filter(r => r.product_id === parseInt(id));
     const averageRating = getAverageRating(parseInt(id));
 
-    // Recommend similar products based on the current category
-    const relatedProducts = ALL_PRODUCTS
-        .filter(p => p.category === product.category && p.id !== product.id)
-        .slice(0, 3);
+    // IMPROVED RECOMMENDATION LOGIC
+    const otherProducts = ALL_PRODUCTS.filter(p => p.id !== product.id);
+
+    // 1. Try to find products in the same SUB-category first
+    const subCatMatches = otherProducts.filter(p => 
+        (p.sub_category || p.subCategory) === (product.sub_category || product.subCategory)
+    );
+
+    // 2. Fallback: If no sub-category matches, get products from same MAIN category
+    const mainCatMatches = otherProducts.filter(p => p.category === product.category);
+
+    // 3. Combine and limit to 3: Use sub-cat matches if available, otherwise fill with main cat matches
+    const relatedProducts = subCatMatches.length > 0 
+        ? subCatMatches.slice(0, 3) 
+        : mainCatMatches.slice(0, 3);
+
 
     // --- CART ACTIONS ---
 
@@ -124,7 +122,7 @@ const ProductDetail = () => {
         addToCart(product);
         setIsAdded(true);
         setShowToast(true);
-        setTimeout(() => setIsAdded(false), 2000); // Reset button state
+        setTimeout(() => setIsAdded(false), 2000); 
     };
 
     const handleBuyNowClick = () => {
@@ -142,11 +140,9 @@ const ProductDetail = () => {
         setIsBuying(true);
         const itemToCheckout = { ...product, quantity: buyQuantity };
         
-        // Simulate processing delay for better UX
         setTimeout(() => {
             setIsBuying(false);
             setShowBuyModal(false);
-            // Pass specific item to checkout (bypassing full cart)
             navigate('/checkout', { state: { checkoutItems: [itemToCheckout] } });
         }, 800);
     };
@@ -161,44 +157,24 @@ const ProductDetail = () => {
         toggleLike(reviewId);
     };
 
-    // 💡 3. REVIEW HANDLERS
-    const handleOpenReview = () => {
-        if (!user) {
-            if(window.confirm("You need to login to write a review. Go to login page?")) {
-                navigate('/login');
-            }
-            return;
-        }
-        setReviewRating(5);
-        setReviewComment('');
-        setShowReviewModal(true);
-    };
-
-    const handleSubmitReview = async (e) => {
-        e.preventDefault();
-        setIsSubmittingReview(true);
-
-        const result = await addReview(product.id, reviewRating, reviewComment);
-
-        if (result.success) {
-            setShowReviewModal(false);
-            // Optional: Show success toast
-        } else {
-            alert(result.message); // Show error (e.g., "Already reviewed")
-        }
-        setIsSubmittingReview(false);
-    };
-
     // Quantity Controls for Buy Now Modal
     const increaseQty = () => { if (buyQuantity < stock) setBuyQuantity(prev => prev + 1); };
     const decreaseQty = () => { if (buyQuantity > 1) setBuyQuantity(prev => prev - 1); };
 
+    // 💡 NEW: DIRECT NAVIGATION FUNCTION
+    const handleBackToCollection = () => {
+        // Construct the URL using the current product's main category
+        const collectionName = product.category || 'All';
+        navigate(`/products?collection=${collectionName}`);
+    };
+
+
     return (
         <div className="product-detail-page animate-fade-in bg-white min-vh-100 py-5">
             <Container>
-                {/* Back Button */}
-                <Button variant="link" className="text-muted mb-4 text-decoration-none p-0 d-flex align-items-center" onClick={() => navigate(-1)}>
-                    <ArrowLeft size={18} className="me-2" /> Back to Collection
+                {/* Back Button - NOW FORCES NAVIGATION TO COLLECTION */}
+                <Button variant="link" className="text-muted mb-4 text-decoration-none p-0 d-flex align-items-center" onClick={handleBackToCollection}>
+                    <ArrowLeft size={18} className="me-2" /> Back to {product.category || 'Collection'}
                 </Button>
 
                 {/* --- MAIN PRODUCT INFO SECTION --- */}
@@ -256,7 +232,7 @@ const ProductDetail = () => {
                                     onClick={handleAddToCart} 
                                     disabled={isAdded || isBuying || isOutOfStock} 
                                 >
-                                    {isOutOfStock ? "SOLD OUT" : isAdded ? <><Check size={20} className="me-2" /> ADDED TO BAG</> : <><ShoppingBag size={20} className="me-2" /> ADD TO BAG</>}
+                                    {isOutOfStock ? "SOLD OUT" : isAdded ? <><Check size={20} className="me-2" /> ADDED TO BAG</> : <><ShoppingBag size={20} className="me-2" /> ADD TO CART</>}
                                 </Button>
 
                                 <Button 
@@ -272,7 +248,7 @@ const ProductDetail = () => {
 
                             <div className="mt-5 pt-4 border-top">
                                 <small className="text-muted d-block mb-2"><strong>Free Shipping</strong> on orders over ₱5,000</small>
-                                <small className="text-muted d-block"><strong>30 Day Returns</strong> if you change your mind</small>
+                                <small className="text-muted d-block"><strong>30-Day Returns</strong> if you change your mind</small>
                             </div>
                         </div>
                     </Col>
@@ -282,10 +258,6 @@ const ProductDetail = () => {
                 <div className="mt-5 pt-5 border-top">
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <h3 className="fw-bold mb-0">CUSTOMER REVIEWS ({productReviews.length})</h3>
-                        {/* 💡 4. Write Review Button */}
-                        <Button variant="outline-dark" className="rounded-pill fw-bold" onClick={handleOpenReview}>
-                            <MessageSquare size={18} className="me-2"/> Write a Review
-                        </Button>
                     </div>
 
                     {productReviews.length > 0 ? (
@@ -347,6 +319,8 @@ const ProductDetail = () => {
                     </div>
                 )}
 
+                {/* --- TOAST NOTIFICATION & MODAL (Remaining the same) --- */}
+                
                 {/* --- TOAST NOTIFICATION --- */}
                 <ToastContainer position="bottom-end" className="p-3 position-fixed" style={{zIndex: 9999}}>
                     <Toast onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide bg="dark">
@@ -384,49 +358,6 @@ const ProductDetail = () => {
                         </Button>
                     </Modal.Footer>
                 </Modal>
-
-                {/* --- WRITE REVIEW MODAL --- */}
-                <Modal show={showReviewModal} onHide={() => setShowReviewModal(false)} centered>
-                    <Modal.Header closeButton className="border-0"><Modal.Title className="fw-bold">Write a Review</Modal.Title></Modal.Header>
-                    <Modal.Body className="p-4">
-                        <Form onSubmit={handleSubmitReview}>
-                            <div className="mb-4 text-center">
-                                <Form.Label className="fw-bold d-block">Rate this product</Form.Label>
-                                <div className="d-flex justify-content-center gap-2">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <Star 
-                                            key={star} 
-                                            size={32} 
-                                            className="cursor-pointer transition-all"
-                                            style={{ cursor: 'pointer' }}
-                                            fill={star <= reviewRating ? "#f59e0b" : "none"} 
-                                            color={star <= reviewRating ? "#f59e0b" : "#cbd5e1"} 
-                                            onClick={() => setReviewRating(star)}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                            <Form.Group className="mb-4">
-                                <Form.Label className="fw-bold">Your Review</Form.Label>
-                                <Form.Control 
-                                    as="textarea" 
-                                    rows={4} 
-                                    placeholder="What did you like or dislike?"
-                                    value={reviewComment}
-                                    onChange={(e) => setReviewComment(e.target.value)}
-                                    required
-                                    className="rounded-4 bg-light border-0"
-                                />
-                            </Form.Group>
-                            <div className="d-grid">
-                                <Button type="submit" variant="primary" className="rounded-pill fw-bold" disabled={isSubmittingReview}>
-                                    {isSubmittingReview ? <><Spinner as="span" animation="border" size="sm" className="me-2"/>Submitting...</> : "Submit Review"}
-                                </Button>
-                            </div>
-                        </Form>
-                    </Modal.Body>
-                </Modal>
-
             </Container>
         </div>
     );
