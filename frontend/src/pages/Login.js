@@ -77,7 +77,7 @@ const Login = () => {
                     >
                         <div className="auth-image-text-overlay">
                             <h2 className="display-5 fw-bold mb-2">New Season</h2>
-                            <p className="lead mb-0 fw-medium">Discover the latest trends for Summer '24.</p>
+                            <p className="lead mb-0 fw-medium">Discover the latest trends for Summer '25.</p>
                         </div>
                     </div>
                 </Col>
@@ -162,16 +162,6 @@ const Login = () => {
                             >
                                 {loading ? 'Signing In...' : <>Sign In <ArrowRight size={18} className="ms-2" /></>}
                             </Button>
-
-                            {/* SOCIAL LOGIN (Cosmetic Only) */}
-                            <div className="d-flex gap-3 mb-4">
-                                <Button variant="outline-light" className="btn-social w-100">
-                                    <Chrome size={18} className="me-2 text-danger" /> Google
-                                </Button>
-                                <Button variant="outline-light" className="btn-social w-100">
-                                    <Facebook size={18} className="me-2 text-primary" /> Facebook
-                                </Button>
-                            </div>
                         </Form>
                         
                         <div className="text-center">

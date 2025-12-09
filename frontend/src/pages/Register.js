@@ -325,13 +325,6 @@ const Register = () => {
                                     </Button>
                                 )}
                             </div>
-
-                            {step === 1 && (
-                                <div className="d-flex gap-3 mb-4">
-                                    <Button variant="outline-light" className="btn-social w-100"><Chrome size={18} className="me-2 text-danger" /> Google</Button>
-                                    <Button variant="outline-light" className="btn-social w-100"><Facebook size={18} className="me-2 text-primary" /> Facebook</Button>
-                                </div>
-                            )}
                         </Form>
                         
                         <div className="text-center">
