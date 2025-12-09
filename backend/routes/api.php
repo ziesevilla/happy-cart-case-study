@@ -8,8 +8,9 @@ use App\Http\Controllers\AddressController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\OrderController;
-use App\Http\Controllers\SettingController; 
+use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SystemController;
+use App\Http\Controllers\TransactionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -94,6 +95,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // System Management
     Route::post('/system/factory-reset', [SystemController::class, 'factoryReset']);
+
+    // Transaction History (Admin)
+    Route::get('/transactions', [TransactionController::class, 'index']);
+    Route::put('/transactions/{id}/refund', [TransactionController::class, 'refund']);
 
     
 });

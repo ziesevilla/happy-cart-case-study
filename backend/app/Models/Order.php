@@ -101,4 +101,15 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    /**
+     * An order has one transaction associated with it.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function transaction()
+    {
+        // This assumes the 'transactions' table has an 'order_id' column
+        return $this->hasOne(Transaction::class);
+    }
 }
