@@ -45,7 +45,9 @@ const Account = () => {
     if (!user) return null;
 
     // --- DATA AGGREGATION & LOGIC ---
+    // 💡 This is where you defined the variable "userOrders"
     const userOrders = orders.filter(order => order.email === user.email);
+    
     const orderCount = userOrders.length;
     const totalSpent = userOrders.reduce((acc, order) => acc + order.total, 0);
     const reviewCount = reviews.filter(r => r.user === user.name).length;
@@ -66,8 +68,6 @@ const Account = () => {
 
     // --- CUSTOMER VIEW ---
     return (
-        // 💡 STYLE FIX: Added inline style to force a whitish/light-gray background
-        // and minHeight to ensure the whole page is covered.
         <div className="account-page py-5" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
             <Container>
                 <Row className="g-5">
@@ -80,12 +80,14 @@ const Account = () => {
                             totalSpent={totalSpent}
                             reviewCount={reviewCount}
                             memberTier={memberTier}
+                            // 🔴 FIXED: Changed 'myOrders' (undefined) to 'userOrders' (defined above)
+                            orders={userOrders}
                         />
                     </Col>
 
                     {/* RIGHT CONTENT: Tabs for Orders & Addresses */}
                     <Col lg={8}>
-                        {/* Tab Navigation Buttons (White Inactive Style Preserved) */}
+                        {/* Tab Navigation Buttons */}
                         <div className="d-flex gap-3 mb-4 border-bottom pb-3">
                             <Button 
                                 variant={activeTab === 'orders' ? 'primary' : 'light'}
