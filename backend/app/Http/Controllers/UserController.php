@@ -23,25 +23,20 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        // 1. Column Selection (Security & Performance)
-        // We explicitly select columns to avoid sending sensitive data (like 'password' or 'api_token')
-        // to the frontend, even if the frontend doesn't display it.
-        $query = User::select('id', 'name', 'email', 'role', 'status', 'phone', 'gender', 'dob', 'created_at');
+        // 1. Column Selection & Eager Loading
+        // We added ->with('addresses') so the address data is actually sent to React.
+        $query = User::with('addresses') 
+                    ->select('id', 'name', 'email', 'role', 'status', 'phone', 'gender', 'dob', 'created_at');
 
         // 2. Server-Side Search
         if ($search = $request->input('search')) {
-            // CRITICAL: We use a Closure (function($q)) here to group the OR conditions.
-            // SQL Logic: WHERE ... AND (name LIKE %...% OR email LIKE %...%)
-            // Without the closure, the 'OR' might override other previous 'WHERE' clauses.
             $query->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
         // 3. Pagination
-        // Returns a JSON structure containing 'data' (the users) and 'meta' (page numbers, total count).
-        // This prevents the app from crashing if you have 10,000 users.
         return $query->orderBy('created_at', 'desc')->paginate(10);
     }
     

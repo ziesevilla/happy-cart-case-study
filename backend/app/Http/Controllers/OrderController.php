@@ -15,7 +15,7 @@ use Exception;
 /**
  * Class OrderController
  * * Manages the lifecycle of orders: Listing, Checkout, Cancellation, and Status Updates.
- * Handles stock management and concurrency safety.
+ * * Updated to handle Payment Method retrieval from Transactions.
  */
 class OrderController extends Controller
 {
@@ -29,17 +29,26 @@ class OrderController extends Controller
     {
         $user = Auth::user();
 
-        // 1. Eager Load 'items'
-        // optimization: This solves the "N+1 Problem". Without this, Laravel would run 
-        // a separate query for every single order to get its items.
-        $query = Order::with('items');
+        // 1. Eager Load 'items' AND 'transaction'
+        // 🆕 UPDATED: We load 'transaction' because that is where payment_method lives.
+        $query = Order::with(['items', 'transaction']);
 
         // 2. Role-based Scoping
         if ($user->role !== 'Admin') {
             $query->where('user_id', $user->id);
         }
 
-        return $query->orderBy('created_at', 'desc')->get();
+        $orders = $query->orderBy('created_at', 'desc')->get();
+
+        // 3. Map Payment Method to Order Object
+        // 🆕 ADDED: This extracts 'payment_method' from the transaction and puts it 
+        // directly on the order object so the frontend (order.payment_method) can read it.
+        $orders->transform(function ($order) {
+            $order->payment_method = $order->transaction ? $order->transaction->payment_method : 'Credit Card';
+            return $order;
+        });
+
+        return $orders;
     }
 
     /**
@@ -55,7 +64,9 @@ class OrderController extends Controller
         $request->validate([
             'items'            => 'required|array|min:1',
             'shipping_address' => 'required|array',
-            'total'            => 'required|numeric'
+            'total'            => 'required|numeric',
+            // 🆕 ADDED: Validate payment method if present
+            'payment_method'   => 'nullable|string' 
         ]);
 
         return DB::transaction(function () use ($request) {
@@ -92,16 +103,19 @@ class OrderController extends Controller
                 ]);
             }
 
-            // 3. CREATE TRANSACTION RECORD (New Logic)
+            // 3. CREATE TRANSACTION RECORD
             Transaction::create([
                 'order_id'           => $order->id,
                 'user_id'            => $user->id,
                 'transaction_number' => 'TRX-' . strtoupper(Str::random(10)),
                 'amount'             => $request->total,
-                // If payment method is not sent from frontend, default to 'Credit Card'
-                'payment_method'     => $request->payment_method ?? 'Credit Card', 
+                // 🆕 UPDATED: Explicitly use input helper for clarity
+                'payment_method'     => $request->input('payment_method', 'Credit Card'), 
                 'status'             => 'Paid'
             ]);
+
+            // 🆕 Return the order with the payment method attached (for immediate frontend use)
+            $order->payment_method = $request->input('payment_method', 'Credit Card');
 
             return $order;
         });
@@ -119,19 +133,16 @@ class OrderController extends Controller
         $user = Auth::user();
         
         // Find order belonging to this user
-        // findOrFail throws 404 if not found or if user doesn't own it
         $order = Order::where('id', $id)
                       ->where('user_id', $user->id)
                       ->firstOrFail();
         
         // 1. Check if cancellable
-        // We usually don't want to cancel orders that are already 'Shipped'
         if (in_array($order->status, ['Placed', 'Processing'])) {
             
             $order->update(['status' => 'Cancelled']);
             
             // 2. Restore Stock
-            // Since the order is cancelled, we must add the items back to the inventory.
             foreach ($order->items as $item) {
                 Product::where('id', $item->product_id)
                        ->increment('stock', $item->quantity);

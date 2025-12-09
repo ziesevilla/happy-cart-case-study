@@ -12,8 +12,10 @@ class TransactionController extends Controller
      */
     public function index()
     {
-        // Fetch transactions, sorted by newest first, with Order ID info
-        return Transaction::with('order:id,order_number')
+        // 1. Fetch transactions
+        // 2. We MUST include 'created_at' in the order selection because
+        //    the Order model has an appended attribute 'date_formatted' that uses it.
+        return Transaction::with('order:id,order_number,created_at,status') // <--- ADD created_at HERE
                           ->orderBy('created_at', 'desc')
                           ->get();
     }
