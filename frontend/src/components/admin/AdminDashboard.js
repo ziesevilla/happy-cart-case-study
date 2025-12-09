@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Container, Nav, Row, Col, Card, Tab, Toast, ToastContainer } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Package, ShoppingBag, Users, Settings, FileText, CreditCard, Layers } from 'lucide-react'; // Added Layers icon
+import { LogOut, Package, ShoppingBag, Users, Settings, FileText, CreditCard, Layers } from 'lucide-react';
 
-// 💡 IMPORT CONTEXTS (Data Sources)
+// 💡 IMPORT CONTEXTS
 import { useOrders } from '../../context/OrderContext';
 import { useUsers } from '../../context/UserContext';
 import { useTransactions } from '../../context/TransactionContext';
-import { useProducts } from '../../context/ProductContext'; // <--- 1. IMPORT PRODUCT CONTEXT
+import { useProducts } from '../../context/ProductContext'; 
 
-// 💡 IMPORT SUB-COMPONENTS (Tabs)
+// 💡 IMPORT SUB-COMPONENTS
 import AdminInventory from './AdminInventory';
 import AdminUsers from './AdminUsers';
 import AdminOrders from './AdminOrders';
@@ -30,8 +30,9 @@ const AdminDashboard = () => {
     // 1. Consume Data
     const { orders } = useOrders();
     const { users } = useUsers();
+    // Ensure TransactionContext provides the updated list whenever a status changes
     const { transactions } = useTransactions();
-    const { products } = useProducts(); // <--- 2. GET PRODUCTS
+    const { products } = useProducts();
 
     const [activeTab, setActiveTab] = useState('orders'); 
     
@@ -43,7 +44,7 @@ const AdminDashboard = () => {
         totalRevenue: 0,
         activeOrders: 0,
         totalCustomers: 0,
-        availableProducts: 0, // <--- 3. ADD NEW STAT STATE
+        availableProducts: 0,
         refundsProcessed: 0
     });
 
@@ -52,6 +53,9 @@ const AdminDashboard = () => {
      */
     useEffect(() => {
         // A. Calculate Total Revenue
+        // 💡 CRITICAL LOGIC: 
+        // We ONLY sum transactions with status 'Paid'.
+        // If a transaction is 'Refunded', it is strictly excluded from this number.
         const revenue = transactions
             .filter(t => t.status === 'Paid')
             .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
@@ -65,10 +69,10 @@ const AdminDashboard = () => {
         const customerCount = users.filter(u => u.role === 'Customer').length;
 
         // D. Calculate Available Inventory (Stock > 0)
-        // We parse stock as integer just to be safe
         const inStockCount = products.filter(p => parseInt(p.stock) > 0).length;
 
-        // E. Calculate Refunds
+        // E. Calculate Refunds (Total value of refunded transactions)
+        // This calculates the money that was returned to customers.
         const refunds = transactions
             .filter(t => t.status === 'Refunded')
             .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
@@ -78,18 +82,11 @@ const AdminDashboard = () => {
             totalRevenue: revenue,
             activeOrders: active,
             totalCustomers: customerCount,
-            availableProducts: inStockCount, // <--- SET THE NEW COUNT
+            availableProducts: inStockCount,
             refundsProcessed: refunds
         });
 
     }, [orders, users, transactions, products]); 
-
-    const handleLogout = () => {
-        if(window.confirm("Are you sure you want to log out?")) {
-            logout();
-            navigate('/');
-        }
-    };
 
     const showNotification = (message, variant = 'success') => {
         setToast({ show: true, message, variant });
@@ -110,10 +107,9 @@ const AdminDashboard = () => {
                 {/* ======================================================== */}
                 {/* KPI STATS ROW */}
                 {/* ======================================================== */}
-                {/* Note: Used 'col-md' without number to let Flexbox space 5 items evenly */}
                 <Row className="g-4 mb-5">
                     
-                    {/* 1. Revenue */}
+                    {/* 1. Revenue (Net) */}
                     <Col className="col-md"> 
                         <Card className="border-0 shadow-sm rounded-4 bg-primary text-white h-100">
                             <Card.Body className="p-4">
@@ -121,7 +117,7 @@ const AdminDashboard = () => {
                                     <div className="bg-white bg-opacity-25 p-2 rounded-3"><ShoppingBag size={24}/></div>
                                 </div>
                                 <h3 className="fw-bold mb-0 text-white">₱{stats.totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}</h3>
-                                <small className="opacity-75">Total Revenue</small>
+                                <small className="opacity-75">Total Revenue (Net)</small>
                             </Card.Body>
                         </Card>
                     </Col>
@@ -152,7 +148,7 @@ const AdminDashboard = () => {
                         </Card>
                     </Col>
 
-                    {/* 4. NEW: Available Inventory (Not Out of Stock) */}
+                    {/* 4. Available Inventory */}
                     <Col className="col-md">
                         <Card className="border-0 shadow-sm rounded-4 bg-white h-100">
                             <Card.Body className="p-4">

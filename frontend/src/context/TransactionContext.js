@@ -36,24 +36,25 @@ export const TransactionProvider = ({ children }) => {
     }, []);
 
     // 2. PROCESS REFUND
-    const updateTransactionStatus = async (trxId, newStatus) => {
+    const updateTransactionStatus = async (id, newStatus) => {
         try {
-            // Find the numeric DB ID based on the string ID (TRX-...)
-            const transaction = transactions.find(t => t.id === trxId);
-            if (!transaction) return;
-
+            // We assume 'id' passed here is the Numeric Database ID (e.g., 1, 5, 20)
             if (newStatus === 'Refunded') {
-                await api.put(`/transactions/${transaction.dbId}/refund`);
+                // Directly call the API with the ID
+                await api.put(`/transactions/${id}/refund`);
             }
 
-            // Optimistic Update (Update UI immediately)
+            // Update Context State (Optimistic UI)
+            // We check both 'id' (formatted) and 'dbId' to be safe, 
+            // or just rely on the API refresh if simpler.
             setTransactions(prev => prev.map(trx => 
-                trx.id === trxId ? { ...trx, status: newStatus } : trx
+                trx.dbId === id ? { ...trx, status: newStatus } : trx
             ));
+
             return true;
         } catch (error) {
             console.error("Refund failed:", error);
-            return false;
+            throw error; // Throw error so AdminTransactions knows it failed
         }
     };
 
