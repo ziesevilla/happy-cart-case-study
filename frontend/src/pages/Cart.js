@@ -108,7 +108,10 @@ const Cart = () => {
     // --- EMPTY STATE RENDER ---
     if (cart.length === 0) {
         return (
-            <div className="cart-page d-flex align-items-center justify-content-center">
+            <div 
+                className="cart-page d-flex align-items-center justify-content-center"
+                style={{ backgroundColor: '#ffffff', minHeight: '100vh' }} // <--- CHANGED TO WHITE
+            >
                 <Container className="cart-empty animate-fade-in">
                     <div className="mb-4 text-muted opacity-25">
                         <ShoppingBag size={80} />
@@ -123,12 +126,16 @@ const Cart = () => {
         );
     }
 
+    // --- MAIN CART RENDER ---
     return (
-        <div className="cart-page py-5 animate-fade-in">
+        <div 
+            className="cart-page py-5 animate-fade-in"
+            style={{ backgroundColor: '#ffffff', minHeight: '100vh' }} // <--- CHANGED TO WHITE
+        >
             <Container>
                 <div className="d-flex align-items-center justify-content-between mb-5">
-                    <h2 className="fw-bold mb-0">Shopping Cart ({cart.length})</h2>
-                    <Link to="/products" className="text-decoration-none fw-bold text-muted d-flex align-items-center">
+                    <h2 className="fw-bold mb-0">Shopping Cart</h2>
+                    <Link to="/" className="text-decoration-none fw-bold text-muted d-flex align-items-center">
                         <ArrowLeft size={18} className="me-2" /> Continue Shopping
                     </Link>
                 </div>
@@ -258,23 +265,6 @@ const Cart = () => {
                                 </span>
                             </div>
                             
-                            <InputGroup className="my-4 border rounded-pill overflow-hidden bg-white p-1">
-                                <InputGroup.Text className="bg-transparent border-0 ps-3 pe-0">
-                                    <Tag size={16} className="text-muted"/>
-                                </InputGroup.Text>
-                                
-                                <Form.Control 
-                                    placeholder="Discount Code" 
-                                    className="bg-transparent border-0 shadow-none ps-2"
-                                    value={promoCode}
-                                    onChange={(e) => setPromoCode(e.target.value)}
-                                />
-                                
-                                <Button variant="dark" size="sm" className="rounded-pill px-4">
-                                    Apply
-                                </Button>
-                            </InputGroup>
-
                             <div className="summary-total">
                                 <span>Total</span>
                                 <span>₱{finalTotal.toLocaleString()}</span>

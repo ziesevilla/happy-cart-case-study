@@ -1,66 +1,81 @@
 import React from 'react';
 import { Container, Button } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
-import { Check, ShoppingBag, ArrowRight, FileText } from 'lucide-react';
+import { Check, ArrowRight, FileText } from 'lucide-react';
 import './styles/Confirmation.css';
 
 /**
  * Confirmation Component
- * * The post-purchase success page.
- * * Displays order reference, total amount, and next steps.
- * * Retrieves order details from React Router's location state passed from Checkout.
+ * Updated to display the actual payment method used 
+ * and removed the pink background.
  */
 const Confirmation = () => {
     const location = useLocation();
     
     // --- DATA RETRIEVAL ---
-    // Get Order ID passed from Checkout, or generate a fallback for demo resilience
     const orderId = location.state?.orderId || `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
-    
-    // Note: In a real app, you'd fetch the actual order details here using the ID if state is missing
     const total = location.state?.total || 0;
+    
+    // 1. Get Payment Method from state (default to 'Credit Card' if missing)
+    const paymentMethodRaw = location.state?.paymentMethod || 'credit_card';
+
+    // Helper to format the payment string (e.g., "credit_card" -> "Credit Card")
+    const formatPaymentMethod = (method) => {
+        if (!method) return 'Credit Card';
+        if (method === 'cod') return 'Cash on Delivery (COD)';
+        if (method === 'gcash') return 'GCash';
+        return method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    };
 
     return (
-        <div className="confirmation-page">
-            <Container className="d-flex justify-content-center">
-                <div className="confirmation-card animate-fade-up">
+        // 2. FIXED: Added inline style to override pink background
+        <div className="confirmation-page" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', paddingBottom: '3rem' }}>
+            <Container className="d-flex justify-content-center pt-5">
+                <div className="confirmation-card animate-fade-up bg-white p-5 rounded-4 shadow-sm" style={{ maxWidth: '600px', width: '100%' }}>
                     
                     {/* Success Icon */}
-                    <div className="success-icon-container">
-                        <Check size={48} strokeWidth={3} />
+                    <div className="success-icon-container text-center mb-4">
+                        <div className="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle" style={{ width: '80px', height: '80px' }}>
+                            <Check size={40} strokeWidth={3} />
+                        </div>
                     </div>
 
-                    <h1 className="display-5 fw-bold mb-3 text-dark">Thank You!</h1>
-                    <p className="lead text-muted mb-4">
-                        Your order has been placed successfully.<br/>
-                        We've sent a confirmation email to your inbox.
-                    </p>
+                    <div className="text-center">
+                        <h1 className="display-5 fw-bold mb-3 text-dark">Thank You!</h1>
+                        <p className="lead text-muted mb-4">
+                            Your order has been placed successfully.<br/>
+                            We've sent a confirmation email to your inbox.
+                        </p>
+                    </div>
 
                     {/* Order Details Summary Box */}
-                    <div className="order-details-box">
+                    <div className="order-details-box bg-light p-4 rounded-3 mb-4 border border-secondary border-opacity-10">
                         <div className="d-flex align-items-center justify-content-between mb-3">
                             <span className="text-uppercase small fw-bold text-muted">Order Reference</span>
                             <span className="fw-bold text-primary">{orderId}</span>
                         </div>
-                        <div className="order-details-row">
-                            <span>Status</span>
+                        <div className="d-flex justify-content-between mb-2">
+                            <span className="text-muted">Status</span>
                             <span className="badge bg-success-subtle text-success rounded-pill px-3">Processing</span>
                         </div>
-                        <div className="order-details-row">
-                            <span>Date</span>
-                            <span>{new Date().toLocaleDateString()}</span>
+                        <div className="d-flex justify-content-between mb-2">
+                            <span className="text-muted">Date</span>
+                            <span className="fw-medium">{new Date().toLocaleDateString()}</span>
                         </div>
-                        <div className="order-details-row">
-                            <span>Payment Method</span>
-                            <span>Credit Card</span>
+                        <div className="d-flex justify-content-between mb-2">
+                            <span className="text-muted">Payment Method</span>
+                            {/* 3. Display formatted payment method */}
+                            <span className="fw-bold text-dark">{formatPaymentMethod(paymentMethodRaw)}</span>
                         </div>
                         
-                        {/* Only show Total if valid value exists */}
                         {total > 0 && (
-                            <div className="order-details-row total">
-                                <span>Total Amount</span>
-                                <span>₱{total.toLocaleString()}</span>
-                            </div>
+                            <>
+                                <hr className="my-3 border-secondary border-opacity-10"/>
+                                <div className="d-flex justify-content-between align-items-center">
+                                    <span className="fw-bold text-dark">Total Amount</span>
+                                    <span className="h4 mb-0 text-primary fw-bold">₱{total.toLocaleString()}</span>
+                                </div>
+                            </>
                         )}
                     </div>
 
@@ -77,7 +92,7 @@ const Confirmation = () => {
                         
                         <Button 
                             as={Link} 
-                            to="/products?collection=New" /* 💡 CHANGED LINK HERE: Directs to New Arrivals */
+                            to="/products?collection=New" 
                             variant="primary" 
                             className="rounded-pill py-3 fw-bold shadow-sm"
                         >
@@ -85,7 +100,7 @@ const Confirmation = () => {
                         </Button>
                     </div>
 
-                    <div className="mt-4 small text-muted">
+                    <div className="mt-4 small text-muted text-center">
                         Need help? <Link to="/contact" className="text-primary text-decoration-none fw-bold">Contact Support</Link>
                     </div>
                 </div>

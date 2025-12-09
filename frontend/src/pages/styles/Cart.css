@@ -180,3 +180,36 @@
         justify-content: flex-end;
     }
 }
+
+
+
+/* 1. Make the checkbox container bigger so the larger input fits nicely */
+.cart-table .form-check {
+    min-height: 1.5em;
+    padding-left: 1.8em; /* Adjust padding for larger box */
+    display: flex;
+    align-items: center;
+}
+
+/* 2. Style the actual checkbox input */
+.cart-table .form-check-input {
+    width: 1.5em;  /* Increase width from default */
+    height: 1.5em; /* Increase height from default */
+    border: 2px solid #6c757d; /* Thicker, darker gray border so it's visible */
+    margin-top: 0; /* Align center vertically */
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+/* 3. Style when hovering over checkbox */
+.cart-table .form-check-input:hover {
+     border-color: #dc3545; /* Change border to pink/red on hover */
+     background-color: #fff0f3; /* Very faint pink background on hover */
+}
+
+/* 4. Style when checked */
+.cart-table .form-check-input:checked {
+    background-color: #dc3545; /* Fill with the pink/red theme color */
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25); /* Add a subtle glow when clicked */
+}
