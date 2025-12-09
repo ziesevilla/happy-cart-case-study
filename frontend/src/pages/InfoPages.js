@@ -4,7 +4,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
     Truck, RotateCcw, Shield, HelpCircle, Heart, 
     Users, Leaf, MapPin, Mail, FileText, 
-    Clock, Globe, DollarSign, Check, Package, Megaphone
+    Clock, Globe, DollarSign, Check, Package, Megaphone, 
+    Scroll
 } from 'lucide-react';
 
 // --- HELPER COMPONENTS ---
@@ -17,14 +18,15 @@ import {
 const InfoNavigation = () => {
     const location = useLocation();
     
-    // 💡 REMOVED 'Track Order' from this list
     const links = [
-        { name: 'About', path: '/about', icon: Users },
+        { name: 'About', path: '/about', icon: Heart },
         { name: 'Sustainability', path: '/sustainability', icon: Leaf },
         { name: 'Press', path: '/press', icon: Megaphone },
         { name: 'Shipping', path: '/shipping', icon: Truck },
         { name: 'Returns', path: '/returns', icon: RotateCcw },
         { name: 'FAQ', path: '/help', icon: HelpCircle },
+        { name: 'Privacy', path: '/privacy', icon: Shield },
+        { name: 'Terms', path: '/terms', icon: FileText },
     ];
 
     return (
