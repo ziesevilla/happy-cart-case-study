@@ -85,7 +85,16 @@ const Login = () => {
                 {/* --- RIGHT COLUMN: LOGIN FORM --- */}
                 <Col md={6} className="auth-form-side">
                     <div className="auth-container">
-                        <Link to="/" className="auth-brand">HAPPY CART</Link>
+                        <Link to="/" className="auth-brand">
+                            <img 
+                                src="/favicon.ico" 
+                                alt="Happy Cart Logo" 
+                                width="28" 
+                                height="28" 
+                                className="me-2"
+                            />
+                            HAPPY CART
+                        </Link>
 
                         <div className="mb-4">
                             <h1 className="auth-title display-5">Welcome Back</h1>

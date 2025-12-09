@@ -42,8 +42,14 @@ const Navigation = () => {
                 <Container fluid className="px-4 d-flex justify-content-between align-items-center">
                     
                     {/* LEFT: BRANDING */}
-                    <Link to="/" className="navbar-logo-text">
-                        <ShoppingBag className="me-2" size={28} strokeWidth={2.5} />
+                    <Link to="/" className="navbar-logo-text d-flex align-items-center text-decoration-none">
+                        <img 
+                            src="/favicon.ico" 
+                            alt="Happy Cart Logo" 
+                            width="28" 
+                            height="28" 
+                            className="me-2"
+                        />
                         HAPPY CART
                     </Link>
 

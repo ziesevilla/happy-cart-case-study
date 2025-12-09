@@ -28,9 +28,9 @@ const HERO_SLIDES = [
 
 const FEATURED_GRID = [
     { id: 1, title: "NEW ARRIVALS", image: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=New" }, 
-    { id: 2, title: "CLOTHING ESSENTIALS", image: "https://images.unsplash.com/photo-1582552938357-32b906df40cb?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Clothing" },
+    { id: 2, title: "SHOES & FOOTWEAR", image: "https://images.unsplash.com/photo-1582552938357-32b906df40cb?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Shoes" },
     { id: 3, title: "ACCESSORIES", image: "https://images.unsplash.com/photo-1576053139778-7e32f2ae3cfd?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Accessories" },
-    { id: 4, title: "SHOES & FOOTWEAR", image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Shoes" },
+    { id: 4, title: "CLOTHING ESSENTIALS", image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=1000&auto=format&fit=crop", link: "/products?collection=Clothing" },
 ];
 
 const Home = () => {
