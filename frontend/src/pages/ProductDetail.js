@@ -232,7 +232,7 @@ const ProductDetail = () => {
                                     onClick={handleAddToCart} 
                                     disabled={isAdded || isBuying || isOutOfStock} 
                                 >
-                                    {isOutOfStock ? "SOLD OUT" : isAdded ? <><Check size={20} className="me-2" /> ADDED TO BAG</> : <><ShoppingBag size={20} className="me-2" /> ADD TO CART</>}
+                                    {isOutOfStock ? "SOLD OUT" : isAdded ? <><Check size={20} className="me-2" /> ADDED TO BAG</> : <><img src="/favicon.ico" alt="Happy Cart Logo" width="28" height="28" className="me-2"/> ADD TO CART</>}
                                 </Button>
 
                                 <Button 
@@ -325,7 +325,7 @@ const ProductDetail = () => {
                 <ToastContainer position="bottom-end" className="p-3 position-fixed" style={{zIndex: 9999}}>
                     <Toast onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide bg="dark">
                         <Toast.Header closeButton={false} className="d-flex justify-content-between bg-dark text-white border-0">
-                            <strong className="me-auto d-flex align-items-center"><ShoppingBag size={16} className="me-2"/> Added to Bag</strong>
+                            <strong className="me-auto d-flex align-items-center"><img src="/favicon.ico" alt="Happy Cart Logo" width="28" height="28" className="me-2"/> Added to Cart</strong>
                             <small className="text-white-50">just now</small>
                             <button type="button" className="btn-close btn-close-white ms-2" onClick={() => setShowToast(false)}></button>
                         </Toast.Header>

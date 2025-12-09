@@ -164,7 +164,7 @@ const Products = () => {
             {/* HERO BANNER */}
             <div className="products-hero" style={{ backgroundImage: `url(${getBannerImage()})` }}>
                 <div className="products-hero-content">
-                    <h1 className="display-3 fw-bold mb-2">
+                    <h1 className="display-3 fw-bold mb-2 text-white">
                         {isNewArrivals ? 'JUST LANDED' : (collectionFilter === 'All' ? 'THE COLLECTION' : collectionFilter.toUpperCase())}
                     </h1>
                     <p className="lead mb-0 text-white-50">
